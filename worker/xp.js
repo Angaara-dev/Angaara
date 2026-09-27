@@ -21,6 +21,21 @@ const SPOT_CHECKS = 3;
 // The bot tries the daily limit DM at most this many times a day.
 const MAX_DM_TRIES = 3;
 
+// Server levels: members and days each level needs; keep in sync with src/app/hooks/useSpaceLevel.ts.
+const SPACE_LEVELS = [
+  { members: 50, days: 30 },
+  { members: 250, days: 175 },
+  { members: 1000, days: 250 },
+  { members: 5000, days: 548 },
+];
+// Only real, active Angaara users count toward a server's members.
+const SPACE_MEMBER_MIN_XP = 50;
+const SPACE_MEMBER_ACTIVE = 30 * DAY;
+const MAX_SPACES = 50;
+// Before this date a server's first report may carry its real creation date; after it,
+// age starts when the Worker first sees the server.
+const SPACE_AGE_GRACE_UNTIL = Date.UTC(2026, 10, 1);
+
 // XP needed for each level; keep in sync with XP_LEVELS in src/client/xp.ts.
 const LEVELS = [2000, 10000, 30000, 50000, 80000];
 const levelOf = (xp) => LEVELS.filter((need) => xp >= need).length;
@@ -71,6 +86,22 @@ const ensureTable = (db) => {
         )`
       )
       .run();
+    await db.batch([
+      db.prepare(
+        `CREATE TABLE IF NOT EXISTS space_member (
+          room_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          last_seen INTEGER NOT NULL,
+          PRIMARY KEY (room_id, user_id)
+        )`
+      ),
+      db.prepare(
+        `CREATE TABLE IF NOT EXISTS space_age (
+          room_id TEXT PRIMARY KEY,
+          started INTEGER NOT NULL
+        )`
+      ),
+    ]);
     await Promise.all(
       ADDED_COLUMNS.map((col) =>
         db
@@ -196,6 +227,48 @@ async function spotCheck(env, userId, events) {
   return (await Promise.all(picks.map(check))).every(Boolean);
 }
 
+// Marks the reporter as an active member of the servers they're in; nobody can add anyone else.
+async function recordSpaces(env, userId, spaces, now) {
+  if (!Array.isArray(spaces)) return;
+  const valid = spaces
+    .slice(0, MAX_SPACES)
+    .filter((s) => typeof s?.id === 'string' && ROOM_RE.test(s.id));
+  if (valid.length === 0) return;
+  const statements = valid.flatMap((s) => {
+    const claimed =
+      Number.isFinite(s.created) && s.created > 0 && s.created < now ? s.created : now;
+    const started = now < SPACE_AGE_GRACE_UNTIL ? claimed : now;
+    return [
+      env.XP_DB.prepare(
+        `INSERT INTO space_member (room_id, user_id, last_seen) VALUES (?1, ?2, ?3)
+         ON CONFLICT(room_id, user_id) DO UPDATE SET last_seen = ?3`
+      ).bind(s.id, userId, now),
+      env.XP_DB.prepare(
+        'INSERT INTO space_age (room_id, started) VALUES (?1, ?2) ON CONFLICT DO NOTHING'
+      ).bind(s.id, started),
+    ];
+  });
+  await env.XP_DB.batch(statements);
+}
+
+async function spaceLevel(env, roomId) {
+  const now = Date.now();
+  const count = await env.XP_DB.prepare(
+    `SELECT COUNT(*) AS n FROM space_member m JOIN xp x ON x.user_id = m.user_id
+     WHERE m.room_id = ?1 AND m.last_seen > ?2 AND x.xp >= ?3 AND x.paused_until <= ?4`
+  )
+    .bind(roomId, now - SPACE_MEMBER_ACTIVE, SPACE_MEMBER_MIN_XP, now)
+    .first();
+  const age = await env.XP_DB.prepare('SELECT started FROM space_age WHERE room_id = ?')
+    .bind(roomId)
+    .first();
+  const members = count?.n ?? 0;
+  const days = age ? Math.max(0, Math.floor((now - age.started) / DAY)) : 0;
+  const index = SPACE_LEVELS.findIndex((l) => members < l.members || days < l.days);
+  const level = index === -1 ? SPACE_LEVELS.length : index;
+  return json({ members, days, level }, 200, { 'Cache-Control': 'public, max-age=300' });
+}
+
 async function report(request, env) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);
@@ -309,6 +382,7 @@ async function report(request, env) {
     )
     .first();
   const xp = saved?.xp ?? (row?.xp ?? 0) + gained;
+  await recordSpaces(env, userId, body?.spaces, now).catch(() => undefined);
   return json({ xp, level: levelOf(xp), gained, capped, dm: capped ? dmStatus : undefined });
 }
 
@@ -375,6 +449,12 @@ export async function handleXp(request, env, url) {
   if (url.pathname === '/api/xp/delete' && request.method === 'POST') return remove(request, env);
   if (url.pathname === '/api/xp/welcome' && request.method === 'POST') return welcome(request, env);
   if (url.pathname === '/api/xp/bot' && request.method === 'GET') return botStatus(env);
+
+  if (url.pathname.startsWith('/api/xp/space/') && request.method === 'GET') {
+    const roomId = decodeURIComponent(url.pathname.slice('/api/xp/space/'.length));
+    if (!ROOM_RE.test(roomId)) return json({ error: 'bad room' }, 400);
+    return spaceLevel(env, roomId);
+  }
 
   const user = url.pathname.startsWith('/api/xp/user/')
     ? decodeURIComponent(url.pathname.slice('/api/xp/user/'.length))

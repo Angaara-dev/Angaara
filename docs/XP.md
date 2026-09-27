@@ -15,6 +15,14 @@ with a Matrix OpenID token, so the Worker never sees your login.
   (`worker/xp.js` and `src/client/xp.ts`). Founders have everything.
 - Users can switch **Earn XP** off, or delete their XP, in Settings → Account → Experience.
 
+## Server levels
+
+The Worker also counts server levels (`/api/xp/space/<roomId>`). Each XP report lists the servers
+the sender is in, so a server's members are only people who reported it themselves in the last 30
+days and have at least 50 XP. A server's age starts when the Worker first saw it; until
+1 November 2026 the first report may carry its real creation date. Levels need the same `XP_DB`;
+without it the app counts members and age itself.
+
 ## Setup
 
 1. In the Cloudflare dashboard, go to **Storage & Databases → D1** and create a database named

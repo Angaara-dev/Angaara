@@ -57,6 +57,9 @@ import { useIncomingRequests } from '../../../hooks/useFriends';
 import { UnreadBadge, UnreadBadgeCenter } from '../../../components/unread-badge';
 import { UserPanel } from '../UserPanel';
 import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
+import { useAccountData } from '../../../hooks/useAccountData';
+import { XP_ROOM_KEY } from '../../../../client/xp';
+import { BRAND_NAME } from '../../../brand';
 
 type DirectMenuProps = {
   requestClose: () => void;
@@ -217,6 +220,7 @@ function DirectEmpty() {
 }
 
 const DEFAULT_CATEGORY_ID = makeNavCategoryId('direct', 'direct');
+const BOT_CATEGORY_ID = makeNavCategoryId('direct', 'angaara');
 export function Direct() {
   const mx = useMatrixClient();
   useNavToActivePathMapper('direct');
@@ -232,13 +236,24 @@ export function Direct() {
   const noRoomToDisplay = directs.length === 0;
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
+  // The Angaara bot's DM gets its own section instead of sitting among your chats.
+  const botRoomId = useAccountData(XP_ROOM_KEY)?.getContent()?.room_id as string | undefined;
+  const botRoom = botRoomId && directs.includes(botRoomId) ? mx.getRoom(botRoomId) : undefined;
+  const showBotRoom =
+    !!botRoom &&
+    (!closedCategories.has(BOT_CATEGORY_ID) ||
+      roomToUnread.has(botRoom.roomId) ||
+      botRoom.roomId === selectedRoomId);
+
   const sortedDirects = useMemo(() => {
-    const items = Array.from(directs).sort(factoryRoomIdByActivity(mx));
+    const items = Array.from(directs)
+      .filter((rId) => rId !== botRoomId)
+      .sort(factoryRoomIdByActivity(mx));
     if (closedCategories.has(DEFAULT_CATEGORY_ID)) {
       return items.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId);
     }
     return items;
-  }, [mx, directs, closedCategories, roomToUnread, selectedRoomId]);
+  }, [mx, directs, botRoomId, closedCategories, roomToUnread, selectedRoomId]);
 
   const virtualizer = useVirtualizer({
     count: sortedDirects.length,
@@ -278,6 +293,32 @@ export function Direct() {
                 </NavButton>
               </NavItem>
             </NavCategory>
+            {botRoom && (
+              <NavCategory>
+                <NavCategoryHeader>
+                  <RoomNavCategoryButton
+                    closed={closedCategories.has(BOT_CATEGORY_ID)}
+                    data-category-id={BOT_CATEGORY_ID}
+                    onClick={handleCategoryClick}
+                  >
+                    {BRAND_NAME}
+                  </RoomNavCategoryButton>
+                </NavCategoryHeader>
+                {showBotRoom && (
+                  <RoomNavItem
+                    room={botRoom}
+                    selected={selectedRoomId === botRoom.roomId}
+                    showAvatar
+                    direct
+                    linkPath={getDirectRoomPath(getCanonicalAliasOrRoomId(mx, botRoom.roomId))}
+                    notificationMode={getRoomNotificationMode(
+                      notificationPreferences,
+                      botRoom.roomId
+                    )}
+                  />
+                )}
+              </NavCategory>
+            )}
             <NavCategory>
               <NavCategoryHeader>
                 <RoomNavCategoryButton

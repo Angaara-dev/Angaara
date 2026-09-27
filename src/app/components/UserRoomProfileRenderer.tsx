@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Menu, PopOut, toRem } from 'folds';
+import React, { useEffect, useRef, useState } from 'react';
+import { color, config, Menu, Overlay, OverlayBackdrop, OverlayCenter, PopOut, toRem } from 'folds';
 import FocusTrap from 'focus-trap-react';
 import { useCloseUserRoomProfile, useUserRoomProfileState } from '../state/hooks/userRoomProfile';
 import { UserRoomProfile } from './user-profile';
@@ -20,6 +20,9 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
 
   const close = useCloseUserRoomProfile();
   const phone = usePhone();
+  const [full, setFull] = useState(false);
+  // Swapping the small card for the full panel drops its focus trap, which must not close both.
+  const openingFull = useRef(false);
 
   // Whether a tap landed on the name or avatar that opened the card.
   const onOpener = (evt: MouseEvent | TouchEvent) => {
@@ -45,10 +48,20 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
 
   if (!room) return null;
 
-  const profile = (
+  const profile = (compact: boolean) => (
     <SpaceProvider value={space ?? null}>
       <RoomProvider value={room}>
-        <UserRoomProfile userId={userId} />
+        <UserRoomProfile
+          userId={userId}
+          onViewFull={
+            compact
+              ? () => {
+                  openingFull.current = true;
+                  setFull(true);
+                }
+              : undefined
+          }
+        />
       </RoomProvider>
     </SpaceProvider>
   );
@@ -57,8 +70,41 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
   if (phone) {
     return (
       <BottomSheet open onClose={close} label="Profile" floatingHandle>
-        <div style={{ overflowY: 'auto', minHeight: 0 }}>{profile}</div>
+        <div data-plain-theme style={{ overflowY: 'auto', minHeight: 0 }}>
+          {profile(false)}
+        </div>
       </BottomSheet>
+    );
+  }
+
+  if (full) {
+    return (
+      <Overlay open backdrop={<OverlayBackdrop />}>
+        <OverlayCenter>
+          <FocusTrap
+            focusTrapOptions={{
+              initialFocus: false,
+              onDeactivate: close,
+              clickOutsideDeactivates: true,
+              escapeDeactivates: stopPropagation,
+            }}
+          >
+            <div
+              data-plain-theme
+              style={{
+                width: `min(${toRem(480)}, calc(100vw - ${toRem(32)}))`,
+                maxHeight: `calc(100vh - ${toRem(64)})`,
+                overflowY: 'auto',
+                borderRadius: config.radii.R500,
+                background: color.Surface.Container,
+                boxShadow: config.shadow.E300,
+              }}
+            >
+              {profile(false)}
+            </div>
+          </FocusTrap>
+        </OverlayCenter>
+      </Overlay>
     );
   }
 
@@ -71,20 +117,23 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
         <FocusTrap
           focusTrapOptions={{
             initialFocus: false,
-            onDeactivate: close,
+            onDeactivate: () => {
+              if (!openingFull.current) close();
+            },
             clickOutsideDeactivates: (evt: MouseEvent | TouchEvent) => !onOpener(evt),
             allowOutsideClick: (evt: MouseEvent | TouchEvent) => onOpener(evt),
             escapeDeactivates: stopPropagation,
           }}
         >
           <Menu
+            data-plain-theme
             style={{
-              width: `min(${toRem(340)}, calc(100vw - ${toRem(24)}))`,
+              width: `min(${toRem(260)}, calc(100vw - ${toRem(24)}))`,
               maxHeight: `calc(100vh - ${toRem(32)})`,
               overflowY: 'auto',
             }}
           >
-            {profile}
+            {profile(true)}
           </Menu>
         </FocusTrap>
       }
@@ -96,5 +145,5 @@ export function UserRoomProfileRenderer() {
   const state = useUserRoomProfileState();
 
   if (!state) return null;
-  return <UserRoomProfileContextMenu state={state} />;
+  return <UserRoomProfileContextMenu key={`${state.roomId}${state.userId}`} state={state} />;
 }

@@ -126,6 +126,16 @@ export const themeStop = (hex: string, dark: boolean): string => {
 // In-page panels (cards, rows, inputs, chips) become see-through washes over the gradient.
 // Only inside the app and pages marked data-theme-wash; menus and popups stay solid.
 const WASH_STYLE_ID = 'angaara-theme-wash';
+// Elements marked data-plain-theme (like profile cards) keep the normal colours under a server theme.
+const PLAIN_STYLE_ID = 'angaara-plain-theme';
+const THEME_EXTRA_VARS = [
+  '--angaara-theme-bg',
+  '--angaara-theme-surface',
+  '--angaara-theme-row',
+  '--angaara-theme-surface-color',
+  '--angaara-theme-shade',
+  '--angaara-theme-menu',
+];
 const WASH_GROUPS = [color.Surface, color.SurfaceVariant, color.Secondary];
 // The see-through panel colours, as CSS variable name → value.
 export const themeWashVars = (dark: boolean): Record<string, string> => {
@@ -180,6 +190,7 @@ export const applyServerTheme = (theme: ServerTheme | undefined, dark: boolean) 
   const { style } = document.body;
   pauseTransitions();
   setThemeWash(undefined);
+  document.getElementById(PLAIN_STYLE_ID)?.remove();
   const names = TINT_GROUPS.flatMap((group) =>
     [group.Container, group.ContainerHover, group.ContainerActive, group.ContainerLine].map(varName)
   );
@@ -213,8 +224,18 @@ export const applyServerTheme = (theme: ServerTheme | undefined, dark: boolean) 
 
   // Solid pieces (headers, rows, inputs) take the midpoint so they sit well on the gradient.
   const mid = `color-mix(in srgb, ${from}, ${to})`;
-  setThemeWash(dark);
   const computed = window.getComputedStyle(document.body);
+  const plainNames = [...new Set([...names, ...Object.keys(themeWashVars(dark))])];
+  const plain = plainNames
+    .filter((name): name is string => !!name)
+    .map((name) => `${name}: ${computed.getPropertyValue(name).trim()};`)
+    .concat(THEME_EXTRA_VARS.map((name) => `${name}: initial;`))
+    .join(' ');
+  const plainEl = document.createElement('style');
+  plainEl.id = PLAIN_STYLE_ID;
+  plainEl.textContent = `[data-plain-theme] { ${plain} }`;
+  document.head.appendChild(plainEl);
+  setThemeWash(dark);
   names.forEach((name, i) => {
     if (!name) return;
     const original = computed.getPropertyValue(name).trim();

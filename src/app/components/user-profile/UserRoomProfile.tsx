@@ -35,7 +35,7 @@ import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
 import { CreatorChip } from './CreatorChip';
 import { ReportUserChip } from './ReportUser';
-import { useUserBannerUrl } from '../../hooks/useUserBanner';
+import { useUserBannerColor, useUserBannerUrl } from '../../hooks/useUserBanner';
 import { SettingsPages, userSettingsPageAtom } from '../../features/settings';
 import { getDirectCreatePath, withSearchParam } from '../../pages/pathUtils';
 import { DirectCreateSearchParams } from '../../pages/paths';
@@ -45,8 +45,10 @@ const formatDay = (ts: number) =>
 
 type UserRoomProfileProps = {
   userId: string;
+  // Small card: just the banner, name and main action, plus a way into the full profile.
+  onViewFull?: () => void;
 };
-export function UserRoomProfile({ userId }: UserRoomProfileProps) {
+export function UserRoomProfile({ userId, onViewFull }: UserRoomProfileProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const navigate = useNavigate();
@@ -78,6 +80,7 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
   const avatarMxc = getMemberAvatarMxc(room, userId);
   const avatarUrl = (avatarMxc && mxcUrlToHttp(mx, avatarMxc, useAuthentication)) ?? undefined;
   const bannerUrl = useUserBannerUrl(userId);
+  const bannerColor = useUserBannerColor(userId);
 
   const activity = useActivityStatus(userId);
   const status = useUserStatus(userId);
@@ -107,6 +110,7 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
       ? joinEvent.getTs()
       : undefined;
   const angaaraSince = useUserXp(userId)?.since;
+  const compact = !!onViewFull;
   const cardBackground = profileTheme
     ? 'rgba(0, 0, 0, 0.28)'
     : `color-mix(in srgb, ${color.SurfaceVariant.Container} 80%, transparent)`;
@@ -122,10 +126,21 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
         }
       }
     >
-      <UserHero userId={userId} avatarUrl={avatarUrl} bannerUrl={bannerUrl} activity={activity} />
-      <Box direction="Column" gap="400" style={{ padding: config.space.S400 }}>
-        <Box direction="Column" gap="200">
-          <UserHeroName displayName={displayName} userId={userId} />
+      <UserHero
+        userId={userId}
+        avatarUrl={avatarUrl}
+        bannerUrl={bannerUrl}
+        bannerColor={bannerColor}
+        activity={activity}
+        compact={compact}
+      />
+      <Box
+        direction="Column"
+        gap={compact ? '300' : '400'}
+        style={{ padding: compact ? config.space.S300 : config.space.S400 }}
+      >
+        <Box direction="Column" gap={compact ? '100' : '200'}>
+          <UserHeroName displayName={displayName} userId={userId} compact={compact} />
           {activity && (
             <Box alignItems="Center" gap="200">
               <StatusIcon status={activity} size={12} decorative />
@@ -140,105 +155,125 @@ export function UserRoomProfile({ userId }: UserRoomProfileProps) {
             </Text>
           )}
         </Box>
-        {userId !== myUserId ? (
-          <Button
-            variant="Primary"
-            fill="Solid"
-            radii="400"
-            before={<Icon size="100" src={Icons.Message} filled />}
-            onClick={handleMessage}
-          >
-            <Text size="B400">Message</Text>
-          </Button>
-        ) : (
-          <Button
-            variant="Primary"
-            fill="Solid"
-            radii="400"
-            before={<Icon size="100" src={Icons.Pencil} />}
-            onClick={handleEditProfile}
-          >
-            <Text size="B400">Edit Profile</Text>
-          </Button>
-        )}
-        <Box
-          direction="Column"
-          gap="400"
-          style={{
-            padding: config.space.S400,
-            borderRadius: config.radii.R500,
-            background: cardBackground,
-          }}
-        >
-          <UserBio userId={userId} />
-          {(angaaraSince || joinedAt) && (
-            <Box direction="Column" gap="100">
-              <Text size="L400">Member Since</Text>
-              <Box alignItems="Center" gap="300" wrap="Wrap">
-                {angaaraSince && (
-                  <Box alignItems="Center" gap="100">
-                    <AngaaraLogo size={16} />
-                    <Text size="T300">{formatDay(angaaraSince)}</Text>
+        <Box direction="Column" gap="200">
+          {userId !== myUserId ? (
+            <Button
+              variant="Primary"
+              fill="Solid"
+              radii="400"
+              size={compact ? '300' : '400'}
+              before={<Icon size="100" src={Icons.Message} filled />}
+              onClick={handleMessage}
+            >
+              <Text size="B400">Message</Text>
+            </Button>
+          ) : (
+            <Button
+              variant="Primary"
+              fill="Solid"
+              radii="400"
+              size={compact ? '300' : '400'}
+              before={<Icon size="100" src={Icons.Pencil} />}
+              onClick={handleEditProfile}
+            >
+              <Text size="B400">Edit Profile</Text>
+            </Button>
+          )}
+          {onViewFull && (
+            <Button
+              variant="Secondary"
+              fill="Soft"
+              radii="400"
+              size={compact ? '300' : '400'}
+              before={<Icon size="100" src={Icons.User} />}
+              onClick={onViewFull}
+            >
+              <Text size="B400">View Full Profile</Text>
+            </Button>
+          )}
+        </Box>
+        {!onViewFull && (
+          <>
+            <Box
+              direction="Column"
+              gap="400"
+              style={{
+                padding: config.space.S400,
+                borderRadius: config.radii.R500,
+                background: cardBackground,
+              }}
+            >
+              <UserBio userId={userId} />
+              {(angaaraSince || joinedAt) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Member Since</Text>
+                  <Box alignItems="Center" gap="300" wrap="Wrap">
+                    {angaaraSince && (
+                      <Box alignItems="Center" gap="100">
+                        <AngaaraLogo size={16} />
+                        <Text size="T300">{formatDay(angaaraSince)}</Text>
+                      </Box>
+                    )}
+                    {joinedAt && (
+                      <Box alignItems="Center" gap="100" title={`Joined ${joinedSpace.name}`}>
+                        <Icon size="100" src={space ? Icons.Space : Icons.Hash} />
+                        <Text size="T300">{formatDay(joinedAt)}</Text>
+                      </Box>
+                    )}
                   </Box>
-                )}
-                {joinedAt && (
-                  <Box alignItems="Center" gap="100" title={`Joined ${joinedSpace.name}`}>
-                    <Icon size="100" src={space ? Icons.Space : Icons.Hash} />
-                    <Text size="T300">{formatDay(joinedAt)}</Text>
-                  </Box>
-                )}
+                </Box>
+              )}
+              <Box direction="Column" gap="200">
+                <Text size="L400">Roles</Text>
+                <Box alignItems="Center" gap="200" wrap="Wrap">
+                  {creator ? <CreatorChip /> : <PowerChip userId={userId} />}
+                </Box>
               </Box>
             </Box>
-          )}
-          <Box direction="Column" gap="200">
-            <Text size="L400">Roles</Text>
             <Box alignItems="Center" gap="200" wrap="Wrap">
-              {creator ? <CreatorChip /> : <PowerChip userId={userId} />}
+              {server && <ServerChip server={server} />}
+              <ShareChip userId={userId} />
+              {userId !== myUserId && <MutualRoomsChip userId={userId} />}
+              {userId !== myUserId && <OptionsChip userId={userId} />}
+              {userId !== myUserId && <ReportUserChip userId={userId} room={room} />}
             </Box>
-          </Box>
-        </Box>
-        <Box alignItems="Center" gap="200" wrap="Wrap">
-          {server && <ServerChip server={server} />}
-          <ShareChip userId={userId} />
-          {userId !== myUserId && <MutualRoomsChip userId={userId} />}
-          {userId !== myUserId && <OptionsChip userId={userId} />}
-          {userId !== myUserId && <ReportUserChip userId={userId} room={room} />}
-        </Box>
-        {ignored && <IgnoredUserAlert />}
-        {member && membership === Membership.Ban && (
-          <UserBanAlert
-            userId={userId}
-            reason={member.events.member?.getContent().reason}
-            canUnban={canUnban}
-            bannedBy={member.events.member?.getSender()}
-            ts={member.events.member?.getTs()}
-          />
-        )}
-        {member &&
-          membership === Membership.Leave &&
-          member.events.member &&
-          member.events.member.getSender() !== userId && (
-            <UserKickAlert
-              reason={member.events.member?.getContent().reason}
-              kickedBy={member.events.member?.getSender()}
-              ts={member.events.member?.getTs()}
+            {ignored && <IgnoredUserAlert />}
+            {member && membership === Membership.Ban && (
+              <UserBanAlert
+                userId={userId}
+                reason={member.events.member?.getContent().reason}
+                canUnban={canUnban}
+                bannedBy={member.events.member?.getSender()}
+                ts={member.events.member?.getTs()}
+              />
+            )}
+            {member &&
+              membership === Membership.Leave &&
+              member.events.member &&
+              member.events.member.getSender() !== userId && (
+                <UserKickAlert
+                  reason={member.events.member?.getContent().reason}
+                  kickedBy={member.events.member?.getSender()}
+                  ts={member.events.member?.getTs()}
+                />
+              )}
+            {member && membership === Membership.Invite && (
+              <UserInviteAlert
+                userId={userId}
+                reason={member.events.member?.getContent().reason}
+                canKick={canKickUser}
+                invitedBy={member.events.member?.getSender()}
+                ts={member.events.member?.getTs()}
+              />
+            )}
+            <UserModeration
+              userId={userId}
+              canInvite={canInvite && membership === Membership.Leave}
+              canKick={canKickUser && membership === Membership.Join}
+              canBan={canBanUser && membership !== Membership.Ban}
             />
-          )}
-        {member && membership === Membership.Invite && (
-          <UserInviteAlert
-            userId={userId}
-            reason={member.events.member?.getContent().reason}
-            canKick={canKickUser}
-            invitedBy={member.events.member?.getSender()}
-            ts={member.events.member?.getTs()}
-          />
+          </>
         )}
-        <UserModeration
-          userId={userId}
-          canInvite={canInvite && membership === Membership.Leave}
-          canKick={canKickUser && membership === Membership.Join}
-          canBan={canBanUser && membership !== Membership.Ban}
-        />
       </Box>
     </Box>
   );

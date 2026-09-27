@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAtomValue } from 'jotai';
 import { EventType, Room } from 'matrix-js-sdk';
 import { roomToParentsAtom } from '../state/room/roomToParents';
@@ -65,9 +65,72 @@ export const getSpaceAgeDays = (room: Room): number => {
   return created ? Math.max(0, Math.floor((Date.now() - created) / DAY)) : 0;
 };
 
+// Levels are counted by the Worker: only active Angaara users count, and age starts when it first
+// saw the server, so fake accounts and backdated servers don't help. Cached here between visits.
+type Counted = { members: number; days: number; at: number };
+const CACHE_KEY = 'angaara_space_levels';
+const STALE = 5 * 60 * 1000;
+const RETRY = 60 * 1000;
+const loadCounted = (): Map<string, Counted> => {
+  try {
+    return new Map(Object.entries(JSON.parse(localStorage.getItem(CACHE_KEY) ?? '{}')));
+  } catch {
+    return new Map();
+  }
+};
+const counted = loadCounted();
+const lastTry = new Map<string, number>();
+const listeners = new Set<() => void>();
+// Deployments without the Worker's database count in the app instead.
+let countLocally = false;
+
+const saveCounted = () => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(counted)));
+  } catch {
+    // Storage blocked; levels are fetched again next visit.
+  }
+};
+
+const fetchCounted = (roomId: string) => {
+  const now = Date.now();
+  if (countLocally || now - (lastTry.get(roomId) ?? 0) < RETRY) return;
+  lastTry.set(roomId, now);
+  fetch(`${window.location.origin}/api/xp/space/${encodeURIComponent(roomId)}`)
+    .then(async (res) => {
+      const data = await res.json().catch(() => undefined);
+      if (res.status === 501 || res.status === 404 || !data) {
+        countLocally = true;
+        return;
+      }
+      if (!res.ok || typeof data.members !== 'number' || typeof data.days !== 'number') return;
+      counted.set(roomId, { members: data.members, days: data.days, at: Date.now() });
+      saveCounted();
+    })
+    .catch(() => undefined)
+    .finally(() => listeners.forEach((listener) => listener()));
+};
+
+const countsFor = (room: Room): { members: number; days: number } => {
+  if (countLocally) return { members: room.getJoinedMemberCount(), days: getSpaceAgeDays(room) };
+  const cached = counted.get(room.roomId);
+  if (!cached || Date.now() - cached.at > STALE) fetchCounted(room.roomId);
+  return cached ?? { members: 0, days: 0 };
+};
+
+// Re-renders when fresh counts arrive from the Worker.
+export const useSpaceLevelUpdates = () => {
+  const [, forceUpdate] = useForceUpdate();
+  useEffect(() => {
+    listeners.add(forceUpdate);
+    return () => {
+      listeners.delete(forceUpdate);
+    };
+  }, [forceUpdate]);
+};
+
 export const computeSpaceLevel = (room: Room): SpaceLevel => {
-  const members = room.getJoinedMemberCount();
-  const days = getSpaceAgeDays(room);
+  const { members, days } = countsFor(room);
   if (isGranted(room)) return { level: SPACE_LEVELS.length, members, days, granted: true };
   const level = getSpaceLevel(members, days);
   const next = SPACE_LEVELS[level];
@@ -77,6 +140,7 @@ export const computeSpaceLevel = (room: Room): SpaceLevel => {
 // Re-computed whenever someone joins or leaves the space.
 export const useSpaceLevel = (room: Room): SpaceLevel => {
   const [, forceUpdate] = useForceUpdate();
+  useSpaceLevelUpdates();
   useStateEventCallback(
     room.client,
     useCallback(
@@ -94,6 +158,7 @@ export const useSpaceLevel = (room: Room): SpaceLevel => {
 // Level of the server a room belongs to: the space itself, or the best space above it.
 export const useRoomServerLevel = (room: Room): number => {
   const roomToParents = useAtomValue(roomToParentsAtom);
+  useSpaceLevelUpdates();
   if (room.isSpaceRoom()) return computeSpaceLevel(room).level;
   let best = 0;
   const seen = new Set<string>();

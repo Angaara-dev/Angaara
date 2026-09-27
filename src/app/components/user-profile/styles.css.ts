@@ -62,6 +62,15 @@ export const UserHeroAvatar = style({
     },
   },
 });
+// Smaller hero for the quick card that opens on click.
+export const UserHeroCoverCompact = style({ height: toRem(72) });
+export const UserHeroAvatarContainerCompact = style({ height: toRem(24) });
+export const UserHeroAvatarCompact = style({
+  width: toRem(56),
+  height: toRem(56),
+  outlineWidth: toRem(4),
+});
+
 export const UserHeroAvatarImg = style({
   selectors: {
     [`button${UserHeroAvatar}:hover &`]: {

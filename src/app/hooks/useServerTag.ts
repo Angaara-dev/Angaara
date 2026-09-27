@@ -1,7 +1,7 @@
 import { Room } from 'matrix-js-sdk';
 import { useMatrixClient } from './useMatrixClient';
 import { readProfileString, useExtendedProfile } from './useUserBanner';
-import { computeSpaceLevel, LEVEL_SERVER_TAG } from './useSpaceLevel';
+import { computeSpaceLevel, LEVEL_SERVER_TAG, useSpaceLevelUpdates } from './useSpaceLevel';
 import { getStateEvent } from '../utils/room';
 import { StateEvent } from '../../types/matrix/room';
 
@@ -33,6 +33,7 @@ export const parseServerTag = (value: string | undefined): ServerTag | undefined
 
 export const useServerTag = (userId: string, enabled = true): ServerTag | undefined => {
   const mx = useMatrixClient();
+  useSpaceLevelUpdates();
   const profile = useExtendedProfile(userId, enabled);
   const stored = parseServerTag(readProfileString(profile, [SERVER_TAG_PROFILE_KEY]));
   if (!stored) return undefined;

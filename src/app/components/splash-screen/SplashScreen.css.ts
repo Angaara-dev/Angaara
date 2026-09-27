@@ -28,15 +28,14 @@ const emberShape = svg(
 // Squircles cover the whole page faintly; this layer lets a little of them through everywhere.
 const everywhere = 'linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35))';
 
-// Phones get an even squircle (as wide as it is tall); wider screens stretch it to fit.
-const PHONE = `screen and (max-width: 750px)`;
-const EVEN = '118vw 118vw';
+// An even squircle hugging the logo, sized to the shorter side of the screen.
+const GLOW_SIZE = 'min(90vw, 70vh) min(90vw, 70vh)';
 
 const emberMask = {
   WebkitMaskImage: emberShape,
   maskImage: emberShape,
-  WebkitMaskSize: '100% 100%',
-  maskSize: '100% 100%',
+  WebkitMaskSize: GLOW_SIZE,
+  maskSize: GLOW_SIZE,
   WebkitMaskRepeat: 'no-repeat',
   maskRepeat: 'no-repeat',
   WebkitMaskPosition: 'center',
@@ -60,8 +59,8 @@ export const SplashScreen = style({
       backgroundColor: tileColor,
       WebkitMaskImage: `${squircleTile}, ${emberShape}, ${everywhere}`,
       maskImage: `${squircleTile}, ${emberShape}, ${everywhere}`,
-      WebkitMaskSize: `${toRem(44)} ${toRem(44)}, 100% 100%, 100% 100%`,
-      maskSize: `${toRem(44)} ${toRem(44)}, 100% 100%, 100% 100%`,
+      WebkitMaskSize: `${toRem(44)} ${toRem(44)}, ${GLOW_SIZE}, 100% 100%`,
+      maskSize: `${toRem(44)} ${toRem(44)}, ${GLOW_SIZE}, 100% 100%`,
       WebkitMaskRepeat: 'repeat, no-repeat, no-repeat',
       maskRepeat: 'repeat, no-repeat, no-repeat',
       WebkitMaskPosition: 'center',
@@ -79,17 +78,6 @@ export const SplashScreen = style({
       pointerEvents: 'none',
       backgroundColor: glowColor,
       ...emberMask,
-    },
-  },
-  '@media': {
-    [PHONE]: {
-      selectors: {
-        '&::before': {
-          WebkitMaskSize: `${toRem(44)} ${toRem(44)}, ${EVEN}, 100% 100%`,
-          maskSize: `${toRem(44)} ${toRem(44)}, ${EVEN}, 100% 100%`,
-        },
-        '&::after': { WebkitMaskSize: EVEN, maskSize: EVEN },
-      },
     },
   },
 });

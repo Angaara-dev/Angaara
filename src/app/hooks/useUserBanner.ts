@@ -94,3 +94,10 @@ export const readProfileString = (
   keys
     .map((key) => profile?.[key])
     .find((v): v is string => typeof v === 'string' && v.trim() !== '');
+
+// A solid banner colour anyone can pick, shown when there's no banner image.
+export const BANNER_COLOR_PROFILE_KEY = 'io.angaara.banner_color';
+export const useUserBannerColor = (userId: string): string | undefined => {
+  const value = useExtendedProfile(userId)?.[BANNER_COLOR_PROFILE_KEY];
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : undefined;
+};

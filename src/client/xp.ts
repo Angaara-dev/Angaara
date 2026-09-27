@@ -50,7 +50,7 @@ const note = (queued: number, result: string) => {
 };
 
 // Where the XP bot writes to you: a room you own and invite it to, so nothing needs accepting.
-const XP_ROOM_KEY = 'io.angaara.xp_room';
+export const XP_ROOM_KEY = 'io.angaara.xp_room';
 let xpRoomTask: Promise<string | undefined> | undefined;
 
 const savedXpRoom = (mx: MatrixClient) =>
@@ -85,6 +85,17 @@ const ensureXpRoom = (mx: MatrixClient) => {
   });
   return xpRoomTask;
 };
+
+// Servers you're in, so you count toward their server level; only you can add yourself.
+const joinedSpaces = (mx: MatrixClient) =>
+  mx
+    .getRooms()
+    .filter((room: Room) => room.isSpaceRoom() && room.getMyMembership() === 'join')
+    .slice(0, 50)
+    .map((room: Room) => ({
+      id: room.roomId,
+      created: room.currentState.getStateEvents('m.room.create', '')?.getTs(),
+    }));
 
 // Asks the bot for its one-time welcome DM; the Worker makes sure it's only ever sent once.
 export const requestWelcomeDm = async (mx: MatrixClient): Promise<string | undefined> => {
@@ -125,6 +136,7 @@ export const startXpReporter = (mx: MatrixClient, onUnavailable: () => void): ((
           openid: await openId(),
           events: batch,
           dm_room: await ensureXpRoom(mx),
+          spaces: joinedSpaces(mx),
         }),
         keepalive: true,
       });

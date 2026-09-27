@@ -32,17 +32,6 @@ const progressTo = (info: SpaceLevel, index: number) => {
   return Math.min(1, info.members / goal.members, info.days / goal.days);
 };
 
-// The goal holding the next level back, e.g. "120/250 members".
-const nextGoalText = (info: SpaceLevel) => {
-  const { next } = info;
-  if (!next) return info.granted ? 'Full access' : 'Max level';
-  const memberShare = info.members / next.members;
-  const dayShare = info.days / next.days;
-  return memberShare <= dayShare
-    ? `${millify(info.members)}/${millify(next.members)} members`
-    : `${info.days}/${next.days} days`;
-};
-
 function Goal({ label, value, goal }: { label: string; value: number; goal: number }) {
   return (
     <Box direction="Column" gap="100">
@@ -89,7 +78,7 @@ function LevelCard({ info, index }: { info: SpaceLevel; index: number }) {
       </Box>
       {info.level === index && (
         <Box direction="Column" gap="200">
-          <Goal label="Members" value={info.members} goal={goal.members} />
+          <Goal label="Active members" value={info.members} goal={goal.members} />
           <Goal label="Days old" value={info.days} goal={goal.days} />
         </Box>
       )}
@@ -208,7 +197,7 @@ export function ServerLevelDialog({ room, requestClose }: ServerLevelDialogProps
           style={{ minHeight: 0, overflowY: 'auto' }}
         >
           <div className={css.Stats}>
-            <Stat value={millify(info.members)} label="Members" />
+            <Stat value={millify(info.members)} label="Active members" />
             <Stat value={String(info.days)} label="Days old" />
             <Stat value={String(info.level)} label="Level" />
           </div>
@@ -293,9 +282,6 @@ export function ServerLevelPill({ room }: { room: Room }) {
           </Text>
         </Box>
         <Box shrink="No" alignItems="Center" gap="100" style={{ position: 'relative' }}>
-          <Text as="span" size="T200" priority="300">
-            {nextGoalText(info)}
-          </Text>
           <Icon size="100" src={Icons.ChevronRight} />
         </Box>
       </button>

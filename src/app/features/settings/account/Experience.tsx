@@ -136,7 +136,7 @@ export function Experience() {
         )}
         <SettingTile
           title="Earn XP"
-          description="Every few minutes, Angaara sends the Angaara server the IDs and times of messages you sent, never what they say. It counts up to 1 XP a minute, at most 300 XP a day, plus a little for each active day. XP unlocks profile perks. Turn this off to stop sending anything."
+          description="Every few minutes, Angaara sends the Angaara server the IDs and times of messages you sent, never what they say. It counts up to 1 XP a minute, at most 300 XP a day, plus a little for each active day. XP unlocks profile perks. It also sends the IDs of the servers you're in, so you count toward their server level. Turning this off stops sending anything, and you won't count toward your servers' levels."
           after={<Switch variant="Primary" value={earnXp} onChange={setEarnXp} />}
         />
         {earnXp && (

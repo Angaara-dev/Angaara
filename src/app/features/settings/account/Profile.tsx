@@ -25,7 +25,9 @@ import {
   Spinner,
   TextArea,
   color,
+  toRem,
 } from 'folds';
+import { HexColorPicker } from 'react-colorful';
 import FocusTrap from 'focus-trap-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { SequenceCard } from '../../../components/sequence-card';
@@ -33,7 +35,9 @@ import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
 import { ProfileServerTag } from './ProfileServerTag';
 import { ProfileThemeSetting } from './ProfileThemeSetting';
-import { XP_PERKS } from '../../../../client/xp';
+import { XP_PERKS, XpPerk } from '../../../../client/xp';
+import { useXpPerk } from '../../../hooks/useXpPerk';
+import { BRAND_NAME } from '../../../brand';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { UserProfile, useUserProfile } from '../../../hooks/useUserProfile';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
@@ -73,7 +77,11 @@ import {
   LEGACY_PANEL_BG_KEYS,
   readProfileString,
   useExtendedProfile,
+  BANNER_COLOR_PROFILE_KEY,
+  useUserBannerColor,
 } from '../../../hooks/useUserBanner';
+import { HexColorPickerPopOut } from '../../../components/HexColorPickerPopOut';
+import { bannerFallback } from '../../../components/user-profile/bannerFallback';
 import { BIO_PROFILE_KEY, LEGACY_BIO_KEY, MAX_BIO_LENGTH } from '../../../hooks/useUserBio';
 
 type ProfileProps = {
@@ -249,6 +257,8 @@ type ProfileImageProps = {
   crop: CropPreset;
   preview: { width: number; height: number };
   userId: string;
+  // The XP perk that makes GIFs animate for everyone else.
+  gifPerk: XpPerk;
 };
 function ProfileImage({
   title,
@@ -259,8 +269,10 @@ function ProfileImage({
   crop,
   preview,
   userId,
+  gifPerk,
 }: ProfileImageProps) {
   const mx = useMatrixClient();
+  const gifUnlocked = useXpPerk(userId, gifPerk);
   const queryClient = useQueryClient();
   const supported = useExtendedProfileSupport();
   const [error, setError] = useState<string>();
@@ -389,6 +401,12 @@ function ProfileImage({
           </Button>
         )}
       </Box>
+      {!gifUnlocked && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          You can add a GIF here, but other people using {BRAND_NAME} won&apos;t see it animate
+          until you reach the required level ({XP_PERKS[gifPerk].toLocaleString()} XP).
+        </Text>
+      )}
       {error && (
         <Text size="T200" style={{ color: color.Critical.Main }}>
           {error}
@@ -412,6 +430,69 @@ function ProfileBanner({ userId }: { userId: string }) {
       crop={PROFILE_BANNER_CROP}
       preview={PROFILE_BANNER_PREVIEW}
       userId={userId}
+      gifPerk="bannerGif"
+    />
+  );
+}
+
+function ProfileBannerColor({ userId }: { userId: string }) {
+  const mx = useMatrixClient();
+  const queryClient = useQueryClient();
+  const supported = useExtendedProfileSupport();
+  const saved = useUserBannerColor(userId);
+  const [picked, setPicked] = useState<string | null>();
+  const shown = picked === undefined ? saved : picked ?? undefined;
+
+  // The picker fires on every drag, so only save once it settles.
+  useEffect(() => {
+    if (picked === undefined) return undefined;
+    const timer = window.setTimeout(async () => {
+      try {
+        if (picked) await mx.setExtendedProfileProperty(BANNER_COLOR_PROFILE_KEY, picked);
+        else await mx.deleteExtendedProfileProperty(BANNER_COLOR_PROFILE_KEY);
+      } catch {
+        // Kept locally; the next change tries again.
+      }
+      await queryClient.invalidateQueries({ queryKey: extendedProfileQueryKey(userId) });
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [picked, mx, queryClient, userId]);
+
+  return (
+    <SettingTile
+      title="Banner Colour"
+      description="Shown at the top of your profile when you don't have a banner image."
+      after={
+        <HexColorPickerPopOut
+          picker={<HexColorPicker color={shown ?? '#3a3a40'} onChange={setPicked} />}
+          onRemove={shown ? () => setPicked(null) : undefined}
+        >
+          {(openPicker, opened) => (
+            <Button
+              aria-pressed={opened}
+              onClick={openPicker}
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              outlined
+              radii="300"
+              disabled={!supported}
+              before={
+                <span
+                  style={{
+                    width: toRem(16),
+                    height: toRem(16),
+                    borderRadius: toRem(4),
+                    background: shown ?? bannerFallback(userId),
+                  }}
+                />
+              }
+            >
+              <Text size="B300">Pick</Text>
+            </Button>
+          )}
+        </HexColorPickerPopOut>
+      }
     />
   );
 }
@@ -429,6 +510,7 @@ function ProfilePanelBackground({ userId }: { userId: string }) {
       crop={PANEL_BG_CROP}
       preview={PANEL_BG_PREVIEW}
       userId={userId}
+      gifPerk="panelGif"
     />
   );
 }
@@ -633,6 +715,7 @@ export function Profile() {
       >
         <ProfileAvatar userId={userId} profile={profile} />
         <ProfileBanner userId={userId} />
+        <ProfileBannerColor userId={userId} />
         <ProfilePanelBackground userId={userId} />
         <ProfileThemeSetting userId={userId} />
         <ProfileDisplayName userId={userId} profile={profile} />

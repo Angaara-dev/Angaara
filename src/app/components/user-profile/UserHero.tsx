@@ -29,35 +29,49 @@ type UserHeroProps = {
   avatarUrl?: string;
   bannerUrl?: string;
   activity?: ActivityStatus;
+  compact?: boolean;
+  bannerColor?: string;
 };
-export function UserHero({ userId, avatarUrl, bannerUrl, activity }: UserHeroProps) {
+export function UserHero({
+  userId,
+  avatarUrl,
+  bannerUrl,
+  activity,
+  compact,
+  bannerColor,
+}: UserHeroProps) {
   const [viewAvatar, setViewAvatar] = useState<string>();
 
   return (
     <Box direction="Column" className={css.UserHero}>
       <div
-        className={css.UserHeroCoverContainer}
+        className={classNames(css.UserHeroCoverContainer, compact && css.UserHeroCoverCompact)}
         style={{
-          backgroundColor: bannerFallback(userId),
-          filter: avatarUrl || bannerUrl ? undefined : 'brightness(50%)',
+          backgroundColor: bannerColor ?? bannerFallback(userId),
+          filter: avatarUrl || bannerUrl || bannerColor ? undefined : 'brightness(50%)',
         }}
       >
         {bannerUrl && (
           <img className={css.UserHeroBanner} src={bannerUrl} alt="" draggable="false" />
         )}
-        {!bannerUrl && avatarUrl && (
+        {!bannerUrl && !bannerColor && avatarUrl && (
           <img className={css.UserHeroCover} src={avatarUrl} alt={userId} draggable="false" />
         )}
       </div>
-      <div className={css.UserHeroAvatarContainer}>
+      <div
+        className={classNames(
+          css.UserHeroAvatarContainer,
+          compact && css.UserHeroAvatarContainerCompact
+        )}
+      >
         <AvatarPresence
           className={css.UserAvatarContainer}
-          badge={activity && <StatusIcon status={activity} size={18} />}
+          badge={activity && <StatusIcon status={activity} size={compact ? 14 : 18} />}
         >
           <Avatar
             as={avatarUrl ? 'button' : 'div'}
             onClick={avatarUrl ? () => setViewAvatar(avatarUrl) : undefined}
-            className={css.UserHeroAvatar}
+            className={classNames(css.UserHeroAvatar, compact && css.UserHeroAvatarCompact)}
             size="500"
             radii="Pill"
           >
@@ -66,7 +80,7 @@ export function UserHero({ userId, avatarUrl, bannerUrl, activity }: UserHeroPro
               userId={userId}
               src={avatarUrl}
               alt={userId}
-              renderFallback={() => <Icon size="500" src={Icons.User} filled />}
+              renderFallback={() => <Icon size={compact ? '300' : '500'} src={Icons.User} filled />}
             />
           </Avatar>
         </AvatarPresence>
@@ -100,15 +114,16 @@ export function UserHero({ userId, avatarUrl, bannerUrl, activity }: UserHeroPro
 type UserHeroNameProps = {
   displayName?: string;
   userId: string;
+  compact?: boolean;
 };
-export function UserHeroName({ displayName, userId }: UserHeroNameProps) {
+export function UserHeroName({ displayName, userId, compact }: UserHeroNameProps) {
   const username = getMxIdLocalPart(userId);
 
   return (
     <Box grow="Yes" direction="Column" gap="0">
       <Box alignItems="Baseline" gap="200" wrap="Wrap">
         <Text
-          size="H3"
+          size={compact ? 'H5' : 'H3'}
           className={classNames(BreakWord, LineClamp3)}
           title={displayName ?? username}
         >

@@ -45,7 +45,8 @@ export function MobileSpaceSettingsHome<P>({
 }: MobileSpaceSettingsHomeProps<P>) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useScrollFade(scrollRef);
-  const { level, members } = useSpaceLevel(room);
+  const { level } = useSpaceLevel(room);
+  const members = room.getJoinedMemberCount();
   const bannerUrl = useStillImage(useRoomBannerUrl(room), level < LEVEL_ANIMATED_BANNER);
 
   return (
