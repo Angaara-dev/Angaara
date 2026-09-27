@@ -23,10 +23,6 @@ const copyFiles = {
       rename: 'pdf.worker.min.js',
     },
     {
-      src: 'netlify.toml',
-      dest: '',
-    },
-    {
       src: 'config.json',
       dest: '',
     },
@@ -36,6 +32,10 @@ const copyFiles = {
     },
     {
       src: 'public/bot-sso.html',
+      dest: '',
+    },
+    {
+      src: 'public/terms.html',
       dest: '',
     },
     {

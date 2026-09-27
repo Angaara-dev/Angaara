@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Angaara Terms</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        --bg: #0e0e10;
+        --fg: #ededed;
+        --muted: #a1a1aa;
+        --accent: #ff7a45;
+        --card: #18181b;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #fafafa;
+          --fg: #18181b;
+          --muted: #52525b;
+          --card: #ffffff;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.6 system-ui, sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 32px 16px 64px;
+      }
+      h1 {
+        margin-bottom: 0;
+      }
+      h2 {
+        margin-top: 32px;
+        font-size: 1.15rem;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .key {
+        background: var(--card);
+        border-left: 4px solid var(--accent);
+        border-radius: 8px;
+        padding: 12px 16px;
+      }
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Angaara Terms</h1>
+      <p class="muted">Last updated 27 September 2026</p>
+
+      <p>
+        Angaara is a free, open-source app for chatting on Matrix. By using it you agree to these
+        terms. They're written in plain language on purpose.
+      </p>
+
+      <h2>1. What Angaara is</h2>
+      <p>
+        Angaara is only the app. Your account, messages and files live on the Matrix
+        <b>homeserver</b> you chose when you signed up (for example matrix.org). That homeserver is
+        run by someone else, has its own terms and privacy policy, and is responsible for your
+        account. Angaara does not run homeservers and can't reset your password, restore your
+        account or remove content from them.
+      </p>
+
+      <h2>2. Encryption and recovery</h2>
+      <div class="key">
+        <p>
+          <b
+            >Nobody can recover your encryption keys or encrypted messages for you. Not Angaara, not
+            your homeserver, not anyone.</b
+          >
+        </p>
+      </div>
+      <ul>
+        <li>
+          Messages in encrypted chats are locked on your device before they're sent. Only devices
+          holding the keys can read them.
+        </li>
+        <li>
+          Your keys live on your signed-in devices and, if you turn it on, in an encrypted backup
+          protected by your <b>recovery key</b> or passphrase. We never see that key.
+        </li>
+        <li>
+          If you sign out of every device and lose your recovery key, your encrypted message
+          history, and anything else Angaara keeps encrypted with it (like your friends list and
+          private DM list), is <b>gone for good</b>. Resetting your password does not bring it back.
+        </li>
+        <li>
+          If you forget the app lock password on a device, the keys on that device can't be opened.
+          You'll need to sign out and sign back in with your recovery key.
+        </li>
+        <li>
+          Not every chat is encrypted. Public rooms usually aren't, and anyone in them (and their
+          homeservers) can read what's posted.
+        </li>
+      </ul>
+      <p>Keeping your recovery key safe is your responsibility.</p>
+
+      <h2>3. What the Angaara service stores</h2>
+      <ul>
+        <li>
+          <b>XP:</b> your Matrix user ID, plus the IDs and send times of your own messages, used to
+          count experience. Never the content of your messages. You can turn this off or delete it
+          in Settings &rarr; Account &rarr; Experience.
+        </li>
+        <li>
+          <b>GitHub sign-in:</b> if you link GitHub, the sign-in passes through our server once and
+          the token is stored in your browser, not by us.
+        </li>
+        <li>
+          Everything else (settings, drafts, caches) is stored in your browser on your own device.
+        </li>
+      </ul>
+
+      <h2>4. Using Angaara</h2>
+      <ul>
+        <li>Follow the law and the rules of your homeserver and the communities you join.</li>
+        <li>
+          Don't use Angaara to abuse, spam or harm others, or to attack Angaara or anyone's servers.
+        </li>
+        <li>
+          We may block accounts from Angaara's own features (like XP) if they're abused or cheated.
+        </li>
+        <li>You're responsible for any bots you build and run with Angaara's developer tools.</li>
+      </ul>
+
+      <h2>5. No warranty</h2>
+      <p>
+        Angaara is provided "as is", without warranty of any kind, and parts of it (like the phone
+        layout) are still in beta. To the fullest extent the law allows, we aren't liable for lost
+        data, lost messages or other damage from using it. Always keep your recovery key safe.
+      </p>
+
+      <h2>6. Open source</h2>
+      <p>
+        Angaara is based on <a href="https://github.com/cinnyapp/cinny">Cinny</a> and licensed under
+        the GNU Affero General Public License v3.0. That license covers the code; these terms cover
+        using the hosted app.
+      </p>
+
+      <h2>7. Changes</h2>
+      <p>
+        If these terms change in a meaningful way, Angaara will ask you to agree again before you
+        continue.
+      </p>
+
+      <h2>8. Contact</h2>
+      <p>
+        Questions? Find us in
+        <a href="https://matrix.to/#/#angaara:matrix.org">#angaara:matrix.org</a>.
+      </p>
+    </main>
+  </body>
+</html>

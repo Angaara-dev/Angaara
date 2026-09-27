@@ -13,6 +13,8 @@ const MAX_EVENTS = 200;
 // At most 300 XP a day (5 hours' worth of minutes, UTC), then the bot says go outside.
 const DAILY_MINUTES = 5 * 60;
 const CAP_MESSAGE = 'Your daily limit has been reached, this is to ensure that you touch grass 🌱';
+const WELCOME_MESSAGE =
+  "Welcome to Angaara! 🔥 Glad you're here. Join a few servers, add some friends, and make yourself at home. I'm the Angaara bot, and I'll pop in here now and then.";
 // Reporting a message that isn't yours pauses XP for a week.
 const CHEAT_PAUSE = 7 * DAY;
 const SPOT_CHECKS = 3;
@@ -51,6 +53,7 @@ const ADDED_COLUMNS = [
   'dm_day INTEGER NOT NULL DEFAULT 0',
   'dm_tries INTEGER NOT NULL DEFAULT 0',
   'paused_until INTEGER NOT NULL DEFAULT 0',
+  'welcomed INTEGER NOT NULL DEFAULT 0',
 ];
 
 let tableReady;
@@ -87,7 +90,7 @@ const botBase = (env) => env.XP_BOT_HOMESERVER.replace(/\/+$/, '');
 
 // DMs the user from the bot account; needs the XP_BOT_* secrets. Prefers the room their app made
 // and invited the bot to, then the last room used, then a fresh invite. Returns what happened.
-async function dmUser(env, userId, room, ownRoom) {
+async function dmUser(env, userId, room, ownRoom, message = CAP_MESSAGE) {
   if (!env.XP_BOT_TOKEN || !env.XP_BOT_HOMESERVER) return { room, status: 'no bot' };
   const api = (path, method, body) =>
     fetch(`${botBase(env)}/_matrix/client/v3${path}`, {
@@ -103,7 +106,7 @@ async function dmUser(env, userId, room, ownRoom) {
   const send = (roomId) =>
     api(`/rooms/${encodeURIComponent(roomId)}/send/m.room.message/xp-${Date.now()}`, 'PUT', {
       msgtype: 'm.text',
-      body: CAP_MESSAGE,
+      body: message,
     });
   // Whether this user invited the bot to the room, so it never joins rooms it wasn't asked into.
   const invitedBy = async (roomId) => {
@@ -159,7 +162,7 @@ async function dmUser(env, userId, room, ownRoom) {
       is_direct: true,
       preset: 'trusted_private_chat',
       invite: [userId],
-      name: 'Angaara XP',
+      name: 'Angaara',
     });
     if (!res.ok) return { room, status: `createRoom ${await why(res)}` };
     const created = (await res.json())?.room_id;
@@ -324,6 +327,37 @@ async function botStatus(env) {
   }
 }
 
+// The bot's one-time welcome DM, sent when someone first opens the app.
+async function welcome(request, env) {
+  const body = await request.json().catch(() => undefined);
+  const userId = await verifyOpenId(body?.openid);
+  if (!userId) return json({ error: 'not signed in' }, 401);
+  const ownRoom =
+    typeof body?.dm_room === 'string' && ROOM_RE.test(body.dm_room) ? body.dm_room : undefined;
+
+  await env.XP_DB.prepare(
+    'INSERT INTO xp (user_id, first_seen) VALUES (?1, ?2) ON CONFLICT DO NOTHING'
+  )
+    .bind(userId, Date.now())
+    .run();
+  // Claim it first so two tabs can't both send it.
+  const claim = await env.XP_DB.prepare(
+    'UPDATE xp SET welcomed = 1 WHERE user_id = ?1 AND welcomed = 0'
+  )
+    .bind(userId)
+    .run();
+  if (!claim.meta?.changes) return json({ status: 'already sent' });
+
+  const row = await env.XP_DB.prepare('SELECT dm_room FROM xp WHERE user_id = ?')
+    .bind(userId)
+    .first();
+  const dm = await dmUser(env, userId, row?.dm_room, ownRoom, WELCOME_MESSAGE);
+  await env.XP_DB.prepare('UPDATE xp SET welcomed = ?1, dm_room = ?2 WHERE user_id = ?3')
+    .bind(dm.status === 'sent' ? 1 : 0, dm.room ?? null, userId)
+    .run();
+  return json({ status: dm.status });
+}
+
 async function remove(request, env) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);
@@ -339,6 +373,7 @@ export async function handleXp(request, env, url) {
 
   if (url.pathname === '/api/xp/report' && request.method === 'POST') return report(request, env);
   if (url.pathname === '/api/xp/delete' && request.method === 'POST') return remove(request, env);
+  if (url.pathname === '/api/xp/welcome' && request.method === 'POST') return welcome(request, env);
   if (url.pathname === '/api/xp/bot' && request.method === 'GET') return botStatus(env);
 
   const user = url.pathname.startsWith('/api/xp/user/')

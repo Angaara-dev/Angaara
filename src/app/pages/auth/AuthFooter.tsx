@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'folds';
 import * as css from './styles.css';
+import { TERMS_URL } from '../../brand';
 
 export function AuthFooter() {
   return (
@@ -16,6 +17,9 @@ export function AuthFooter() {
       </Text>
       <Text as="a" size="T300" href="https://matrix.org" target="_blank" rel="noreferrer">
         Powered by Matrix
+      </Text>
+      <Text as="a" size="T300" href={TERMS_URL} target="_blank" rel="noreferrer">
+        Terms
       </Text>
     </Box>
   );

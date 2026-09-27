@@ -28,6 +28,8 @@ import { CapabilitiesProvider } from '../../hooks/useCapabilities';
 import { MediaConfigProvider } from '../../hooks/useMediaConfig';
 import { MatrixClientProvider } from '../../hooks/useMatrixClient';
 import { SpecVersions } from './SpecVersions';
+import { TermsGate } from './TermsGate';
+import { Welcome } from '../../features/welcome/Welcome';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { useSyncState } from '../../hooks/useSyncState';
 import { stopPropagation } from '../../utils/keyboard';
@@ -41,7 +43,7 @@ import { AutoDiscovery } from './AutoDiscovery';
 function ClientRootLoading() {
   return (
     <SplashScreen>
-      <SplashLoading />
+      <SplashLoading signedIn />
     </SplashScreen>
   );
 }
@@ -227,7 +229,12 @@ export function ClientRoot({ children }: ClientRootProps) {
                 <CapabilitiesProvider value={serverConfigs.capabilities ?? {}}>
                   <MediaConfigProvider value={serverConfigs.mediaConfig ?? {}}>
                     <AuthMetadataProvider value={serverConfigs.authMetadata}>
-                      {children}
+                      <TermsGate>
+                        <>
+                          {children}
+                          <Welcome />
+                        </>
+                      </TermsGate>
                     </AuthMetadataProvider>
                   </MediaConfigProvider>
                 </CapabilitiesProvider>

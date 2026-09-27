@@ -69,7 +69,7 @@ const makeXpRoom = async (mx: MatrixClient): Promise<string | undefined> => {
   const { room_id: roomId } = await mx.createRoom({
     preset: Preset.PrivateChat,
     is_direct: true,
-    name: 'Angaara XP',
+    name: 'Angaara',
     invite: [bot.userId],
   });
   await mx.setAccountData(XP_ROOM_KEY as never, { room_id: roomId } as never);
@@ -84,6 +84,18 @@ const ensureXpRoom = (mx: MatrixClient) => {
     return undefined;
   });
   return xpRoomTask;
+};
+
+// Asks the bot for its one-time welcome DM; the Worker makes sure it's only ever sent once.
+export const requestWelcomeDm = async (mx: MatrixClient): Promise<string | undefined> => {
+  const dmRoom = await ensureXpRoom(mx);
+  const res = await fetch(xpApi('welcome'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ openid: await mx.getOpenIdToken(), dm_room: dmRoom }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return typeof data?.status === 'string' ? data.status : undefined;
 };
 
 // Only message IDs and send times leave the device, never what the messages say.

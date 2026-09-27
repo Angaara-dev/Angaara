@@ -19,6 +19,12 @@ export type ClientConfig = {
 
   hashRouter?: HashRouterConfig;
 
+  // Welcome screen: rooms everyone is offered, plus interests that each recommend more.
+  welcome?: {
+    rooms?: string[];
+    interests?: { id: string; label: string; emoji: string; rooms: string[] }[];
+  };
+
   // Profile badges by user ID, e.g. { "@you:matrix.org": ["developer"] }.
   badges?: Record<string, string[]>;
   // Space IDs or aliases given every server level perk, on top of spaces founders created.

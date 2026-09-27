@@ -7,28 +7,29 @@ const QUIPS = [
   'Heating up....',
   'Stoking the fire....',
   'Blowing on the embers....',
-  'Decrypting your drama....',
   'Summoning the homeserver....',
-  'Counting your unread messages. Yikes....',
   'Polishing the pixels....',
   'Waking up the servers, they were napping....',
   'Rolling the encryption dice....',
   'Adding more coal....',
 ];
 
-const randomQuip = (not?: string) => {
-  const pool = QUIPS.filter((q) => q !== not);
+// Only make sense once someone is signed in with chats to load.
+const SIGNED_IN_QUIPS = ['Decrypting your drama....', 'Counting your unread messages. Yikes....'];
+
+const randomQuip = (signedIn: boolean, not?: string) => {
+  const pool = (signedIn ? [...QUIPS, ...SIGNED_IN_QUIPS] : QUIPS).filter((q) => q !== not);
   return pool[Math.floor(Math.random() * pool.length)];
 };
 
 // Glowing logo plus a status line; without a label it cycles through silly lines.
-export function SplashLoading({ label }: { label?: string }) {
-  const [quip, setQuip] = useState(() => randomQuip());
+export function SplashLoading({ label, signedIn = false }: { label?: string; signedIn?: boolean }) {
+  const [quip, setQuip] = useState(() => randomQuip(signedIn));
   useEffect(() => {
     if (label) return undefined;
-    const timer = window.setInterval(() => setQuip((q) => randomQuip(q)), 3500);
+    const timer = window.setInterval(() => setQuip((q) => randomQuip(signedIn, q)), 3500);
     return () => window.clearInterval(timer);
-  }, [label]);
+  }, [label, signedIn]);
 
   return (
     <Box direction="Column" grow="Yes" alignItems="Center" justifyContent="Center" gap="500">

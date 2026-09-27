@@ -1,7 +1,7 @@
 {
   "name": "angaara",
   "version": "4.12.7",
-  "description": "Yet another matrix client",
+  "description": "Your communities, on an open network.",
   "main": "index.js",
   "type": "module",
   "engines": {
@@ -30,7 +30,7 @@
     }
   },
   "keywords": [],
-  "author": "Ajay Bura",
+  "author": "Trigodil",
   "license": "AGPL-3.0-only",
   "dependencies": {
     "@anthropic-ai/sdk": "0.128.0",

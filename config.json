@@ -21,6 +21,48 @@
     "servers": ["matrixrooms.info", "matrix.org", "mozilla.org", "unredacted.org"]
   },
 
+  "welcome": {
+    "rooms": ["#angaara:matrix.org"],
+    "interests": [
+      {
+        "id": "gaming",
+        "label": "Gaming",
+        "emoji": "🎮",
+        "rooms": ["#videogames:waywardinn.com", "#libregaming-games:tchncs.de"]
+      },
+      {
+        "id": "chatting",
+        "label": "Chatting & friends",
+        "emoji": "💬",
+        "rooms": ["#community:matrix.org", "#space:unredacted.org"]
+      },
+      {
+        "id": "tech",
+        "label": "Tech & coding",
+        "emoji": "💻",
+        "rooms": ["#gentoo:matrix.org", "#tuwunel:grin.hu", "#cinny-space:matrix.org"]
+      },
+      {
+        "id": "opensource",
+        "label": "Open source & privacy",
+        "emoji": "🔓",
+        "rooms": ["#freesoftware:matrix.org", "#librewolf-community:matrix.org"]
+      },
+      {
+        "id": "science",
+        "label": "Science & maths",
+        "emoji": "🔬",
+        "rooms": ["#science-space:matrix.org", "#mathematics-on:matrix.org"]
+      },
+      {
+        "id": "creative",
+        "label": "Stickers & art",
+        "emoji": "🎨",
+        "rooms": ["#stickers-and-emojis:tastytea.de"]
+      }
+    ]
+  },
+
   "badges": {
     "@trigodil:matrix.org": ["founder", "developer"]
   },
