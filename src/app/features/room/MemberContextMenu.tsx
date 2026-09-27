@@ -209,7 +209,9 @@ export function MemberContextMenu({ room, userId, name, anchor, onClose }: Membe
   const joined = room.getMember(userId)?.membership === 'join';
   const canChangeRoles = outranks && permissions.stateEvent(StateEvent.RoomPowerLevels, myUserId);
   const canKick = outranks && joined && permissions.action('kick', myUserId);
-  const canBan = outranks && permissions.action('ban', myUserId);
+  const banned = room.getMember(userId)?.membership === 'ban';
+  const canBan = outranks && !banned && permissions.action('ban', myUserId);
+  const canUnban = !self && banned && permissions.action('ban', myUserId);
   const myPower = getMemberPowerLevel(myUserId);
   const theirPower = getMemberPowerLevel(userId);
 
@@ -280,7 +282,7 @@ export function MemberContextMenu({ room, userId, name, anchor, onClose }: Membe
           </Section>
         </>
       )}
-      {(canChangeRoles || canKick || canBan) && (
+      {(canChangeRoles || canKick || canBan || canUnban) && (
         <>
           <Line size="300" />
           <Section>
@@ -306,6 +308,13 @@ export function MemberContextMenu({ room, userId, name, anchor, onClose }: Membe
                 label={`Ban ${name}`}
                 critical
                 onClick={() => openModDialog('ban')}
+              />
+            )}
+            {canUnban && (
+              <Item
+                icon={Icons.Check}
+                label={`Unban ${name}`}
+                onClick={() => run(() => mx.unban(room.roomId, userId))}
               />
             )}
           </Section>

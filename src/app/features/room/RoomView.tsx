@@ -12,6 +12,7 @@ import { RoomInputPlaceholder } from './RoomInputPlaceholder';
 import { RoomTimeline } from './RoomTimeline';
 import { RoomViewTyping } from './RoomViewTyping';
 import { RoomTombstone } from './RoomTombstone';
+import { AppealBar } from '../removed-notice/AppealBar';
 import { RoomInput } from './RoomInput';
 import { RoomViewFollowing, RoomViewFollowingPlaceholder } from './RoomViewFollowing';
 import { Page } from '../../components/page';
@@ -138,6 +139,7 @@ export function RoomView({ eventId }: { eventId?: string }) {
       </Box>
       <Box shrink="No" direction="Column">
         <div style={{ padding: `0 ${config.space.S400}` }}>
+          <AppealBar room={room} />
           {tombstoneEvent ? (
             <RoomTombstone
               roomId={roomId}
