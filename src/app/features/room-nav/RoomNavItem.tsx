@@ -60,7 +60,10 @@ import { useCallPreferencesAtom } from '../../state/hooks/callPreferences';
 import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
 import { livekitSupport } from '../../hooks/useLivekitSupport';
 import { StateEvent } from '../../../types/matrix/room';
+import { useStateEvent } from '../../hooks/useStateEvent';
 import { webRTCSupported } from '../../utils/rtc';
+import { usePhone } from '../../hooks/useScreenSize';
+import { RenameRoomPrompt } from './RenameRoomPrompt';
 
 type RoomNavItemMenuProps = {
   room: Room;
@@ -77,10 +80,12 @@ const RoomNavItemMenu = forwardRef<HTMLDivElement, RoomNavItemMenuProps>(
 
     const permissions = useRoomPermissions(creators, powerLevels);
     const canInvite = permissions.action('invite', mx.getSafeUserId());
+    const canRename = permissions.stateEvent(StateEvent.RoomName, mx.getSafeUserId());
     const openRoomSettings = useOpenRoomSettings();
     const space = useSpaceOptionally();
 
     const [invitePrompt, setInvitePrompt] = useState(false);
+    const [renamePrompt, setRenamePrompt] = useState(false);
 
     const handleMarkAsRead = () => {
       markAsRead(mx, room.roomId, hideActivity);
@@ -104,7 +109,16 @@ const RoomNavItemMenu = forwardRef<HTMLDivElement, RoomNavItemMenuProps>(
     };
 
     return (
-      <Menu ref={ref} style={{ maxWidth: toRem(160), width: '100vw' }}>
+      <Menu ref={ref} style={{ maxWidth: toRem(180), width: '100vw' }}>
+        {renamePrompt && (
+          <RenameRoomPrompt
+            room={room}
+            requestClose={() => {
+              setRenamePrompt(false);
+              requestClose();
+            }}
+          />
+        )}
         {invitePrompt && room && (
           <InviteUserPrompt
             room={room}
@@ -164,6 +178,19 @@ const RoomNavItemMenu = forwardRef<HTMLDivElement, RoomNavItemMenuProps>(
               Invite
             </Text>
           </MenuItem>
+          {canRename && (
+            <MenuItem
+              onClick={() => setRenamePrompt(true)}
+              size="300"
+              after={<Icon size="100" src={Icons.Pencil} />}
+              radii="300"
+              aria-pressed={renamePrompt}
+            >
+              <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+                Rename Channel
+              </Text>
+            </MenuItem>
+          )}
           <MenuItem
             onClick={handleCopyLink}
             size="300"
@@ -172,6 +199,19 @@ const RoomNavItemMenu = forwardRef<HTMLDivElement, RoomNavItemMenuProps>(
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
               Copy Link
+            </Text>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              copyToClipboard(room.roomId);
+              requestClose();
+            }}
+            size="300"
+            after={<Icon size="100" src={Icons.Hash} />}
+            radii="300"
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Copy Channel ID
             </Text>
           </MenuItem>
           <MenuItem
@@ -254,6 +294,7 @@ export function RoomNavItem({
   linkPath,
 }: RoomNavItemProps) {
   const mx = useMatrixClient();
+  const phone = usePhone();
   const useAuthentication = useMediaAuthentication();
   const [hover, setHover] = useState(false);
   const { hoverProps } = useHover({ onHoverChange: setHover });
@@ -265,6 +306,7 @@ export function RoomNavItem({
   );
 
   const roomName = useRoomName(room);
+  const encrypted = !!useStateEvent(room, StateEvent.RoomEncryption);
 
   const handleContextMenu: MouseEventHandler<HTMLElement> = (evt) => {
     evt.preventDefault();
@@ -328,7 +370,7 @@ export function RoomNavItem({
     >
       <NavLink to={linkPath} onClick={room.isCallRoom() ? handleStartCall : undefined}>
         <NavItemContent>
-          <Box as="span" grow="Yes" alignItems="Center" gap="200">
+          <Box as="span" grow="Yes" alignItems="Center" gap={phone ? '300' : '200'}>
             <Avatar size="200" radii="400">
               {showAvatar ? (
                 <RoomAvatar
@@ -362,6 +404,14 @@ export function RoomNavItem({
                 {roomName}
               </Text>
             </Box>
+            {direct && encrypted && (
+              <Icon
+                size="50"
+                src={Icons.Lock}
+                aria-label="End-to-end encrypted"
+                style={{ opacity: config.opacity.P300, flexShrink: 0 }}
+              />
+            )}
             {!optionsVisible && !unread && !selected && typingMember.length > 0 && (
               <Badge size="300" variant="Secondary" fill="Soft" radii="Pill" outlined>
                 <TypingIndicator size="300" disableAnimation />

@@ -17,6 +17,7 @@ import {
   Spinner,
   Text,
   as,
+  color,
   config,
 } from 'folds';
 import { Editor, Transforms } from 'slate';
@@ -36,6 +37,9 @@ import {
   customHtmlEqualsPlainText,
   getAutocompleteQuery,
   getPrevWordRange,
+  getLatexQuery,
+  LatexAutocomplete,
+  LatexQuery,
   htmlToEditorInput,
   moveCursor,
   plainToEditorInput,
@@ -54,6 +58,7 @@ import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { getEditedEvent, getMentionContent, trimReplyFromFormattedBody } from '../../../utils/room';
 import { mobileOrTablet } from '../../../utils/user-agent';
 import { useComposingCheck } from '../../../hooks/useComposingCheck';
+import { findMathsError } from '../../../components/math';
 
 type MessageEditorProps = {
   roomId: string;
@@ -74,6 +79,7 @@ export const MessageEditor = as<'div', MessageEditorProps>(
 
     const [autocompleteQuery, setAutocompleteQuery] =
       useState<AutocompleteQuery<AutocompletePrefix>>();
+    const [latexQuery, setLatexQuery] = useState<LatexQuery>();
 
     const getPrevBodyAndFormattedBody = useCallback((): [
       string | undefined,
@@ -107,6 +113,10 @@ export const MessageEditor = as<'div', MessageEditorProps>(
             allowInlineMarkdown: isMarkdown,
           })
         );
+
+        // Broken LaTeX keeps the editor open with a local error instead of sending the edit.
+        const latexError = await findMathsError(customHtml);
+        if (latexError) throw new Error(`LaTeX error (only you can see this): ${latexError}`);
 
         const [prevBody, prevCustomHtml, prevMentions] = getPrevBodyAndFormattedBody();
 
@@ -192,6 +202,7 @@ export const MessageEditor = as<'div', MessageEditorProps>(
           ? getAutocompleteQuery<AutocompletePrefix>(editor, prevWordRange, AUTOCOMPLETE_PREFIXES)
           : undefined;
         setAutocompleteQuery(query);
+        setLatexQuery(query ? undefined : getLatexQuery(editor));
       },
       [editor]
     );
@@ -199,6 +210,7 @@ export const MessageEditor = as<'div', MessageEditorProps>(
     const handleCloseAutocomplete = useCallback(() => {
       ReactEditor.focus(editor);
       setAutocompleteQuery(undefined);
+      setLatexQuery(undefined);
     }, [editor]);
 
     const handleEmoticonSelect = (key: string, shortcode: string) => {
@@ -255,6 +267,13 @@ export const MessageEditor = as<'div', MessageEditorProps>(
             requestClose={handleCloseAutocomplete}
           />
         )}
+        {latexQuery && (
+          <LatexAutocomplete
+            editor={editor}
+            query={latexQuery}
+            requestClose={handleCloseAutocomplete}
+          />
+        )}
         <CustomEditor
           editor={editor}
           placeholder="Edit message..."
@@ -262,6 +281,14 @@ export const MessageEditor = as<'div', MessageEditorProps>(
           onKeyUp={handleKeyUp}
           bottom={
             <>
+              {saveState.status === AsyncStatus.Error && (
+                <Text
+                  size="T200"
+                  style={{ color: color.Critical.Main, padding: `0 ${config.space.S300}` }}
+                >
+                  {saveState.error instanceof Error ? saveState.error.message : 'Failed to save.'}
+                </Text>
+              )}
               <Box
                 style={{ padding: config.space.S200, paddingTop: 0 }}
                 alignItems="End"

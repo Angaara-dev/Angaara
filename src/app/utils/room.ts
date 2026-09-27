@@ -4,6 +4,7 @@ import {
   EventTimeline,
   EventTimelineSet,
   EventType,
+  IEvent,
   IMentions,
   IPowerLevelsContent,
   IPushRule,
@@ -384,6 +385,13 @@ export const isMembershipChanged = (mEvent: MatrixEvent): boolean =>
   mEvent.getContent().membership !== mEvent.getPrevContent().membership ||
   mEvent.getContent().reason !== mEvent.getPrevContent().reason;
 
+// Plain joins and self-leaves; kicks, bans and invites don't count.
+export const isJoinOrLeave = (mEvent: MatrixEvent): boolean => {
+  const { membership } = mEvent.getContent();
+  if (membership === 'join') return mEvent.getPrevContent().membership !== 'join';
+  return membership === 'leave' && mEvent.getSender() === mEvent.getStateKey();
+};
+
 export const decryptAllTimelineEvent = async (mx: MatrixClient, timeline: EventTimeline) => {
   const crypto = mx.getCrypto();
   if (!crypto) return;
@@ -461,6 +469,31 @@ export const getLatestEditableEvt = (
 export const reactionOrEditEvent = (mEvent: MatrixEvent) =>
   mEvent.getRelation()?.rel_type === RelationType.Annotation ||
   mEvent.getRelation()?.rel_type === RelationType.Replace;
+
+// Relation lives in the cleartext envelope, so this works before decryption.
+export const isThreadReply = (mEvent: MatrixEvent): boolean =>
+  mEvent.getWireContent()['m.relates_to']?.rel_type === RelationType.Thread;
+
+// Non-reply thread messages point in_reply_to at the latest thread event, as a fallback.
+export const getThreadRelation = (rootId: string, latestEventId?: string, replyToId?: string) => ({
+  rel_type: RelationType.Thread,
+  event_id: rootId,
+  is_falling_back: !replyToId,
+  'm.in_reply_to': { event_id: replyToId ?? latestEventId ?? rootId },
+});
+
+export type ThreadSummary = {
+  count: number;
+  latestEvent?: IEvent;
+};
+
+export const getServerThreadSummary = (mEvent: MatrixEvent): ThreadSummary | undefined => {
+  const agg = mEvent.getServerAggregatedRelation<{ count?: number; latest_event?: IEvent }>(
+    RelationType.Thread
+  );
+  if (!agg || typeof agg.count !== 'number') return undefined;
+  return { count: agg.count, latestEvent: agg.latest_event };
+};
 
 export const getMentionContent = (userIds: string[], room: boolean): IMentions => {
   const mMentions: IMentions = {};

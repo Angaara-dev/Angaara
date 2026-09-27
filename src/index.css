@@ -23,7 +23,8 @@
 }
 
 .dark-theme,
-.butter-theme {
+.butter-theme,
+.ember-theme {
   --tc-link: hsl(213deg 100% 80%);
 
   --mx-uc-1: hsl(208, 100%, 75%);
@@ -38,9 +39,29 @@
   --font-secondary: 'InterVariable', var(--font-emoji), sans-serif;
 }
 
+.ember-theme {
+  --tc-link: #ff9466;
+}
+
 html {
   height: 100%;
   overflow: hidden;
+}
+/* Touch screens scroll by finger, so no scrollbars: touching counts as hover, which swapped the
+   scrollbar style and nudged every list's width mid-swipe. */
+@media (pointer: coarse) {
+  * {
+    scrollbar-width: none !important;
+  }
+  *::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+/* Phones (touch, narrow): everything is sized in rem, so this scales the UI with the screen. */
+@media (max-width: 750px) and (pointer: coarse) {
+  html {
+    font-size: clamp(14px, 3.75vw, 16px);
+  }
 }
 
 body {
@@ -48,7 +69,7 @@ body {
   padding: 0;
   height: 100%;
   font-family: var(--font-secondary);
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 400;
 
   /*Why font-variant-ligatures => https://github.com/rsms/inter/issues/222 */

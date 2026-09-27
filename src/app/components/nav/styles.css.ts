@@ -1,6 +1,9 @@
-import { ComplexStyleRule, createVar, style } from '@vanilla-extract/css';
+import { ComplexStyleRule, createVar, globalStyle, style } from '@vanilla-extract/css';
 import { RecipeVariants, recipe } from '@vanilla-extract/recipes';
 import { ContainerColor, DefaultReset, Disabled, RadiiVariant, color, config, toRem } from 'folds';
+
+// Real phones (touch, narrow): bigger rows that are easy to tap.
+const PHONE = 'screen and (max-width: 750px) and (pointer: coarse)';
 
 export const NavCategory = style([
   DefaultReset,
@@ -45,6 +48,7 @@ const getVariant = (variant: ContainerColor): ComplexStyleRule => ({
 });
 
 const NavItemBase = style({
+  position: 'relative',
   width: '100%',
   display: 'flex',
   justifyContent: 'start',
@@ -53,8 +57,33 @@ const NavItemBase = style({
   color: OnContainer,
   outline: 'none',
   minHeight: toRem(36),
+  transition: 'background-color 120ms ease',
+  '@media': {
+    [PHONE]: { minHeight: '40px' },
+  },
+
+  // Left pill like the server rail: a dot for unread, a bar for the open room.
+  '::before': {
+    content: '""',
+    position: 'absolute',
+    left: `calc(-1 * ${config.space.S200})`,
+    top: '50%',
+    width: toRem(4),
+    height: 0,
+    borderRadius: `0 ${toRem(4)} ${toRem(4)} 0`,
+    backgroundColor: OnContainer,
+    transform: 'translateY(-50%)',
+    transition: 'height 150ms ease, background-color 150ms ease',
+  },
 
   selectors: {
+    '&[data-highlight=true]::before': {
+      height: toRem(8),
+    },
+    '&[aria-selected=true]::before': {
+      height: toRem(20),
+      backgroundColor: color.Primary.Main,
+    },
     '&:hover, &:focus-visible': {
       backgroundColor: ContainerHover,
     },
@@ -65,7 +94,7 @@ const NavItemBase = style({
       backgroundColor: ContainerActive,
     },
     '&[aria-selected=true]': {
-      backgroundColor: ContainerActive,
+      backgroundColor: `color-mix(in srgb, ${color.Primary.Main} 12%, ${ContainerActive})`,
     },
     [`&:has(.${NavLink}:focus-visible)`]: {
       outline: `${config.borderWidth.B600} solid ${ContainerLine}`,
@@ -112,17 +141,44 @@ export const NavItemContent = style({
   display: 'flex',
   alignItems: 'center',
   fontWeight: config.fontWeight.W500,
+  '@media': {
+    [PHONE]: { fontSize: '15px', gap: config.space.S100 },
+  },
 
   selectors: {
     '&:hover': {
       textDecoration: 'unset',
     },
-    [`.${NavItemBase}[data-highlight=true] &`]: {
+    [`.${NavItemBase}[data-highlight=true] &, .${NavItemBase}[aria-selected=true] &`]: {
       fontWeight: config.fontWeight.W600,
     },
   },
 });
 
+// Row icons follow the phone size too (names inherit the row's font size).
+globalStyle(`${NavItemContent} svg`, {
+  '@media': { [PHONE]: { width: '18px', height: '18px' } },
+});
+
 export const NavItemOptions = style({
   paddingRight: config.space.S200,
+});
+
+// Phones: a search bar at the top of the room list.
+export const NavSearchPill = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: config.space.S200,
+  height: toRem(40),
+  marginBottom: config.space.S200,
+  borderRadius: config.radii.Pill,
+  backgroundColor: color.SurfaceVariant.Container,
+  color: color.SurfaceVariant.OnContainer,
+  textDecoration: 'none',
+  selectors: {
+    '&:active, &[aria-current=page]': {
+      backgroundColor: color.SurfaceVariant.ContainerActive,
+    },
+  },
 });

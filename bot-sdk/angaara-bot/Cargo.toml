@@ -1,0 +1,20 @@
+[package]
+name = "angaara-bot"
+version = "0.1.0"
+edition = "2021"
+description = "A friendly Matrix bot framework for Angaara, inspired by discord.js and poise."
+license = "AGPL-3.0-only"
+
+[dependencies]
+matrix-sdk = { version = "0.19.1", features = ["bundled-sqlite"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[dev-dependencies]
+rand = "0.9"
+wiremock = "0.6"
+tempfile = "3"

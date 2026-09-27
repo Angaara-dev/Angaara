@@ -17,6 +17,7 @@ import {
   toRem,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
+import { useSetAtom } from 'jotai';
 import { PageHeader } from '../../components/page';
 import { useSetSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
@@ -26,6 +27,7 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { RoomAvatar } from '../../components/room-avatar';
 import { nameInitials } from '../../utils/common';
 import * as css from './LobbyHeader.css';
+import { spaceOnboardingAtom } from './SpaceOnboarding';
 import { IPowerLevels } from '../../hooks/usePowerLevels';
 import { UseStateProvider } from '../../components/UseStateProvider';
 import { LeaveSpacePrompt } from '../../components/leave-space-prompt';
@@ -64,6 +66,12 @@ const LobbyMenu = forwardRef<HTMLDivElement, LobbyMenuProps>(
       requestClose();
     };
 
+    const setOnboardingSpaceId = useSetAtom(spaceOnboardingAtom);
+    const handlePickRooms = () => {
+      setOnboardingSpaceId(space.roomId);
+      requestClose();
+    };
+
     return (
       <Menu ref={ref} style={{ maxWidth: toRem(160), width: '100vw' }}>
         {invitePrompt && (
@@ -91,13 +99,23 @@ const LobbyMenu = forwardRef<HTMLDivElement, LobbyMenuProps>(
             </Text>
           </MenuItem>
           <MenuItem
+            onClick={handlePickRooms}
+            size="300"
+            after={<Icon size="100" src={Icons.CheckTwice} />}
+            radii="300"
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Pick Rooms
+            </Text>
+          </MenuItem>
+          <MenuItem
             onClick={handleRoomSettings}
             size="300"
             after={<Icon size="100" src={Icons.Setting} />}
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Space Settings
+              Server Settings
             </Text>
           </MenuItem>
         </Box>

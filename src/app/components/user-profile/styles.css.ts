@@ -1,5 +1,9 @@
 import { style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
+import { PHONE } from '../../styles/phone';
+
+// Ring around the avatar; profile colours set it to their top colour.
+const ProfileRing = `var(--angaara-profile-ring, ${color.Surface.Container})`;
 
 export const UserHeader = style({
   position: 'absolute',
@@ -14,9 +18,11 @@ export const UserHero = style({
   position: 'relative',
 });
 
+// Tall banner, taller still on phones where the profile opens as a sheet.
 export const UserHeroCoverContainer = style({
-  height: toRem(96),
+  height: toRem(140),
   overflow: 'hidden',
+  '@media': { [PHONE]: { height: toRem(176) } },
 });
 export const UserHeroCover = style({
   height: '100%',
@@ -26,19 +32,30 @@ export const UserHeroCover = style({
   transform: 'scale(2)',
 });
 
+export const UserHeroBanner = style({
+  height: '100%',
+  width: '100%',
+  objectFit: 'cover',
+  pointerEvents: 'none',
+  userSelect: 'none',
+});
+
 export const UserHeroAvatarContainer = style({
   position: 'relative',
-  height: toRem(29),
+  height: toRem(40),
 });
 export const UserAvatarContainer = style({
   position: 'absolute',
   left: config.space.S400,
   top: 0,
   transform: 'translateY(-50%)',
-  backgroundColor: color.Surface.Container,
+  borderRadius: '50%',
+  backgroundColor: ProfileRing,
 });
 export const UserHeroAvatar = style({
-  outline: `${config.borderWidth.B600} solid ${color.Surface.Container}`,
+  width: toRem(88),
+  height: toRem(88),
+  outline: `${toRem(6)} solid ${ProfileRing}`,
   selectors: {
     'button&': {
       cursor: 'pointer',

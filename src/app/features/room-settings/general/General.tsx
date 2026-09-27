@@ -12,9 +12,15 @@ import {
   RoomPublishedAddresses,
   RoomPublish,
   RoomUpgrade,
+  RoomCommands,
+  RoomHiddenProfile,
+  RoomPrivateReactions,
 } from '../../common-settings/general';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../../hooks/useRoomPermissions';
+import { useStateEvent } from '../../../hooks/useStateEvent';
+import { useMatrixClient } from '../../../hooks/useMatrixClient';
+import { StateEvent } from '../../../../types/matrix/room';
 
 type GeneralProps = {
   requestClose: () => void;
@@ -24,6 +30,26 @@ export function General({ requestClose }: GeneralProps) {
   const powerLevels = usePowerLevels(room);
   const creators = useRoomCreators(room);
   const permissions = useRoomPermissions(creators, powerLevels);
+  const encrypted = !!useStateEvent(room, StateEvent.RoomEncryption);
+  const me = useMatrixClient().getSafeUserId();
+  // Settings you can't change are hidden, not greyed out.
+  const can = (type: StateEvent) => permissions.stateEvent(type, me);
+  const options = [
+    can(StateEvent.RoomJoinRules) && <RoomJoinRules key="join" permissions={permissions} />,
+    can(StateEvent.RoomHistoryVisibility) && (
+      <RoomHistoryVisibility key="history" permissions={permissions} />
+    ),
+    can(StateEvent.RoomEncryption) && <RoomEncryption key="encryption" permissions={permissions} />,
+    can(StateEvent.RoomCanonicalAlias) && <RoomPublish key="publish" permissions={permissions} />,
+  ].filter(Boolean);
+  const privacy = [
+    can(StateEvent.AngaaraHiddenProfile) && (
+      <RoomHiddenProfile key="hidden" permissions={permissions} />
+    ),
+    can(StateEvent.AngaaraPrivateReactions) && (
+      <RoomPrivateReactions key="reactions" permissions={permissions} />
+    ),
+  ].filter(Boolean);
 
   return (
     <Page>
@@ -46,22 +72,37 @@ export function General({ requestClose }: GeneralProps) {
           <PageContent>
             <Box direction="Column" gap="700">
               <RoomProfile permissions={permissions} />
-              <Box direction="Column" gap="100">
-                <Text size="L400">Options</Text>
-                <RoomJoinRules permissions={permissions} />
-                <RoomHistoryVisibility permissions={permissions} />
-                <RoomEncryption permissions={permissions} />
-                <RoomPublish permissions={permissions} />
-              </Box>
-              <Box direction="Column" gap="100">
-                <Text size="L400">Addresses</Text>
-                <RoomPublishedAddresses permissions={permissions} />
-                <RoomLocalAddresses permissions={permissions} />
-              </Box>
-              <Box direction="Column" gap="100">
-                <Text size="L400">Advanced Options</Text>
-                <RoomUpgrade permissions={permissions} requestClose={requestClose} />
-              </Box>
+              {options.length > 0 && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Options</Text>
+                  {options}
+                </Box>
+              )}
+              {encrypted && privacy.length > 0 && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Privacy</Text>
+                  {privacy}
+                </Box>
+              )}
+              {can(StateEvent.AngaaraDisabledCommands) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Commands</Text>
+                  <RoomCommands permissions={permissions} />
+                </Box>
+              )}
+              {can(StateEvent.RoomCanonicalAlias) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Addresses</Text>
+                  <RoomPublishedAddresses permissions={permissions} />
+                  <RoomLocalAddresses permissions={permissions} />
+                </Box>
+              )}
+              {can(StateEvent.RoomTombstone) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Advanced Options</Text>
+                  <RoomUpgrade permissions={permissions} requestClose={requestClose} />
+                </Box>
+              )}
             </Box>
           </PageContent>
         </Scroll>

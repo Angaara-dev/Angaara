@@ -28,6 +28,7 @@ import {
   NavItem,
   NavItemContent,
   NavLink,
+  NavSearchPill,
 } from '../../../components/nav';
 import {
   encodeSearchParamValueArray,
@@ -35,18 +36,26 @@ import {
   getHomeCreatePath,
   getHomeRoomPath,
   getHomeSearchPath,
+  getHomeDeveloperPath,
   withSearchParam,
 } from '../../pathUtils';
 import { getCanonicalAliasOrRoomId } from '../../../utils/matrix';
-import { useSelectedRoom } from '../../../hooks/router/useSelectedRoom';
 import {
   useHomeCreateSelected,
   useHomeSearchSelected,
+  useHomeDeveloperSelected,
 } from '../../../hooks/router/useHomeSelected';
 import { useHomeRooms } from './useHomeRooms';
+import { DEVELOPER_PAGES } from './developerPages';
+import { ProjectNav } from './ProjectNav';
+import {
+  githubAccountAtom,
+  linkedReposAtom,
+} from '../../../features/developer-portal/github/state';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { VirtualTile } from '../../../components/virtualizer';
 import { RoomNavCategoryButton, RoomNavItem } from '../../../features/room-nav';
+import { SupportPill } from '../../../features/support/SupportPill';
 import { makeNavCategoryId } from '../../../state/closedNavCategories';
 import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
 import { useCategoryHandler } from '../../../hooks/useCategoryHandler';
@@ -64,7 +73,10 @@ import {
 } from '../../../hooks/useRoomsNotificationPreferences';
 import { UseStateProvider } from '../../../components/UseStateProvider';
 import { JoinAddressPrompt } from '../../../components/join-address-prompt';
-import { _RoomSearchParams } from '../../paths';
+import { _RoomSearchParams, DeveloperSection } from '../../paths';
+import { UserPanel } from '../UserPanel';
+import { usePhone } from '../../../hooks/useScreenSize';
+import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
 
 type HomeMenuProps = {
   requestClose: () => void;
@@ -194,6 +206,31 @@ function HomeEmpty() {
 }
 
 const DEFAULT_CATEGORY_ID = makeNavCategoryId('home', 'room');
+const DEVELOPER_CATEGORY_ID = makeNavCategoryId('home', 'developer');
+const PROJECTS_CATEGORY_ID = makeNavCategoryId('home', 'projects');
+
+function DeveloperNavItem({ section }: { section: DeveloperSection }) {
+  const selected = useHomeDeveloperSelected(section);
+  const { title, icon } = DEVELOPER_PAGES[section];
+  return (
+    <NavItem variant="Background" radii="400" aria-selected={selected}>
+      <NavLink to={getHomeDeveloperPath(section)}>
+        <NavItemContent>
+          <Box as="span" grow="Yes" alignItems="Center" gap="200">
+            <Avatar size="200" radii="400">
+              <Icon src={icon} size="100" filled={selected} />
+            </Avatar>
+            <Box as="span" grow="Yes">
+              <Text as="span" size="Inherit" truncate>
+                {title}
+              </Text>
+            </Box>
+          </Box>
+        </NavItemContent>
+      </NavLink>
+    </NavItem>
+  );
+}
 export function Home() {
   const mx = useMatrixClient();
   useNavToActivePathMapper('home');
@@ -201,11 +238,16 @@ export function Home() {
   const rooms = useHomeRooms();
   const notificationPreferences = useRoomsNotificationPreferencesContext();
   const roomToUnread = useAtomValue(roomToUnreadAtom);
+  const githubAccount = useAtomValue(githubAccountAtom);
+  const linkedRepos = useAtomValue(linkedReposAtom);
+  const hasLinkedRepos = !!githubAccount && linkedRepos.length > 0;
   const navigate = useNavigate();
 
-  const selectedRoomId = useSelectedRoom();
   const createRoomSelected = useHomeCreateSelected();
   const searchSelected = useHomeSearchSelected();
+  const selectedRoomId = useStickySelectedRoom('home', createRoomSelected || searchSelected);
+  const phone = usePhone();
+  const [developerTools] = useSetting(settingsAtom, 'developerTools');
   const noRoomToDisplay = rooms.length === 0;
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
@@ -236,11 +278,18 @@ export function Home() {
     <PageNav>
       <HomeHeader />
       {noRoomToDisplay ? (
-        <HomeEmpty />
+        <>
+          <Box shrink="No" style={{ padding: `${config.space.S200} ${config.space.S200} 0` }}>
+            <SupportPill />
+          </Box>
+          <HomeEmpty />
+        </>
       ) : (
         <PageNavContent scrollRef={scrollRef}>
           <Box direction="Column" gap="300">
             <NavCategory>
+              {phone && <NavSearchPill to={getHomeSearchPath()} selected={searchSelected} />}
+              <SupportPill />
               <NavItem variant="Background" radii="400" aria-selected={createRoomSelected}>
                 <NavButton onClick={() => navigate(getHomeCreatePath())}>
                   <NavItemContent>
@@ -295,23 +344,56 @@ export function Home() {
                   </>
                 )}
               </UseStateProvider>
-              <NavItem variant="Background" radii="400" aria-selected={searchSelected}>
-                <NavLink to={getHomeSearchPath()}>
-                  <NavItemContent>
-                    <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                      <Avatar size="200" radii="400">
-                        <Icon src={Icons.Search} size="100" filled={searchSelected} />
-                      </Avatar>
-                      <Box as="span" grow="Yes">
-                        <Text as="span" size="Inherit" truncate>
-                          Message Search
-                        </Text>
+              {!phone && (
+                <NavItem variant="Background" radii="400" aria-selected={searchSelected}>
+                  <NavLink to={getHomeSearchPath()}>
+                    <NavItemContent>
+                      <Box as="span" grow="Yes" alignItems="Center" gap="200">
+                        <Avatar size="200" radii="400">
+                          <Icon src={Icons.Search} size="100" filled={searchSelected} />
+                        </Avatar>
+                        <Box as="span" grow="Yes">
+                          <Text as="span" size="Inherit" truncate>
+                            Message Search
+                          </Text>
+                        </Box>
                       </Box>
-                    </Box>
-                  </NavItemContent>
-                </NavLink>
-              </NavItem>
+                    </NavItemContent>
+                  </NavLink>
+                </NavItem>
+              )}
             </NavCategory>
+            {developerTools && (
+              <NavCategory>
+                <NavCategoryHeader>
+                  <RoomNavCategoryButton
+                    closed={closedCategories.has(DEVELOPER_CATEGORY_ID)}
+                    data-category-id={DEVELOPER_CATEGORY_ID}
+                    onClick={handleCategoryClick}
+                  >
+                    Developer Tools
+                  </RoomNavCategoryButton>
+                </NavCategoryHeader>
+                {!closedCategories.has(DEVELOPER_CATEGORY_ID) &&
+                  (Object.keys(DEVELOPER_PAGES) as DeveloperSection[])
+                    .filter((section) => section !== 'repos' || hasLinkedRepos)
+                    .map((section) => <DeveloperNavItem key={section} section={section} />)}
+              </NavCategory>
+            )}
+            {developerTools && (
+              <NavCategory>
+                <NavCategoryHeader>
+                  <RoomNavCategoryButton
+                    closed={closedCategories.has(PROJECTS_CATEGORY_ID)}
+                    data-category-id={PROJECTS_CATEGORY_ID}
+                    onClick={handleCategoryClick}
+                  >
+                    Projects
+                  </RoomNavCategoryButton>
+                </NavCategoryHeader>
+                <ProjectNav open={!closedCategories.has(PROJECTS_CATEGORY_ID)} />
+              </NavCategory>
+            )}
             <NavCategory>
               <NavCategoryHeader>
                 <RoomNavCategoryButton
@@ -357,6 +439,7 @@ export function Home() {
           </Box>
         </PageNavContent>
       )}
+      <UserPanel />
     </PageNav>
   );
 }

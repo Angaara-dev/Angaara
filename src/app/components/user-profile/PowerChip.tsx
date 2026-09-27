@@ -25,7 +25,7 @@ import FocusTrap from 'focus-trap-react';
 import { isKeyHotkey } from 'is-hotkey';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import { PowerColorBadge, PowerIcon } from '../power';
+import { PowerColorBadge, PowerIcon, roleChipProps, roleNameStyle } from '../power';
 import { useGetMemberPowerLevel, usePowerLevels } from '../../hooks/usePowerLevels';
 import { getPowers, usePowerLevelTags } from '../../hooks/usePowerLevelTags';
 import { stopPropagation } from '../../utils/keyboard';
@@ -43,6 +43,8 @@ import { getPowerTagIconSrc, useGetMemberPowerTag } from '../../hooks/useMemberP
 import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
+import { useTheme } from '../../hooks/useTheme';
+import { accessibleColor } from '../../plugins/color';
 
 type SelfDemoteAlertProps = {
   power: number;
@@ -146,6 +148,7 @@ function SharedPowerAlert({ power, onCancel, onChange }: SharedPowerAlertProps) 
 
 export function PowerChip({ userId }: { userId: string }) {
   const mx = useMatrixClient();
+  const theme = useTheme();
   const room = useRoom();
   const space = useSpaceOptionally();
   const useAuthentication = useMediaAuthentication();
@@ -168,6 +171,8 @@ export function PowerChip({ userId }: { userId: string }) {
     (myUserId === userId ? true : hasMorePower(myUserId, userId));
 
   const tag = getMemberPowerTag(userId);
+  const tagColor = tag.color ? accessibleColor(theme.kind, tag.color) : undefined;
+  const tagGradient = tag.gradient ? accessibleColor(theme.kind, tag.gradient) : undefined;
   const tagIconSrc = tag.icon && getPowerTagIconSrc(mx, useAuthentication, tag.icon);
 
   const [cords, setCords] = useState<RectCords>();
@@ -188,6 +193,7 @@ export function PowerChip({ userId }: { userId: string }) {
   );
   const changing = powerState.status === AsyncStatus.Loading;
   const error = powerState.status === AsyncStatus.Error;
+  const roleChip = error ? {} : roleChipProps(tagColor, tagGradient);
   const [selfDemote, setSelfDemote] = useState<number>();
   const [sharedPower, setSharedPower] = useState<number>();
 
@@ -293,11 +299,12 @@ export function PowerChip({ userId }: { userId: string }) {
                   size="300"
                   radii="300"
                   onClick={() => {
-                    if (room.isSpaceRoom()) {
+                    // Roles live in the server's settings; channels outside a server keep their own.
+                    if (room.isSpaceRoom() || space) {
                       openSpaceSettings(
-                        room.roomId,
-                        space?.roomId,
-                        SpaceSettingsPage.PermissionsPage
+                        (room.isSpaceRoom() ? room.roomId : space?.roomId) ?? room.roomId,
+                        undefined,
+                        SpaceSettingsPage.RolesPage
                       );
                     } else {
                       openRoomSettings(
@@ -309,7 +316,7 @@ export function PowerChip({ userId }: { userId: string }) {
                     close();
                   }}
                 >
-                  <Text size="B300">Manage Powers</Text>
+                  <Text size="B300">Manage Roles</Text>
                 </MenuItem>
               </div>
             </Menu>
@@ -318,13 +325,16 @@ export function PowerChip({ userId }: { userId: string }) {
       >
         <Chip
           variant={error ? 'Critical' : 'SurfaceVariant'}
+          outlined={!!roleChip.className}
+          className={roleChip.className}
+          style={roleChip.style}
           radii="Pill"
           before={
             cords ? (
               <Icon size="50" src={Icons.ChevronBottom} />
             ) : (
               <>
-                {!changing && <PowerColorBadge color={tag.color} />}
+                {!changing && <PowerColorBadge color={tagColor} gradient={tagGradient} />}
                 {changing && <Spinner size="50" variant="Secondary" fill="Soft" />}
               </>
             )
@@ -333,7 +343,11 @@ export function PowerChip({ userId }: { userId: string }) {
           onClick={open}
           aria-pressed={!!cords}
         >
-          <Text size="B300" truncate>
+          <Text
+            size="B300"
+            truncate
+            style={error ? undefined : roleNameStyle(tagColor, tagGradient)}
+          >
             {tag.name}
           </Text>
         </Chip>

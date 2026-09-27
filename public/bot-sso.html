@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Bot sign-in</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        background: #0e0e10;
+        color: #ededed;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="status">Finishing bot sign-in...</p>
+    <script>
+      // Hands the one-time SSO login token back to Developer Tools, then closes.
+      (function () {
+        var token = new URLSearchParams(window.location.search).get('loginToken');
+        history.replaceState(null, '', window.location.pathname);
+        var status = document.getElementById('status');
+        if (!token || !window.opener) {
+          status.textContent = 'Sign-in could not finish. Close this window and try again.';
+          return;
+        }
+        window.opener.postMessage(
+          { type: 'angaara-bot-sso', loginToken: token },
+          window.location.origin
+        );
+        status.textContent = 'Done! You can close this window.';
+        window.close();
+      })();
+    </script>
+  </body>
+</html>

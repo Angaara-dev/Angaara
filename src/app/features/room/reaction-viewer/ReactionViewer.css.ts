@@ -1,4 +1,4 @@
-import { style } from '@vanilla-extract/css';
+import { globalStyle, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config } from 'folds';
 
 export const ReactionViewer = style([
@@ -28,4 +28,23 @@ export const Header = style({
 export const Content = style({
   paddingLeft: config.space.S200,
   paddingBottom: config.space.S400,
+});
+
+export const SheetReactions = style({
+  padding: `${config.space.S200} ${config.space.S400} ${config.space.S300}`,
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
+});
+globalStyle(`${SheetReactions} > *`, {
+  flexShrink: 0,
+  padding: '8px 14px',
+  fontSize: '17px',
+});
+
+export const SheetLabel = style({
+  padding: `${config.space.S300} ${config.space.S400} ${config.space.S100}`,
+});
+
+export const SheetContent = style({
+  padding: `0 ${config.space.S200} ${config.space.S400}`,
 });

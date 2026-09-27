@@ -3,6 +3,7 @@ import { Editor } from 'slate';
 import { Box, config, MenuItem, Text } from 'folds';
 import { Room } from 'matrix-js-sdk';
 import { Command, useCommands } from '../../hooks/useCommands';
+import { useDisabledCommands } from '../../hooks/useDisabledCommands';
 import {
   AutocompleteMenu,
   AutocompleteQuery,
@@ -38,7 +39,11 @@ export function CommandAutocomplete({
 }: CommandAutocompleteProps) {
   const mx = useMatrixClient();
   const commands = useCommands(mx, room);
-  const commandNames = useMemo(() => Object.keys(commands) as Command[], [commands]);
+  const disabledCommands = useDisabledCommands(room);
+  const commandNames = useMemo(
+    () => (Object.keys(commands) as Command[]).filter((name) => !disabledCommands.has(name)),
+    [commands, disabledCommands]
+  );
 
   const [result, search, resetSearch] = useAsyncSearch(
     commandNames,

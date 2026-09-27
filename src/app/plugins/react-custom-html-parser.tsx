@@ -1,5 +1,6 @@
 /* eslint-disable jsx-a11y/alt-text */
 import React, {
+  CSSProperties,
   ComponentPropsWithoutRef,
   ReactEventHandler,
   Suspense,
@@ -30,7 +31,7 @@ import {
 } from '../utils/matrix';
 import { getMemberDisplayName } from '../utils/room';
 import { EMOJI_PATTERN, sanitizeForRegex, URL_NEG_LB } from '../utils/regex';
-import { getHexcodeForEmoji, getShortcodeFor } from './emoji';
+import { getHexcodeForEmoji, getLoadedEmojiData } from './emoji';
 import { findAndReplace } from '../utils/findAndReplace';
 import {
   parseMatrixToRoom,
@@ -41,6 +42,7 @@ import {
 import { onEnterOrSpace } from '../utils/keyboard';
 import { copyToClipboard, tryDecodeURIComponent } from '../utils/dom';
 import { useTimeoutToggle } from '../hooks/useTimeoutToggle';
+import { MathTex } from '../components/math';
 
 const ReactPrism = lazy(() => import('./react-prism/ReactPrism'));
 
@@ -71,11 +73,18 @@ export const makeMentionCustomProps = (
   children: content,
 });
 
+// Tints a user mention with their role color, e.g. #1fd81f -> text + faint background.
+const mentionColorStyle = (color: string | undefined): CSSProperties | undefined => {
+  if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return undefined;
+  return { color, backgroundColor: `${color}26`, boxShadow: `0 0 0 1px ${color}4d` };
+};
+
 export const renderMatrixMention = (
   mx: MatrixClient,
   currentRoomId: string | undefined,
   href: string,
-  customProps: ComponentPropsWithoutRef<'a'>
+  customProps: ComponentPropsWithoutRef<'a'>,
+  getMentionColor?: (userId: string) => string | undefined
 ) => {
   const userId = parseMatrixToUser(href);
   if (userId) {
@@ -85,6 +94,7 @@ export const renderMatrixMention = (
       <a
         href={href}
         {...customProps}
+        style={{ ...customProps.style, ...mentionColorStyle(getMentionColor?.(userId)) }}
         className={css.Mention({ highlight: mx.getUserId() === userId })}
         data-mention-id={userId}
       >
@@ -171,7 +181,10 @@ export const scaleSystemEmoji = (text: string): (string | JSX.Element)[] =>
     EMOJI_REG_G,
     (match, pushIndex) => (
       <span key={`scaleSystemEmoji-${pushIndex}`} className={css.EmoticonBase}>
-        <span className={css.Emoticon()} title={getShortcodeFor(getHexcodeForEmoji(match[0]))}>
+        <span
+          className={css.Emoticon()}
+          title={getLoadedEmojiData()?.getShortcodeFor(getHexcodeForEmoji(match[0]))}
+        >
           {match[0]}
         </span>
       </span>
@@ -319,6 +332,7 @@ export const getReactCustomHtmlParser = (
     handleSpoilerClick?: ReactEventHandler<HTMLElement>;
     handleMentionClick?: ReactEventHandler<HTMLElement>;
     useAuthentication?: boolean;
+    getMentionColor?: (userId: string) => string | undefined;
   }
 ): HTMLReactParserOptions => {
   const opts: HTMLReactParserOptions = {
@@ -326,6 +340,11 @@ export const getReactCustomHtmlParser = (
       if (domNode instanceof Element && 'name' in domNode) {
         const { name, attribs, children, parent } = domNode;
         const props = attributesToProps(attribs);
+
+        const maths = attribs['data-mx-maths'];
+        if ((name === 'span' || name === 'div') && typeof maths === 'string' && maths.trim()) {
+          return <MathTex tex={maths} display={name === 'div'} />;
+        }
 
         if (name === 'h1') {
           return (
@@ -450,7 +469,8 @@ export const getReactCustomHtmlParser = (
             mx,
             roomId,
             tryDecodeURIComponent(props.href),
-            makeMentionCustomProps(params.handleMentionClick, content)
+            makeMentionCustomProps(params.handleMentionClick, content),
+            params.getMentionColor
           );
 
           if (mention) return mention;

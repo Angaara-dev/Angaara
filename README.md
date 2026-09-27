@@ -1,31 +1,11 @@
-# Cinny
-<p>
-    <a href="https://github.com/ajbura/cinny/releases">
-        <img alt="GitHub release downloads" src="https://img.shields.io/github/downloads/ajbura/cinny/total?logo=github&style=social"></a>
-    <a href="https://hub.docker.com/r/ajbura/cinny">
-        <img alt="DockerHub downloads" src="https://img.shields.io/docker/pulls/ajbura/cinny?logo=docker&style=social"></a>
-    <a href="https://fosstodon.org/@cinnyapp">
-        <img alt="Follow on Mastodon" src="https://img.shields.io/mastodon/follow/106845779685925461?domain=https%3A%2F%2Ffosstodon.org&logo=mastodon&style=social"></a>
-    <a href="https://twitter.com/intent/follow?screen_name=cinnyapp">
-        <img alt="Follow on Twitter" src="https://img.shields.io/twitter/follow/cinnyapp?logo=twitter&style=social"></a>
-    <a href="https://cinny.in/#sponsor">
-        <img alt="Sponsor Cinny" src="https://img.shields.io/opencollective/all/cinny?logo=opencollective&style=social"></a>
-</p>
+# Angaara
 
-A Matrix client focusing primarily on simple, elegant and secure interface.
-The main goal is to have an instant messaging application that is easy on
-people and has a modern touch.
-- [Roadmap](https://github.com/orgs/cinnyapp/projects/1)
-- [Contributing](./CONTRIBUTING.md)
+Angaara is a Matrix chat client for communities, with end-to-end
+encryption, bots with rich embeds and slash commands, and a built-in developer portal that can
+build and run your bot on a machine you own through `angaara-runner`.
 
-> [!IMPORTANT] 
-We are currently in the process of [replacing] the matrix-js-sdk with our
-own SDK. As a result, we will not be accepting any pull requests until
-further notice. Thank you for your understanding.
-
-[replacing]: https://github.com/cinnyapp/cinny/issues/257#issuecomment-3714406704
-
-<img align="center" src="https://raw.githubusercontent.com/cinnyapp/cinny-site/main/assets/preview2-light.png" height="380">
+Angaara is a fork of [Cinny](https://github.com/cinnyapp/cinny) and is licensed under
+AGPL-3.0-only, like Cinny. The sections below are carried over from Cinny's README.
 
 ## Getting started
 The web app is available at [app.cinny.in] and gets updated on each new

@@ -1,6 +1,12 @@
 import { ComplexStyleRule } from '@vanilla-extract/css';
 import { RecipeVariants, recipe } from '@vanilla-extract/recipes';
 import { ContainerColor as TContainerColor, DefaultReset, color, config } from 'folds';
+import { themeBackdrop } from './themeBackdrop';
+
+const THEMED: Partial<Record<TContainerColor, 'bg' | 'surface'>> = {
+  Background: 'bg',
+  Surface: 'surface',
+};
 
 const getVariant = (variant: TContainerColor): ComplexStyleRule => ({
   vars: {
@@ -10,6 +16,7 @@ const getVariant = (variant: TContainerColor): ComplexStyleRule => ({
     color: color[variant].OnContainer,
   },
   selectors: {
+    ...(THEMED[variant] && { '&:not(button)': themeBackdrop(THEMED[variant]!) }),
     'button&[aria-pressed=true]': {
       backgroundColor: color[variant].ContainerActive,
     },

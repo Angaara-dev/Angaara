@@ -15,6 +15,7 @@ import { MatrixError } from 'matrix-js-sdk';
 import { useAutoDiscoveryInfo } from '../../../hooks/useAutoDiscoveryInfo';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { CustomLoginResponse, LoginError, login, useLoginComplete } from './loginUtil';
+import { DEVICE_DISPLAY_NAME } from '../../../brand';
 
 function LoginTokenError({ message }: { message: string }) {
   return (
@@ -57,7 +58,7 @@ export function TokenLogin({ token }: TokenLoginProps) {
     startLogin(baseUrl, {
       type: 'm.login.token',
       token,
-      initial_device_display_name: 'Cinny Web',
+      initial_device_display_name: DEVICE_DISPLAY_NAME,
     });
   }, [baseUrl, token, startLogin]);
 

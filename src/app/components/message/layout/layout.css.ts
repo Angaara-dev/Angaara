@@ -1,6 +1,7 @@
-import { createVar, keyframes, style, styleVariants } from '@vanilla-extract/css';
+import { createVar, globalStyle, keyframes, style, styleVariants } from '@vanilla-extract/css';
 import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
+import { PHONE, phoneSize } from '../../../styles/phone';
 
 export const StickySection = style({
   position: 'sticky',
@@ -65,9 +66,38 @@ const HighlightVariant = styleVariants({
   },
 });
 
+// Declared before SelectedVariant so a selected message keeps its color on hover.
+const MessageHover = style({
+  transition: 'background-color 80ms ease',
+  selectors: {
+    '&:hover, &:focus-within': {
+      backgroundColor: color.Surface.ContainerHover,
+    },
+  },
+});
+
+// Amber-orange tint and left bar for messages that reply to or mention you.
+const MentionColor = `color-mix(in srgb, ${color.Warning.Main} 45%, ${color.Primary.Main})`;
+const MentionedVariant = styleVariants({
+  true: {
+    backgroundColor: `color-mix(in srgb, ${MentionColor} 10%, transparent)`,
+    boxShadow: `inset ${toRem(2)} 0 0 ${MentionColor}`,
+    selectors: {
+      '&:hover, &:focus-within': {
+        backgroundColor: `color-mix(in srgb, ${MentionColor} 15%, transparent)`,
+      },
+    },
+  },
+});
+
 const SelectedVariant = styleVariants({
   true: {
     backgroundColor: color.Surface.ContainerActive,
+    selectors: {
+      '&:hover, &:focus-within': {
+        backgroundColor: color.Surface.ContainerActive,
+      },
+    },
   },
 });
 
@@ -87,6 +117,7 @@ export const MessageBase = recipe({
       padding: `${config.space.S100} ${config.space.S200} ${config.space.S100} ${config.space.S400}`,
       borderRadius: `0 ${config.radii.R400} ${config.radii.R400} 0`,
     },
+    MessageHover,
   ],
   variants: {
     space: SpacingVariant,
@@ -99,6 +130,7 @@ export const MessageBase = recipe({
       true: AutoCollapse,
     },
     highlight: HighlightVariant,
+    mentioned: MentionedVariant,
     selected: SelectedVariant,
   },
   defaultVariants: {
@@ -132,6 +164,7 @@ export const AvatarBase = style({
 
 export const ModernBefore = style({
   minWidth: toRem(36),
+  '@media': { [PHONE]: { minWidth: phoneSize(44) } },
 });
 
 export const BubbleBefore = style({
@@ -174,6 +207,10 @@ export const Username = style({
     },
   },
 });
+// Names match the bigger phone message text.
+globalStyle(`${Username} > span`, {
+  '@media': { [PHONE]: { fontSize: phoneSize(17) } },
+});
 
 export const UsernameBold = style({
   fontWeight: 550,
@@ -182,6 +219,10 @@ export const UsernameBold = style({
 export const MessageTextBody = recipe({
   base: {
     wordBreak: 'break-word',
+    // Doubled class so it wins over the Text size class on the same element.
+    '@media': {
+      [PHONE]: { selectors: { '&&': { fontSize: phoneSize(17), lineHeight: '1.45' } } },
+    },
   },
   variants: {
     preWrap: {

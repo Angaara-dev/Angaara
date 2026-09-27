@@ -22,7 +22,7 @@ import * as css from './ReactionViewer.css';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useRelations } from '../../../hooks/useRelations';
 import { Reaction } from '../../../components/message';
-import { getHexcodeForEmoji, getShortcodeFor } from '../../../plugins/emoji';
+import { getHexcodeForEmoji, useEmojiData } from '../../../plugins/emoji';
 import { UserAvatar } from '../../../components/user-avatar';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useOpenUserRoomProfile } from '../../../state/hooks/userRoomProfile';
@@ -34,10 +34,13 @@ export type ReactionViewerProps = {
   initialKey?: string;
   relations: Relations;
   requestClose: () => void;
+  // Phone bottom sheet: reactions in a row on top, bigger rows, no close button.
+  sheet?: boolean;
 };
 export const ReactionViewer = as<'div', ReactionViewerProps>(
-  ({ className, room, initialKey, relations, requestClose, ...props }, ref) => {
+  ({ className, room, initialKey, relations, requestClose, sheet, ...props }, ref) => {
     const mx = useMatrixClient();
+    const emojiData = useEmojiData();
     const useAuthentication = useMediaAuthentication();
     const reactions = useRelations(
       relations,
@@ -64,8 +67,94 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
     const selectedReactions = getReactionsForKey(selectedKey);
     const selectedShortcode =
       selectedReactions.find(eventWithShortcode)?.getContent().shortcode ??
-      getShortcodeFor(getHexcodeForEmoji(selectedKey)) ??
+      emojiData?.getShortcodeFor(getHexcodeForEmoji(selectedKey)) ??
       selectedKey;
+
+    const reactionButtons = reactions.map(([key, evts]) => {
+      if (typeof key !== 'string') return null;
+      return (
+        <Reaction
+          key={key}
+          mx={mx}
+          reaction={key}
+          count={evts.size}
+          aria-selected={key === selectedKey}
+          onClick={() => setSelectedKey(key)}
+          useAuthentication={useAuthentication}
+        />
+      );
+    });
+
+    const people = selectedReactions.map((mEvent) => {
+      const senderId = mEvent.getSender();
+      if (!senderId) return null;
+      const member = room.getMember(senderId);
+      const name = (member ? getName(member) : getMxIdLocalPart(senderId)) ?? senderId;
+
+      const avatarMxcUrl = member?.getMxcAvatarUrl();
+      const avatarUrl = avatarMxcUrl
+        ? mx.mxcUrlToHttp(avatarMxcUrl, 100, 100, 'crop', undefined, false, useAuthentication)
+        : undefined;
+
+      return (
+        <MenuItem
+          key={senderId}
+          style={{ padding: `0 ${config.space.S200}`, minHeight: sheet ? '52px' : undefined }}
+          radii="400"
+          onClick={(event) => {
+            openProfile(
+              room.roomId,
+              space?.roomId,
+              senderId,
+              getMouseEventCords(event.nativeEvent),
+              'Bottom'
+            );
+          }}
+          before={
+            <Avatar size={sheet ? '300' : '200'}>
+              <UserAvatar
+                userId={senderId}
+                src={avatarUrl ?? undefined}
+                alt={name}
+                renderFallback={() => <Icon size="50" src={Icons.User} filled />}
+              />
+            </Avatar>
+          }
+        >
+          <Box grow="Yes">
+            <Text size="T400" truncate style={sheet ? { fontSize: '17px' } : undefined}>
+              {name}
+            </Text>
+          </Box>
+        </MenuItem>
+      );
+    });
+
+    if (sheet) {
+      return (
+        <Box
+          className={classNames(css.ReactionViewer, className)}
+          direction="Column"
+          {...props}
+          ref={ref}
+        >
+          <Box className={css.SheetReactions} shrink="No" gap="200">
+            {reactionButtons}
+          </Box>
+          <Line variant="Surface" size="300" />
+          <Box className={css.SheetLabel} shrink="No">
+            <Text size="L400" priority="300" truncate>{`:${selectedShortcode}:`}</Text>
+          </Box>
+          <Box grow="Yes" style={{ minHeight: 0 }}>
+            <Scroll visibility="Hover" hideTrack size="0">
+              <Box className={css.SheetContent} direction="Column">
+                {people}
+              </Box>
+            </Scroll>
+          </Box>
+        </Box>
+      );
+    }
 
     return (
       <Box
@@ -77,20 +166,7 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
         <Box shrink="No" className={css.Sidebar}>
           <Scroll visibility="Hover" hideTrack size="300">
             <Box className={css.SidebarContent} direction="Column" gap="200">
-              {reactions.map(([key, evts]) => {
-                if (typeof key !== 'string') return null;
-                return (
-                  <Reaction
-                    key={key}
-                    mx={mx}
-                    reaction={key}
-                    count={evts.size}
-                    aria-selected={key === selectedKey}
-                    onClick={() => setSelectedKey(key)}
-                    useAuthentication={useAuthentication}
-                  />
-                );
-              })}
+              {reactionButtons}
             </Box>
           </Scroll>
         </Box>
@@ -108,58 +184,7 @@ export const ReactionViewer = as<'div', ReactionViewerProps>(
           <Box grow="Yes">
             <Scroll visibility="Hover" hideTrack size="300">
               <Box className={css.Content} direction="Column">
-                {selectedReactions.map((mEvent) => {
-                  const senderId = mEvent.getSender();
-                  if (!senderId) return null;
-                  const member = room.getMember(senderId);
-                  const name = (member ? getName(member) : getMxIdLocalPart(senderId)) ?? senderId;
-
-                  const avatarMxcUrl = member?.getMxcAvatarUrl();
-                  const avatarUrl = avatarMxcUrl
-                    ? mx.mxcUrlToHttp(
-                        avatarMxcUrl,
-                        100,
-                        100,
-                        'crop',
-                        undefined,
-                        false,
-                        useAuthentication
-                      )
-                    : undefined;
-
-                  return (
-                    <MenuItem
-                      key={senderId}
-                      style={{ padding: `0 ${config.space.S200}` }}
-                      radii="400"
-                      onClick={(event) => {
-                        openProfile(
-                          room.roomId,
-                          space?.roomId,
-                          senderId,
-                          getMouseEventCords(event.nativeEvent),
-                          'Bottom'
-                        );
-                      }}
-                      before={
-                        <Avatar size="200">
-                          <UserAvatar
-                            userId={senderId}
-                            src={avatarUrl ?? undefined}
-                            alt={name}
-                            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
-                          />
-                        </Avatar>
-                      }
-                    >
-                      <Box grow="Yes">
-                        <Text size="T400" truncate>
-                          {name}
-                        </Text>
-                      </Box>
-                    </MenuItem>
-                  );
-                })}
+                {people}
               </Box>
             </Scroll>
           </Box>

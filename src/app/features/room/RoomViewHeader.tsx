@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import React, { MouseEventHandler, forwardRef, useState } from 'react';
 import FocusTrap from 'focus-trap-react';
 import {
@@ -47,7 +48,8 @@ import { roomToUnreadAtom } from '../../state/room/roomToUnread';
 import { copyToClipboard } from '../../utils/dom';
 import { LeaveRoomPrompt } from '../../components/leave-room-prompt';
 import { useRoomAvatar, useRoomName, useRoomTopic } from '../../hooks/useRoomMeta';
-import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
+import { ScreenSize, useScreenSizeContext, usePhone } from '../../hooks/useScreenSize';
+import { HeaderSearch } from './HeaderSearch';
 import { stopPropagation } from '../../utils/keyboard';
 import { getMatrixToRoom } from '../../plugins/matrix-to';
 import { getViaServers } from '../../plugins/via-servers';
@@ -72,6 +74,7 @@ import { RoomSettingsPage } from '../../state/roomSettings';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
+import { RoomInfoPanel } from './RoomInfoPanel';
 
 type RoomMenuProps = {
   room: Room;
@@ -403,6 +406,8 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
   const [pinMenuAnchor, setPinMenuAnchor] = useState<RectCords>();
+  const [infoOpen, setInfoOpen] = useState(false);
+  const phone = usePhone();
   const direct = useIsDirectRoom();
 
   const pinnedEvents = useRoomPinnedEvents(room);
@@ -447,10 +452,10 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   return (
     <PageHeader
-      className={ContainerColor({ variant: 'Surface' })}
+      className={classNames(ContainerColor({ variant: 'Surface' }), phone && css.PhoneHeader)}
       balance={screenSize === ScreenSize.Mobile}
     >
-      <Box grow="Yes" gap="300">
+      <Box grow="Yes" gap={phone ? '100' : '300'}>
         {screenSize === ScreenSize.Mobile && (
           <BackRouteHandler>
             {(onBack) => (
@@ -463,7 +468,10 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
           </BackRouteHandler>
         )}
         <Box grow="Yes" alignItems="Center" gap="300">
-          {screenSize !== ScreenSize.Mobile && (
+          {screenSize !== ScreenSize.Mobile && !avatarUrl && (
+            <RoomIcon size="400" joinRule={room.getJoinRule()} roomType={room.getType()} />
+          )}
+          {screenSize !== ScreenSize.Mobile && avatarUrl && (
             <Avatar size="300">
               <RoomAvatar
                 roomId={room.roomId}
@@ -475,52 +483,106 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               />
             </Avatar>
           )}
-          <Box direction="Column">
-            <Text size={topic ? 'H5' : 'H3'} truncate>
-              {name}
-            </Text>
-            {topic && (
-              <UseStateProvider initial={false}>
-                {(viewTopic, setViewTopic) => (
-                  <>
-                    <Overlay open={viewTopic} backdrop={<OverlayBackdrop />}>
-                      <OverlayCenter>
-                        <FocusTrap
-                          focusTrapOptions={{
-                            initialFocus: false,
-                            clickOutsideDeactivates: true,
-                            onDeactivate: () => setViewTopic(false),
-                            escapeDeactivates: stopPropagation,
-                          }}
-                        >
-                          <RoomTopicViewer
-                            name={name}
-                            topic={topic}
-                            requestClose={() => setViewTopic(false)}
-                          />
-                        </FocusTrap>
-                      </OverlayCenter>
-                    </Overlay>
-                    <Text
-                      as="button"
-                      type="button"
-                      onClick={() => setViewTopic(true)}
-                      className={css.HeaderTopic}
-                      size="T200"
-                      priority="300"
-                      truncate
-                    >
-                      {topic}
-                    </Text>
-                  </>
+          {phone && (
+            <Box
+              as="button"
+              type="button"
+              className={css.HeaderInfoButton}
+              alignItems="Center"
+              gap="300"
+              grow="Yes"
+              onClick={() => setInfoOpen(true)}
+              aria-label="Room info and members"
+            >
+              <Avatar size="400" radii="400">
+                <RoomAvatar
+                  roomId={room.roomId}
+                  src={avatarUrl}
+                  alt={name}
+                  renderFallback={() => (
+                    <RoomIcon size="300" joinRule={room.getJoinRule()} roomType={room.getType()} />
+                  )}
+                />
+              </Avatar>
+              <Box direction="Column" gap="100" style={{ minWidth: 0 }}>
+                <Text size="H4" truncate>
+                  {name}
+                </Text>
+                {topic && (
+                  <Text size="T300" priority="300" truncate>
+                    {topic}
+                  </Text>
                 )}
-              </UseStateProvider>
-            )}
-          </Box>
+              </Box>
+            </Box>
+          )}
+          {infoOpen && (
+            <RoomInfoPanel
+              room={room}
+              name={name}
+              topic={topic}
+              avatarUrl={avatarUrl}
+              direct={direct}
+              requestClose={() => setInfoOpen(false)}
+              popup={!phone}
+            />
+          )}
+          {!phone && (
+            <Box direction="Column" style={{ minWidth: 0 }}>
+              <Text
+                as="button"
+                type="button"
+                onClick={() => setInfoOpen(true)}
+                title="Members, media, pins, threads, links and files"
+                className={css.HeaderName}
+                size={topic ? 'H5' : 'H3'}
+                truncate
+              >
+                {name}
+              </Text>
+              {topic && (
+                <UseStateProvider initial={false}>
+                  {(viewTopic, setViewTopic) => (
+                    <>
+                      <Overlay open={viewTopic} backdrop={<OverlayBackdrop />}>
+                        <OverlayCenter>
+                          <FocusTrap
+                            focusTrapOptions={{
+                              initialFocus: false,
+                              clickOutsideDeactivates: true,
+                              onDeactivate: () => setViewTopic(false),
+                              escapeDeactivates: stopPropagation,
+                            }}
+                          >
+                            <RoomTopicViewer
+                              name={name}
+                              topic={topic}
+                              requestClose={() => setViewTopic(false)}
+                            />
+                          </FocusTrap>
+                        </OverlayCenter>
+                      </Overlay>
+                      <Text
+                        as="button"
+                        type="button"
+                        onClick={() => setViewTopic(true)}
+                        className={css.HeaderTopic}
+                        size="T200"
+                        priority="300"
+                        truncate
+                      >
+                        {topic}
+                      </Text>
+                    </>
+                  )}
+                </UseStateProvider>
+              )}
+            </Box>
+          )}
         </Box>
 
-        <Box shrink="No">
-          {!encryptedRoom && (
+        <Box shrink="No" alignItems="Center">
+          {!encryptedRoom && screenSize === ScreenSize.Mobile && (
             <TooltipProvider
               position="Bottom"
               offset={4}
@@ -660,6 +722,12 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               </FocusTrap>
             }
           />
+          {/* Search sits last, at the far right, so the room name gets the space. */}
+          {!encryptedRoom && screenSize !== ScreenSize.Mobile && (
+            <Box alignItems="Center" style={{ marginLeft: config.space.S200 }}>
+              <HeaderSearch room={room} />
+            </Box>
+          )}
         </Box>
       </Box>
     </PageHeader>

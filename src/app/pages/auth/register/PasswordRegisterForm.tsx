@@ -43,6 +43,7 @@ import { useRegisterEmail } from '../../../hooks/useRegisterEmail';
 import { ConfirmPasswordMatch } from '../../../components/ConfirmPasswordMatch';
 import { UIAFlowOverlay } from '../../../components/UIAFlowOverlay';
 import { RequestEmailTokenCallback, RequestEmailTokenResponse } from '../../../hooks/types';
+import { DEVICE_DISPLAY_NAME } from '../../../brand';
 
 export const SUPPORTED_REGISTER_STAGES = [
   AuthType.RegistrationToken,
@@ -109,7 +110,7 @@ function RegisterUIAFlow({
         auth: authDict,
         password,
         username,
-        initial_device_display_name: 'Cinny Web',
+        initial_device_display_name: DEVICE_DISPLAY_NAME,
       });
     },
     [onRegister, formData]
@@ -250,7 +251,7 @@ export function PasswordRegisterForm({
       auth: {
         session: authData.session,
       },
-      initial_device_display_name: 'Cinny Web',
+      initial_device_display_name: DEVICE_DISPLAY_NAME,
     });
   };
 

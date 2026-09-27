@@ -2,9 +2,10 @@ import { Chip, config, Icon, Icons, Menu, MenuItem, PopOut, RectCords, Text } fr
 import React, { MouseEventHandler, useState } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { isKeyHotkey } from 'is-hotkey';
-import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
-import { PowerColorBadge, PowerIcon } from '../power';
-import { getPowerTagIconSrc } from '../../hooks/useMemberPowerTag';
+import { PowerColorBadge, PowerIcon, roleChipProps, roleNameStyle } from '../power';
+import { getPowerTagIconSrc, useGatedCreatorsTag } from '../../hooks/useMemberPowerTag';
+import { useTheme } from '../../hooks/useTheme';
+import { accessibleColor } from '../../plugins/color';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { stopPropagation } from '../../utils/keyboard';
@@ -24,7 +25,11 @@ export function CreatorChip() {
   const openSpaceSettings = useOpenSpaceSettings();
 
   const [cords, setCords] = useState<RectCords>();
-  const tag = useRoomCreatorsTag();
+  const tag = useGatedCreatorsTag(room);
+  const theme = useTheme();
+  const tagColor = tag.color ? accessibleColor(theme.kind, tag.color) : undefined;
+  const tagGradient = tag.gradient ? accessibleColor(theme.kind, tag.gradient) : undefined;
+  const roleChip = roleChipProps(tagColor, tagGradient);
   const tagIconSrc = tag.icon && getPowerTagIconSrc(mx, useAuthentication, tag.icon);
 
   const open: MouseEventHandler<HTMLButtonElement> = (evt) => {
@@ -58,11 +63,12 @@ export function CreatorChip() {
                 size="300"
                 radii="300"
                 onClick={() => {
-                  if (room.isSpaceRoom()) {
+                  // Roles live in the server's settings; channels outside a server keep their own.
+                  if (room.isSpaceRoom() || space) {
                     openSpaceSettings(
-                      room.roomId,
-                      space?.roomId,
-                      SpaceSettingsPage.PermissionsPage
+                      (room.isSpaceRoom() ? room.roomId : space?.roomId) ?? room.roomId,
+                      undefined,
+                      SpaceSettingsPage.RolesPage
                     );
                   } else {
                     openRoomSettings(room.roomId, space?.roomId, RoomSettingsPage.PermissionsPage);
@@ -70,7 +76,7 @@ export function CreatorChip() {
                   close();
                 }}
               >
-                <Text size="B300">Manage Powers</Text>
+                <Text size="B300">Manage Roles</Text>
               </MenuItem>
             </div>
           </Menu>
@@ -78,21 +84,23 @@ export function CreatorChip() {
       }
     >
       <Chip
-        variant="Success"
+        variant="SurfaceVariant"
         outlined
+        className={roleChip.className}
+        style={roleChip.style}
         radii="Pill"
         before={
           cords ? (
             <Icon size="50" src={Icons.ChevronBottom} />
           ) : (
-            <PowerColorBadge color={tag.color} />
+            <PowerColorBadge color={tagColor} gradient={tagGradient} />
           )
         }
         after={tagIconSrc ? <PowerIcon size="50" iconSrc={tagIconSrc} /> : undefined}
         onClick={open}
         aria-pressed={!!cords}
       >
-        <Text size="B300" truncate>
+        <Text size="B300" truncate style={roleNameStyle(tagColor, tagGradient)}>
           {tag.name}
         </Text>
       </Chip>

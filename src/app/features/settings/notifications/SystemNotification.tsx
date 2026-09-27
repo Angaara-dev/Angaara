@@ -10,6 +10,7 @@ import { getNotificationState, usePermissionState } from '../../../hooks/usePerm
 import { useEmailNotifications } from '../../../hooks/useEmailNotifications';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
+import { BRAND_NAME } from '../../../brand';
 
 function EmailNotification() {
   const mx = useMatrixClient();
@@ -27,7 +28,7 @@ function EmailNotification() {
             device_display_name: email,
             lang: 'en',
             data: {
-              brand: 'Cinny',
+              brand: BRAND_NAME,
             },
             append: true,
           });
@@ -89,7 +90,7 @@ export function SystemNotification() {
   const [showNotifications, setShowNotifications] = useSetting(settingsAtom, 'showNotifications');
   const [isNotificationSounds, setIsNotificationSounds] = useSetting(
     settingsAtom,
-    'isNotificationSounds'
+    'notificationSounds'
   );
 
   const requestNotificationPermission = () => {
@@ -141,7 +142,7 @@ export function SystemNotification() {
       >
         <SettingTile
           title="Notification Sound"
-          description="Play sound when new message arrive."
+          description="Play a sound when new messages arrive."
           after={<Switch value={isNotificationSounds} onChange={setIsNotificationSounds} />}
         />
       </SequenceCard>

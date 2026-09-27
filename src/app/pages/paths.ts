@@ -20,6 +20,7 @@ export type ResetPasswordPathSearchParams = {
 export const RESET_PASSWORD_PATH = '/reset-password/:server?/';
 
 export const _CREATE_PATH = 'create/';
+export const _FRIENDS_PATH = 'friends/';
 export const _JOIN_PATH = 'join/';
 export const _LOBBY_PATH = 'lobby/';
 /**
@@ -33,8 +34,12 @@ export type _SearchPathSearchParams = {
   order?: string;
   rooms?: string;
   senders?: string;
+  // "file": only messages with an attachment (image, video or file).
+  has?: string;
 };
 export const _SEARCH_PATH = 'search/';
+export type DeveloperSection = 'bot' | 'build' | 'repos' | 'docs';
+export const _DEVELOPER_PATH = 'developer/:section?/';
 
 export type _RoomSearchParams = {
   /* comma separated string of servers */
@@ -46,6 +51,7 @@ export const HOME_PATH = '/home/';
 export const HOME_CREATE_PATH = `/home/${_CREATE_PATH}`;
 export const HOME_JOIN_PATH = `/home/${_JOIN_PATH}`;
 export const HOME_SEARCH_PATH = `/home/${_SEARCH_PATH}`;
+export const HOME_DEVELOPER_PATH = `/home/${_DEVELOPER_PATH}`;
 export const HOME_ROOM_PATH = `/home/${_ROOM_PATH}`;
 
 export const DIRECT_PATH = '/direct/';
@@ -53,6 +59,7 @@ export type DirectCreateSearchParams = {
   userId?: string;
 };
 export const DIRECT_CREATE_PATH = `/direct/${_CREATE_PATH}`;
+export const DIRECT_FRIENDS_PATH = `/direct/${_FRIENDS_PATH}`;
 export const DIRECT_ROOM_PATH = `/direct/${_ROOM_PATH}`;
 
 export const SPACE_PATH = '/:spaceIdOrAlias/';

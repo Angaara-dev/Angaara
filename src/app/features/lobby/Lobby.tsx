@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, useCallback, useMemo, useRef, useState } from 'react';
+import React, { MouseEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Chip, Icon, IconButton, Icons, Line, Scroll, Spinner, Text, config } from 'folds';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAtom, useAtomValue } from 'jotai';
@@ -52,6 +52,7 @@ import { roomToParentsAtom } from '../../state/room/roomToParents';
 import { AccountDataEvent } from '../../../types/matrix/accountData';
 import { useRoomMembers } from '../../hooks/useRoomMembers';
 import { SpaceHierarchy } from './SpaceHierarchy';
+import { SpaceOnboarding, shouldOnboardSpace, spaceOnboardingAtom } from './SpaceOnboarding';
 import { useGetRoom } from '../../hooks/useGetRoom';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { getRoomPermissionsAPI } from '../../hooks/useRoomPermissions';
@@ -427,8 +428,16 @@ export function Lobby() {
     [mx, sidebarItems, sidebarSpaces]
   );
 
+  const [onboardingSpaceId, setOnboardingSpaceId] = useAtom(spaceOnboardingAtom);
+  useEffect(() => {
+    if (shouldOnboardSpace(space)) setOnboardingSpaceId(space.roomId);
+  }, [space, setOnboardingSpaceId]);
+
   return (
     <PowerLevelsContextProvider value={spacePowerLevels}>
+      {onboardingSpaceId === space.roomId && (
+        <SpaceOnboarding space={space} requestClose={() => setOnboardingSpaceId(undefined)} />
+      )}
       <Box grow="Yes">
         <Page>
           <LobbyHeader

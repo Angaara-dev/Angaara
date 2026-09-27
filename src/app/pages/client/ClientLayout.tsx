@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Box } from 'folds';
+import { SwipeNavigation } from '../../components/SwipeNavigation';
 
 type ClientLayoutProps = {
   nav: ReactNode;
@@ -8,8 +9,7 @@ type ClientLayoutProps = {
 export function ClientLayout({ nav, children }: ClientLayoutProps) {
   return (
     <Box grow="Yes">
-      <Box shrink="No">{nav}</Box>
-      <Box grow="Yes">{children}</Box>
+      <SwipeNavigation nav={nav}>{children}</SwipeNavigation>
     </Box>
   );
 }

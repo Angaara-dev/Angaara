@@ -1,4 +1,4 @@
-import React, { FormEventHandler, useCallback, useEffect, useState } from 'react';
+import React, { FormEventHandler, useCallback, useEffect, useRef, useState } from 'react';
 import { MatrixError, Room, JoinRule } from 'matrix-js-sdk';
 import {
   Box,
@@ -42,6 +42,12 @@ import {
 import { RoomType } from '../../../types/matrix/room';
 import { CreateRoomTypeSelector } from '../../components/create-room/CreateRoomTypeSelector';
 import { getRoomIconSrc } from '../../utils/room';
+import {
+  PUBLIC_ROOM_NAME,
+  waitForEncryptedRoom,
+  writeHiddenProfile,
+} from '../../../client/hiddenProfile';
+import { EmojiInsertButton } from '../../components/EmojiInsertButton';
 
 const getCreateRoomAccessToIcon = (access: CreateRoomAccess, type?: CreateRoomType) => {
   const isVoiceRoom = type === CreateRoomType.VoiceRoom;
@@ -92,6 +98,7 @@ export function CreateRoomForm({
     useAdditionalCreators();
   const [federation, setFederation] = useState(true);
   const [encryption, setEncryption] = useState(false);
+  const [hideName, setHideName] = useState(false);
   const [knock, setKnock] = useState(false);
   const [advance, setAdvance] = useState(false);
 
@@ -106,13 +113,35 @@ export function CreateRoomForm({
     selectRoomVersion(version);
   };
 
-  const [createState, create] = useAsyncCallback<string, Error | MatrixError, [CreateRoomData]>(
-    useCallback((data) => createRoom(mx, data), [mx])
+  const [createState, create] = useAsyncCallback<
+    string,
+    Error | MatrixError,
+    [CreateRoomData, { name: string; topic: string }?]
+  >(
+    useCallback(
+      async (data, hidden) => {
+        const roomId = await createRoom(mx, data);
+        if (hidden) {
+          // The server only ever got the placeholder; the real name is sealed once keys are ready.
+          try {
+            const room = await waitForEncryptedRoom(mx, roomId);
+            await writeHiddenProfile(mx, room, hidden);
+          } catch {
+            throw new Error(
+              "The room was created, but its hidden name couldn't be saved. Set it in the room's settings."
+            );
+          }
+        }
+        return roomId;
+      },
+      [mx]
+    )
   );
   const loading = createState.status === AsyncStatus.Loading;
   const error = createState.status === AsyncStatus.Error ? createState.error : undefined;
   const disabled = createState.status === AsyncStatus.Loading;
 
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
     evt.preventDefault();
     if (disabled) return;
@@ -139,19 +168,23 @@ export function CreateRoomForm({
     let roomType: RoomType | undefined;
     if (type === CreateRoomType.VoiceRoom) roomType = RoomType.Call;
 
-    create({
-      version: selectedRoomVersion,
-      type: roomType,
-      parent: space,
-      access,
-      name: roomName,
-      topic: roomTopic || undefined,
-      aliasLocalPart: publicRoom ? aliasLocalPart : undefined,
-      encryption: publicRoom ? false : encryption,
-      knock: roomKnock,
-      allowFederation: federation,
-      additionalCreators: allowAdditionalCreators ? additionalCreators : undefined,
-    }).then((roomId) => {
+    const hidden = !publicRoom && encryption && hideName;
+    create(
+      {
+        version: selectedRoomVersion,
+        type: roomType,
+        parent: space,
+        access,
+        name: hidden ? PUBLIC_ROOM_NAME : roomName,
+        topic: hidden ? undefined : roomTopic || undefined,
+        aliasLocalPart: publicRoom ? aliasLocalPart : undefined,
+        encryption: publicRoom ? false : encryption,
+        knock: roomKnock,
+        allowFederation: federation,
+        additionalCreators: allowAdditionalCreators ? additionalCreators : undefined,
+      },
+      hidden ? { name: roomName, topic: roomTopic ?? '' } : undefined
+    ).then((roomId) => {
       if (alive()) {
         onCreate?.(roomId);
       }
@@ -186,6 +219,7 @@ export function CreateRoomForm({
         <Input
           required
           before={<Icon size="100" src={getCreateRoomAccessToIcon(access, type)} />}
+          ref={nameInputRef}
           name="nameInput"
           autoFocus
           size="500"
@@ -193,6 +227,7 @@ export function CreateRoomForm({
           radii="400"
           autoComplete="off"
           disabled={disabled}
+          after={<EmojiInsertButton inputRef={nameInputRef} disabled={disabled} />}
         />
       </Box>
       <Box shrink="No" direction="Column" gap="100">
@@ -256,6 +291,20 @@ export function CreateRoomForm({
                   />
                 }
               />
+              {encryption && (
+                <SettingTile
+                  title="Hide Name and Topic"
+                  description={`Encrypt the name and topic so the server can't read them. Other Matrix apps show "${PUBLIC_ROOM_NAME}".`}
+                  after={
+                    <Switch
+                      variant="Primary"
+                      value={hideName}
+                      onChange={setHideName}
+                      disabled={disabled}
+                    />
+                  }
+                />
+              )}
             </SequenceCard>
             {advance && (allowKnock || allowKnockRestricted) && (
               <SequenceCard

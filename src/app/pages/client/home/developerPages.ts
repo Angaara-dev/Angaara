@@ -1,0 +1,11 @@
+import { Icons, IconSrc } from 'folds';
+import { DeveloperSection } from '../../paths';
+
+// Kept apart from DeveloperTools.tsx so the sidebar doesn't pull in the lazy-loaded pages.
+export const DEVELOPER_PAGES: Record<DeveloperSection, { title: string; icon: IconSrc }> = {
+  bot: { title: 'Your Bot', icon: Icons.User },
+  build: { title: 'Build Tools', icon: Icons.Terminal },
+  // Only listed in the sidebar once a GitHub repo is connected.
+  repos: { title: 'Linked Developer Repos', icon: Icons.Link },
+  docs: { title: 'Docs', icon: Icons.File },
+};

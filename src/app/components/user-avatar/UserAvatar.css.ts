@@ -7,6 +7,10 @@ export const UserAvatar = style({
   textTransform: 'capitalize',
 
   selectors: {
+    // Every user avatar is a circle, whatever shape its container uses.
+    '&&': {
+      borderRadius: '50%',
+    },
     '&[data-image-loaded="true"]': {
       backgroundColor: 'transparent',
     },

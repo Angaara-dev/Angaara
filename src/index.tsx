@@ -17,8 +17,18 @@ import App from './app/pages/App';
 import './app/i18n';
 import { pushSessionToSW } from './sw-session';
 import { getFallbackSession } from './app/state/sessions';
+import { installBackClosesPanels } from './app/utils/backClosesPanels';
+import { installPageShiftGuard } from './app/utils/pageShiftGuard';
 
 document.body.classList.add(configClass, varsClass);
+
+// Hides the browser's right-click menu like a desktop app, but keeps it for typing and copying.
+document.addEventListener('contextmenu', (evt) => {
+  const target = evt.target as HTMLElement | null;
+  if (target?.closest('input, textarea, [contenteditable="true"]')) return;
+  if (window.getSelection()?.toString()) return;
+  evt.preventDefault();
+});
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
@@ -43,6 +53,23 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+
+// A deploy replaces old chunks, so a tab still on the old build reloads to get the new one.
+// Once per 10s at most, so a chunk that's really missing can't cause a reload loop.
+window.addEventListener('vite:preloadError', (evt) => {
+  const KEY = 'angaara.chunkReload';
+  try {
+    if (Date.now() - Number(sessionStorage.getItem(KEY) ?? 0) < 10000) return;
+    sessionStorage.setItem(KEY, String(Date.now()));
+  } catch {
+    return;
+  }
+  evt.preventDefault();
+  window.location.reload();
+});
+
+installPageShiftGuard();
+installBackClosesPanels();
 
 const mountApp = () => {
   const rootContainer = document.getElementById('root');

@@ -5,3 +5,6 @@ devAssets
 
 .DS_Store
 .idea
+# Rust bot SDK build output and local bot data
+bot-sdk/target/
+bot-sdk/**/bot-data/

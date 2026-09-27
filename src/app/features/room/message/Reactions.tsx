@@ -1,27 +1,15 @@
 import React, { MouseEventHandler, useCallback, useState } from 'react';
-import {
-  Box,
-  Modal,
-  Overlay,
-  OverlayBackdrop,
-  OverlayCenter,
-  Text,
-  Tooltip,
-  TooltipProvider,
-  as,
-  toRem,
-} from 'folds';
+import { Box, Text, Tooltip, TooltipProvider, as, toRem } from 'folds';
 import classNames from 'classnames';
 import { Room } from 'matrix-js-sdk';
 import { type Relations } from 'matrix-js-sdk/lib/models/relations';
-import FocusTrap from 'focus-trap-react';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { factoryEventSentBy } from '../../../utils/matrix';
 import { Reaction, ReactionTooltipMsg } from '../../../components/message';
 import { useRelations } from '../../../hooks/useRelations';
 import * as css from './styles.css';
-import { ReactionViewer } from '../reaction-viewer';
-import { stopPropagation } from '../../../utils/keyboard';
+import { ReactionViewerDialog } from '../reaction-viewer';
+import { usePhone } from '../../../hooks/useScreenSize';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 
 export type ReactionsProps = {
@@ -35,6 +23,8 @@ export const Reactions = as<'div', ReactionsProps>(
   ({ className, room, relations, mEventId, canSendReaction, onReactionToggle, ...props }, ref) => {
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
+    // Phones have no hover, so tooltips just get stuck on screen after a long-press.
+    const phone = usePhone();
     const [viewer, setViewer] = useState<boolean | string>(false);
     const myUserId = mx.getUserId();
     const reactions = useRelations(
@@ -64,6 +54,23 @@ export const Reactions = as<'div', ReactionsProps>(
           const myREvent = myUserId ? rEvents.find(factoryEventSentBy(myUserId)) : undefined;
           const isPressed = !!myREvent?.getRelation();
 
+          const chip = (targetRef?: React.Ref<HTMLButtonElement>) => (
+            <Reaction
+              ref={targetRef}
+              data-reaction-key={key}
+              aria-pressed={isPressed}
+              key={key}
+              mx={mx}
+              reaction={key}
+              count={events.size}
+              onClick={canSendReaction ? () => onReactionToggle(mEventId, key) : undefined}
+              onContextMenu={handleViewReaction}
+              aria-disabled={!canSendReaction}
+              useAuthentication={useAuthentication}
+            />
+          );
+          if (phone) return chip();
+
           return (
             <TooltipProvider
               key={key}
@@ -76,53 +83,18 @@ export const Reactions = as<'div', ReactionsProps>(
                 </Tooltip>
               }
             >
-              {(targetRef) => (
-                <Reaction
-                  ref={targetRef}
-                  data-reaction-key={key}
-                  aria-pressed={isPressed}
-                  key={key}
-                  mx={mx}
-                  reaction={key}
-                  count={events.size}
-                  onClick={canSendReaction ? () => onReactionToggle(mEventId, key) : undefined}
-                  onContextMenu={handleViewReaction}
-                  aria-disabled={!canSendReaction}
-                  useAuthentication={useAuthentication}
-                />
-              )}
+              {(targetRef) => chip(targetRef)}
             </TooltipProvider>
           );
         })}
         {reactions.length > 0 && (
-          <Overlay
-            onContextMenu={(evt: any) => {
-              evt.stopPropagation();
-            }}
+          <ReactionViewerDialog
+            room={room}
+            relations={relations}
+            initialKey={typeof viewer === 'string' ? viewer : undefined}
             open={!!viewer}
-            backdrop={<OverlayBackdrop />}
-          >
-            <OverlayCenter>
-              <FocusTrap
-                focusTrapOptions={{
-                  initialFocus: false,
-                  returnFocusOnDeactivate: false,
-                  onDeactivate: () => setViewer(false),
-                  clickOutsideDeactivates: true,
-                  escapeDeactivates: stopPropagation,
-                }}
-              >
-                <Modal variant="Surface" size="300">
-                  <ReactionViewer
-                    room={room}
-                    initialKey={typeof viewer === 'string' ? viewer : undefined}
-                    relations={relations}
-                    requestClose={() => setViewer(false)}
-                  />
-                </Modal>
-              </FocusTrap>
-            </OverlayCenter>
-          </Overlay>
+            onClose={() => setViewer(false)}
+          />
         )}
       </Box>
     );

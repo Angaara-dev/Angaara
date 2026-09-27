@@ -68,10 +68,11 @@ export type MessageSearchParams = {
   order?: string;
   rooms?: string[];
   senders?: string[];
+  hasFile?: boolean;
 };
 export const useMessageSearch = (params: MessageSearchParams) => {
   const mx = useMatrixClient();
-  const { term, order, rooms, senders } = params;
+  const { term, order, rooms, senders, hasFile } = params;
 
   const searchMessages = useCallback(
     async (nextBatch?: string) => {
@@ -94,6 +95,7 @@ export const useMessageSearch = (params: MessageSearchParams) => {
               limit,
               rooms,
               senders,
+              ...(hasFile ? { contains_url: true } : {}),
             },
             include_state: false,
             order_by: order as SearchOrderBy.Recent,
@@ -108,7 +110,7 @@ export const useMessageSearch = (params: MessageSearchParams) => {
       });
       return parseSearchResult(r);
     },
-    [mx, term, order, rooms, senders]
+    [mx, term, order, rooms, senders, hasFile]
   );
 
   return searchMessages;

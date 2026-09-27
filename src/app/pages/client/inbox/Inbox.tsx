@@ -11,6 +11,7 @@ import { UnreadBadge } from '../../../components/unread-badge';
 import { allInvitesAtom } from '../../../state/room-list/inviteList';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
+import { UserPanel } from '../UserPanel';
 
 function InvitesNavItem() {
   const invitesSelected = useInboxInvitesSelected();
@@ -82,6 +83,7 @@ export function Inbox() {
           </NavCategory>
         </Box>
       </PageNavContent>
+      <UserPanel />
     </PageNav>
   );
 }

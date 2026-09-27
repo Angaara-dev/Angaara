@@ -23,6 +23,7 @@ import {
 import * as css from './style.css';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
+import { useRevokeObjectURL } from '../../../hooks/useObjectURL';
 import { bytesToSize, millisecondsToMinutesAndSeconds } from '../../../utils/common';
 import {
   decryptFile,
@@ -91,6 +92,7 @@ export const VideoContent = as<'div', VideoContentProps>(
         return URL.createObjectURL(fileContent);
       }, [mx, url, useAuthentication, mimeType, encInfo])
     );
+    useRevokeObjectURL(srcState.status === AsyncStatus.Success ? srcState.data : undefined);
 
     const handleLoad = () => {
       setLoad(true);

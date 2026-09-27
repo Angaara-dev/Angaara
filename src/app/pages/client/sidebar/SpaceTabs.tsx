@@ -61,7 +61,7 @@ import {
 import { RoomUnreadProvider, RoomsUnreadProvider } from '../../../components/RoomUnreadProvider';
 import { useSelectedSpace } from '../../../hooks/router/useSelectedSpace';
 import { UnreadBadge } from '../../../components/unread-badge';
-import { getCanonicalAliasOrRoomId, isRoomAlias } from '../../../utils/matrix';
+import { getCanonicalAliasOrRoomId, isRoomAlias, mxcUrlToHttp } from '../../../utils/matrix';
 import { RoomAvatar } from '../../../components/room-avatar';
 import { nameInitials, randomStr } from '../../../utils/common';
 import {
@@ -86,6 +86,7 @@ import { stopPropagation } from '../../../utils/keyboard';
 import { getMatrixToRoom } from '../../../plugins/matrix-to';
 import { getViaServers } from '../../../plugins/via-servers';
 import { getRoomAvatarUrl } from '../../../utils/room';
+import { LEVEL_ANIMATED_ICON, useSpaceLevel } from '../../../hooks/useSpaceLevel';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
@@ -209,13 +210,26 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
             </Text>
           </MenuItem>
           <MenuItem
+            onClick={() => {
+              copyToClipboard(room.roomId);
+              requestClose();
+            }}
+            size="300"
+            after={<Icon size="100" src={Icons.Hash} />}
+            radii="300"
+          >
+            <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+              Copy Server ID
+            </Text>
+          </MenuItem>
+          <MenuItem
             onClick={handleRoomSettings}
             size="300"
             after={<Icon size="100" src={Icons.Setting} />}
             radii="300"
           >
             <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-              Space Settings
+              Server Settings
             </Text>
           </MenuItem>
         </Box>
@@ -421,6 +435,14 @@ function SpaceTab({
 
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
+  // Thumbnails are still images, so icons only animate once the space unlocks the full file.
+  const { level } = useSpaceLevel(space);
+  const avatarMxc = space.getMxcAvatarUrl();
+  const iconUrl =
+    (level >= LEVEL_ANIMATED_ICON && avatarMxc
+      ? mxcUrlToHttp(mx, avatarMxc, useAuthentication)
+      : getRoomAvatarUrl(mx, space, 96, useAuthentication)) ?? undefined;
+
   const handleContextMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     evt.preventDefault();
     const cords = evt.currentTarget.getBoundingClientRect();
@@ -454,7 +476,7 @@ function SpaceTab({
               >
                 <RoomAvatar
                   roomId={space.roomId}
-                  src={getRoomAvatarUrl(mx, space, 96, useAuthentication) ?? undefined}
+                  src={iconUrl}
                   alt={space.name}
                   renderFallback={() => (
                     <Text size={folder ? 'H6' : 'H4'}>{nameInitials(space.name, 2)}</Text>

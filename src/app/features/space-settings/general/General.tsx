@@ -10,9 +10,16 @@ import {
   RoomPublishedAddresses,
   RoomPublish,
   RoomUpgrade,
+  RoomCommands,
 } from '../../common-settings/general';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../../hooks/useRoomPermissions';
+import { useMatrixClient } from '../../../hooks/useMatrixClient';
+import { StateEvent } from '../../../../types/matrix/room';
+import { SpaceBanner } from './SpaceBanner';
+import { SpaceLevelCard } from './SpaceLevel';
+import { SpacePerks } from './SpacePerks';
+import { SpaceAddress } from './SpaceAddress';
 
 type GeneralProps = {
   requestClose: () => void;
@@ -22,6 +29,10 @@ export function General({ requestClose }: GeneralProps) {
   const powerLevels = usePowerLevels(room);
   const creators = useRoomCreators(room);
   const permissions = useRoomPermissions(creators, powerLevels);
+  const me = useMatrixClient().getSafeUserId();
+  // Settings you can't change are hidden, not greyed out.
+  const can = (type: StateEvent) => permissions.stateEvent(type, me);
+  const canOptions = can(StateEvent.RoomJoinRules) || can(StateEvent.RoomCanonicalAlias);
 
   return (
     <Page>
@@ -44,20 +55,39 @@ export function General({ requestClose }: GeneralProps) {
           <PageContent>
             <Box direction="Column" gap="700">
               <RoomProfile permissions={permissions} />
+              <SpaceAddress canEdit={can(StateEvent.RoomCanonicalAlias)} />
+              {can(StateEvent.AngaaraRoomBanner) && <SpaceBanner permissions={permissions} />}
               <Box direction="Column" gap="100">
-                <Text size="L400">Options</Text>
-                <RoomJoinRules permissions={permissions} />
-                <RoomPublish permissions={permissions} />
+                <Text size="L400">Server Level</Text>
+                <SpaceLevelCard />
+                <SpacePerks permissions={permissions} />
               </Box>
-              <Box direction="Column" gap="100">
-                <Text size="L400">Addresses</Text>
-                <RoomPublishedAddresses permissions={permissions} />
-                <RoomLocalAddresses permissions={permissions} />
-              </Box>
-              <Box direction="Column" gap="100">
-                <Text size="L400">Advanced Options</Text>
-                <RoomUpgrade permissions={permissions} requestClose={requestClose} />
-              </Box>
+              {canOptions && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Options</Text>
+                  {can(StateEvent.RoomJoinRules) && <RoomJoinRules permissions={permissions} />}
+                  {can(StateEvent.RoomCanonicalAlias) && <RoomPublish permissions={permissions} />}
+                </Box>
+              )}
+              {can(StateEvent.AngaaraDisabledCommands) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Commands</Text>
+                  <RoomCommands permissions={permissions} />
+                </Box>
+              )}
+              {can(StateEvent.RoomCanonicalAlias) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Addresses</Text>
+                  <RoomPublishedAddresses permissions={permissions} />
+                  <RoomLocalAddresses permissions={permissions} />
+                </Box>
+              )}
+              {can(StateEvent.RoomTombstone) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Advanced Options</Text>
+                  <RoomUpgrade permissions={permissions} requestClose={requestClose} />
+                </Box>
+              )}
             </Box>
           </PageContent>
         </Scroll>

@@ -7,6 +7,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 import { ClientConfigLoader } from '../components/ClientConfigLoader';
 import { ClientConfigProvider } from '../hooks/useClientConfig';
+import { setGrantedSpaces } from '../hooks/useSpaceLevel';
 import { ConfigConfigError, ConfigConfigLoading } from './ConfigConfig';
 import { FeatureCheck } from './FeatureCheck';
 import { createRouter } from './Router';
@@ -33,16 +34,24 @@ function App() {
                   <ConfigConfigError error={err} retry={retry} ignore={ignore} />
                 )}
               >
-                {(clientConfig) => (
-                  <ClientConfigProvider value={clientConfig}>
-                    <QueryClientProvider client={queryClient}>
-                      <JotaiProvider>
-                        <RouterProvider router={createRouter(clientConfig, screenSize)} />
-                      </JotaiProvider>
-                      <ReactQueryDevtools initialIsOpen={false} />
-                    </QueryClientProvider>
-                  </ClientConfigProvider>
-                )}
+                {(clientConfig) => {
+                  setGrantedSpaces(
+                    clientConfig.fullAccessSpaces,
+                    Object.keys(clientConfig.badges ?? {}).filter((id) =>
+                      clientConfig.badges?.[id].includes('founder')
+                    )
+                  );
+                  return (
+                    <ClientConfigProvider value={clientConfig}>
+                      <QueryClientProvider client={queryClient}>
+                        <JotaiProvider>
+                          <RouterProvider router={createRouter(clientConfig, screenSize)} />
+                        </JotaiProvider>
+                        <ReactQueryDevtools initialIsOpen={false} />
+                      </QueryClientProvider>
+                    </ClientConfigProvider>
+                  );
+                }}
               </ClientConfigLoader>
             </FeatureCheck>
           </ScreenSizeProvider>

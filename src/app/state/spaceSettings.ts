@@ -3,6 +3,7 @@ import { atom } from 'jotai';
 export enum SpaceSettingsPage {
   GeneralPage,
   MembersPage,
+  RolesPage,
   PermissionsPage,
   EmojisStickersPage,
   DeveloperToolsPage,

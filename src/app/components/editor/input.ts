@@ -139,6 +139,13 @@ const getInlineElement = (node: ChildNode, processText: ProcessTextCallback): In
   }
 
   if (isTag(node)) {
+    // Maths goes back to {latex}...{/latex} so edits re-send it as maths.
+    const maths = node.attribs['data-mx-maths'];
+    if (typeof maths === 'string' && maths.trim()) {
+      const tex = maths.replace(/\s*\n\s*/g, ' ');
+      return [{ text: `{latex}${tex}{/latex}` }];
+    }
+
     const markType = getInlineNodeMarkType(node);
     if (markType) {
       return getInlineMarkElement(markType, node, (child) => {

@@ -1,5 +1,7 @@
 import { Room } from 'matrix-js-sdk';
 import { useMemo } from 'react';
+import { useAtomValue } from 'jotai';
+import { roomToParentsAtom } from '../state/room/roomToParents';
 import { IPowerLevels } from './usePowerLevels';
 import { useStateEvent } from './useStateEvent';
 import { MemberPowerTag, StateEvent } from '../../types/matrix/room';
@@ -56,7 +58,7 @@ const DEFAULT_TAGS: PowerLevelTags = {
   },
   101: {
     name: 'Founder',
-    color: '#0000ff',
+    color: '#9b5cff',
   },
   100: {
     name: 'Admin',
@@ -87,8 +89,22 @@ const generateFallbackTag = (powerLevelTags: PowerLevelTags, power: number): Mem
   };
 };
 
+// A channel without roles of its own uses its server's.
+const useParentSpace = (room: Room): Room | undefined => {
+  const roomToParents = useAtomValue(roomToParentsAtom);
+  if (room.isSpaceRoom()) return undefined;
+  const parents = Array.from(roomToParents.get(room.roomId) ?? []);
+  return (
+    parents.map((id) => room.client.getRoom(id)).find((parent) => parent?.isSpaceRoom()) ??
+    undefined
+  );
+};
+
 export const usePowerLevelTags = (room: Room, powerLevels: IPowerLevels): PowerLevelTags => {
-  const tagsEvent = useStateEvent(room, StateEvent.PowerLevelTags);
+  const parent = useParentSpace(room);
+  const ownEvent = useStateEvent(room, StateEvent.PowerLevelTags);
+  const parentEvent = useStateEvent(parent ?? room, StateEvent.PowerLevelTags);
+  const tagsEvent = ownEvent ?? (parent ? parentEvent : undefined);
 
   const powerLevelTags: PowerLevelTags = useMemo(() => {
     const content = tagsEvent?.getContent<PowerLevelTags>();

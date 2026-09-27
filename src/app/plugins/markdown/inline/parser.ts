@@ -1,6 +1,7 @@
 import {
   BoldRule,
   CodeRule,
+  LatexRule,
   EscapeRule,
   ItalicRule1,
   ItalicRule2,
@@ -33,6 +34,8 @@ export const parseInlineMD: InlineMDParser = (text) => {
   if (text === '') return text;
   let result: string | undefined;
   if (!result) result = runInlineRule(text, CodeRule, parseInlineMD);
+  // Maths before the other rules, so `_` and `*` inside a formula stay literal.
+  if (!result) result = runInlineRule(text, LatexRule, parseInlineMD);
 
   if (!result) result = runInlineRules(text, LeveledRules, parseInlineMD);
 

@@ -11,7 +11,7 @@ import {
   Text,
   TextArea,
 } from 'folds';
-import React, { FormEventHandler, useCallback, useMemo, useState } from 'react';
+import React, { FormEventHandler, useCallback, useMemo, useRef, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import Linkify from 'linkify-react';
 import classNames from 'classnames';
@@ -20,11 +20,13 @@ import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../../room-settings/styles.css';
 import { useRoom } from '../../../hooks/useRoom';
 import {
+  useHiddenProfile,
   useRoomAvatar,
   useRoomJoinRule,
   useRoomName,
   useRoomTopic,
 } from '../../../hooks/useRoomMeta';
+import { writeHiddenProfile } from '../../../../client/hiddenProfile';
 import { mDirectAtom } from '../../../state/mDirectList';
 import { BreakWord, LineClamp3 } from '../../../styles/Text.css';
 import { LINKIFY_OPTS } from '../../../plugins/react-custom-html-parser';
@@ -37,9 +39,11 @@ import { CompactUploadCardRenderer } from '../../../components/upload-card';
 import { useObjectURL } from '../../../hooks/useObjectURL';
 import { createUploadAtom, UploadSuccess } from '../../../state/upload';
 import { useFilePicker } from '../../../hooks/useFilePicker';
+import { ROOM_AVATAR_CROP, useImageCropper } from '../../../components/image-cropper';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useAlive } from '../../../hooks/useAlive';
 import { RoomPermissionsAPI } from '../../../hooks/useRoomPermissions';
+import { EmojiInsertButton } from '../../../components/EmojiInsertButton';
 
 type RoomProfileEditProps = {
   canEditAvatar: boolean;
@@ -64,6 +68,7 @@ export function RoomProfileEdit({
   const alive = useAlive();
   const useAuthentication = useMediaAuthentication();
   const joinRule = useRoomJoinRule(room);
+  const hidden = useHiddenProfile(room);
   const [roomAvatar, setRoomAvatar] = useState(avatar);
 
   const avatarUrl = roomAvatar
@@ -78,7 +83,8 @@ export function RoomProfileEdit({
     return undefined;
   }, [imageFile]);
 
-  const pickFile = useFilePicker(setImageFile, false);
+  const { open: cropIcon, cropper } = useImageCropper(ROOM_AVATAR_CROP, setImageFile);
+  const pickFile = useFilePicker(cropIcon, false);
 
   const handleRemoveUpload = useCallback(() => {
     setImageFile(undefined);
@@ -97,6 +103,15 @@ export function RoomProfileEdit({
             url: roomAvatarMxc,
           });
         }
+        if (hidden && (roomName !== undefined || roomTopic !== undefined)) {
+          // Hidden rooms keep the name and topic in the encrypted profile, never in state.
+          if (!hidden.profile) throw new Error("The hidden name hasn't loaded on this device yet.");
+          await writeHiddenProfile(mx, room, {
+            name: roomName ?? hidden.profile.name,
+            topic: roomTopic ?? hidden.profile.topic,
+          });
+          return;
+        }
         if (roomName !== undefined) {
           await mx.sendStateEvent(room.roomId, StateEvent.RoomName as any, { name: roomName });
         }
@@ -104,11 +119,12 @@ export function RoomProfileEdit({
           await mx.sendStateEvent(room.roomId, StateEvent.RoomTopic as any, { topic: roomTopic });
         }
       },
-      [mx, room.roomId]
+      [mx, room, hidden]
     )
   );
   const submitting = submitState.status === AsyncStatus.Loading;
 
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
     evt.preventDefault();
     if (uploadingAvatar) return;
@@ -141,6 +157,7 @@ export function RoomProfileEdit({
       <Box gap="400">
         <Box grow="Yes" direction="Column" gap="100">
           <Text size="L400">Avatar</Text>
+          {cropper}
           {uploadAtom ? (
             <Box gap="200" direction="Column">
               <CompactUploadCardRenderer
@@ -212,11 +229,13 @@ export function RoomProfileEdit({
       <Box direction="Inherit" gap="100">
         <Text size="L400">Name</Text>
         <Input
+          ref={nameInputRef}
           name="nameInput"
           defaultValue={name}
           variant="Secondary"
           radii="300"
           readOnly={!canEditName || submitting}
+          after={canEditName && <EmojiInsertButton inputRef={nameInputRef} disabled={submitting} />}
         />
       </Box>
       <Box direction="Inherit" gap="100">

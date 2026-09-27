@@ -338,6 +338,8 @@ export const useVirtualPaginator = <TScrollElement extends HTMLElement>(
     useCallback(
       () => ({
         root: getScrollElement(),
+        // Start loading about a screen early, so skeletons are rarely seen.
+        rootMargin: '800px 0px',
       }),
       [getScrollElement]
     )

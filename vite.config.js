@@ -35,6 +35,10 @@ const copyFiles = {
       dest: '',
     },
     {
+      src: 'public/bot-sso.html',
+      dest: '',
+    },
+    {
       src: 'public/res/android',
       dest: 'public/',
     },
@@ -126,6 +130,10 @@ export default defineConfig({
         }),
       ],
     },
+  },
+  // Module workers: the matrix-js-sdk sync-store worker needs code splitting.
+  worker: {
+    format: 'es',
   },
   build: {
     outDir: 'dist',

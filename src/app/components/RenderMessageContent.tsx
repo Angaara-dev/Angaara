@@ -23,6 +23,9 @@ import {
   ThumbnailContent,
   UnsupportedContent,
   VideoContent,
+  AngaaraEmbed,
+  embedLeadText,
+  parseEmbed,
 } from './message';
 import { UrlPreviewCard, UrlPreviewHolder } from './url-preview';
 import { Image, MediaControl, Video } from './media';
@@ -31,6 +34,8 @@ import { PdfViewer } from './Pdf-viewer';
 import { TextViewer } from './text-viewer';
 import { testMatrixTo } from '../plugins/matrix-to';
 import { IImageContent } from '../../types/matrix/common';
+import { Sha256Message } from './message/Sha256Message';
+import { SHA256_MESSAGE_KEY } from '../utils/sha256';
 
 type RenderMessageContentProps = {
   displayName: string;
@@ -128,11 +133,34 @@ export function RenderMessageContent({
     </>
   );
 
-  if (msgType === MsgType.Text) {
+  // Bot embeds replace their text fallback; any lead text still renders above the card.
+  const renderWithEmbed = (render: (content: Record<string, unknown>) => JSX.Element) => {
+    const content = getContent<Record<string, unknown>>();
+    const embed = parseEmbed(content);
+    if (!embed || typeof content.body !== 'string') return render(content);
+    const lead = embedLeadText(content.body, embed);
     return (
+      <>
+        {lead && render({ msgtype: content.msgtype, body: lead })}
+        <AngaaraEmbed embed={embed} linkifyOpts={linkifyOpts} />
+      </>
+    );
+  };
+
+  if (msgType === MsgType.Text) {
+    const textContent = getContent<Record<string, unknown>>();
+    const { body } = textContent;
+    if (
+      textContent[SHA256_MESSAGE_KEY] === true &&
+      typeof body === 'string' &&
+      /^[0-9a-f]{64}$/.test(body)
+    ) {
+      return <Sha256Message hash={body} />;
+    }
+    return renderWithEmbed((content) => (
       <MText
         edited={edited}
-        content={getContent()}
+        content={content}
         renderBody={(props) => (
           <RenderBody
             {...props}
@@ -143,7 +171,7 @@ export function RenderMessageContent({
         )}
         renderUrlsPreview={urlPreview ? renderUrlsPreview : undefined}
       />
-    );
+    ));
   }
 
   if (msgType === MsgType.Emote) {
@@ -166,10 +194,10 @@ export function RenderMessageContent({
   }
 
   if (msgType === MsgType.Notice) {
-    return (
+    return renderWithEmbed((content) => (
       <MNotice
         edited={edited}
-        content={getContent()}
+        content={content}
         renderBody={(props) => (
           <RenderBody
             {...props}
@@ -180,7 +208,7 @@ export function RenderMessageContent({
         )}
         renderUrlsPreview={urlPreview ? renderUrlsPreview : undefined}
       />
-    );
+    ));
   }
 
   if (msgType === MsgType.Image) {

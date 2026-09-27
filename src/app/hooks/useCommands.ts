@@ -159,6 +159,7 @@ export enum Command {
   UnFlip = 'unflip',
   Delete = 'delete',
   Acl = 'acl',
+  Sha256 = 'sha256',
 }
 
 export type CommandContent = {
@@ -197,6 +198,11 @@ export const useCommands = (mx: MatrixClient, room: Room): CommandRecord => {
       [Command.UnFlip]: {
         name: Command.UnFlip,
         description: `Send ${UNFLIP} as message`,
+        exe: async () => undefined,
+      },
+      [Command.Sha256]: {
+        name: Command.Sha256,
+        description: 'Send your message as its SHA-256 hash. Good luck reading it',
         exe: async () => undefined,
       },
       [Command.StartDm]: {

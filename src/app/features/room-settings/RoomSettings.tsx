@@ -17,6 +17,7 @@ import { Permissions } from './permissions';
 import { RoomSettingsPage } from '../../state/roomSettings';
 import { useRoom } from '../../hooks/useRoom';
 import { DeveloperTools } from '../common-settings/developer-tools';
+import { useSettingsAccess } from '../../hooks/useSettingsAccess';
 
 type RoomSettingsMenuItem = {
   page: RoomSettingsPage;
@@ -79,7 +80,12 @@ export function RoomSettings({ initialPage, requestClose }: RoomSettingsProps) {
     if (initialPage) return initialPage;
     return screenSize === ScreenSize.Mobile ? undefined : RoomSettingsPage.GeneralPage;
   });
-  const menuItems = useRoomSettingsMenuItems();
+  const access = useSettingsAccess(room);
+  const menuItems = useRoomSettingsMenuItems().filter(
+    (item) =>
+      (item.page !== RoomSettingsPage.PermissionsPage || access.permissions) &&
+      (item.page !== RoomSettingsPage.EmojisStickersPage || access.emojis)
+  );
 
   const handlePageRequestClose = () => {
     if (screenSize === ScreenSize.Mobile) {

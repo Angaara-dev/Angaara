@@ -1,6 +1,7 @@
 import { generatePath, Path } from 'react-router-dom';
 import {
   DIRECT_CREATE_PATH,
+  DIRECT_FRIENDS_PATH,
   DIRECT_PATH,
   DIRECT_ROOM_PATH,
   EXPLORE_FEATURED_PATH,
@@ -11,6 +12,8 @@ import {
   HOME_PATH,
   HOME_ROOM_PATH,
   HOME_SEARCH_PATH,
+  HOME_DEVELOPER_PATH,
+  DeveloperSection,
   LOGIN_PATH,
   INBOX_INVITES_PATH,
   INBOX_NOTIFICATIONS_PATH,
@@ -91,6 +94,8 @@ export const getHomePath = (): string => HOME_PATH;
 export const getHomeCreatePath = (): string => HOME_CREATE_PATH;
 export const getHomeJoinPath = (): string => HOME_JOIN_PATH;
 export const getHomeSearchPath = (): string => HOME_SEARCH_PATH;
+export const getHomeDeveloperPath = (section: DeveloperSection): string =>
+  generatePath(HOME_DEVELOPER_PATH, { section });
 export const getHomeRoomPath = (roomIdOrAlias: string, eventId?: string): string => {
   const params = {
     roomIdOrAlias: encodeURIComponent(roomIdOrAlias),
@@ -102,6 +107,7 @@ export const getHomeRoomPath = (roomIdOrAlias: string, eventId?: string): string
 
 export const getDirectPath = (): string => DIRECT_PATH;
 export const getDirectCreatePath = (): string => DIRECT_CREATE_PATH;
+export const getDirectFriendsPath = (): string => DIRECT_FRIENDS_PATH;
 export const getDirectRoomPath = (roomIdOrAlias: string, eventId?: string): string => {
   const params = {
     roomIdOrAlias: encodeURIComponent(roomIdOrAlias),

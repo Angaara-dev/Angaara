@@ -1,27 +1,26 @@
-import { useMemo } from 'react';
-import { AccountDataEvent, MDirectContent } from '../../types/matrix/accountData';
+import { useMemo, useSyncExternalStore } from 'react';
+import { AccountDataEvent } from '../../types/matrix/accountData';
 import { useAccountData } from './useAccountData';
 import { useAllJoinedRoomsSet, useGetRoom } from './useGetRoom';
+import { mergeDirects } from '../../client/directs';
+import { getVaultItem, subscribeVault } from '../../client/vault';
+
+const getVaultDirects = () => getVaultItem('direct');
 
 export const useDirectUsers = (): string[] => {
   const directEvent = useAccountData(AccountDataEvent.Direct);
-  const content = directEvent?.getContent<MDirectContent>();
+  // DMs kept in the encrypted vault, merged with any plaintext m.direct left over.
+  const vaultDirects = useSyncExternalStore(subscribeVault, getVaultDirects);
 
   const allJoinedRooms = useAllJoinedRoomsSet();
   const getRoom = useGetRoom(allJoinedRooms);
 
   const users = useMemo(() => {
-    if (typeof content !== 'object') return [];
-
-    const u = Object.keys(content).filter((userId) => {
-      const rooms = content[userId];
-      if (!Array.isArray(rooms)) return false;
-      const hasDM = rooms.some((roomId) => typeof roomId === 'string' && !!getRoom(roomId));
-      return hasDM;
-    });
-
-    return u;
-  }, [content, getRoom]);
+    const content = mergeDirects(directEvent?.getContent(), vaultDirects);
+    return Object.keys(content).filter((userId) =>
+      content[userId].some((roomId) => !!getRoom(roomId))
+    );
+  }, [directEvent, vaultDirects, getRoom]);
 
   return users;
 };

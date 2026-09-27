@@ -5,3 +5,6 @@ export * from './RoomJoinRules';
 export * from './RoomProfile';
 export * from './RoomPublish';
 export * from './RoomUpgrade';
+export * from './RoomCommands';
+export * from './RoomHiddenProfile';
+export * from './RoomPrivateReactions';

@@ -4,7 +4,9 @@ import {
   getHomeJoinPath,
   getHomePath,
   getHomeSearchPath,
+  getHomeDeveloperPath,
 } from '../../pages/pathUtils';
+import { DeveloperSection } from '../../pages/paths';
 
 export const useHomeSelected = (): boolean => {
   const homeMatch = useMatch({
@@ -39,6 +41,16 @@ export const useHomeJoinSelected = (): boolean => {
 export const useHomeSearchSelected = (): boolean => {
   const match = useMatch({
     path: getHomeSearchPath(),
+    caseSensitive: true,
+    end: false,
+  });
+
+  return !!match;
+};
+
+export const useHomeDeveloperSelected = (section: DeveloperSection): boolean => {
+  const match = useMatch({
+    path: getHomeDeveloperPath(section),
     caseSensitive: true,
     end: false,
   });

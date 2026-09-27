@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Scroll } from 'folds';
+import { Badge, Box, config, Scroll, Text } from 'folds';
 
 import {
   Sidebar,
@@ -13,20 +13,34 @@ import {
   SpaceTabs,
   InboxTab,
   ExploreTab,
-  SettingsTab,
   UnverifiedTab,
   SearchTab,
 } from './sidebar';
 import { CreateTab } from './sidebar/CreateTab';
+import { useScrollFade } from '../../hooks/useScrollFade';
+import { ScrollFade } from '../../styles/ScrollFade.css';
+import { usePhone } from '../../hooks/useScreenSize';
 
 export function SidebarNav() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  useScrollFade(scrollRef);
+  const phone = usePhone();
 
   return (
     <Sidebar>
       <SidebarContent
         scrollable={
-          <Scroll ref={scrollRef} variant="Background" size="0">
+          <Scroll ref={scrollRef} className={ScrollFade} variant="Background" size="0">
+            {/* The phone layout is still rough, so it's labelled as beta. */}
+            {phone && (
+              <Box justifyContent="Center" style={{ paddingTop: config.space.S200 }}>
+                <Badge variant="Warning" fill="Solid" radii="Pill" size="400">
+                  <Text as="span" size="L400">
+                    BETA
+                  </Text>
+                </Badge>
+              </Box>
+            )}
             <SidebarStack>
               <HomeTab />
               <DirectTab />
@@ -46,7 +60,6 @@ export function SidebarNav() {
               <SearchTab />
               <UnverifiedTab />
               <InboxTab />
-              <SettingsTab />
             </SidebarStack>
           </>
         }

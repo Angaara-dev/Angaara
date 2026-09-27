@@ -29,6 +29,16 @@ export const CodeBlockRule: BlockMDRule = {
   },
 };
 
+// {latex} and {/latex} on their own lines around a formula become display maths.
+const MATHBLOCK_REG_1 = /^\{latex\} *\n((?:.*\n)+?)\{\/latex\} *(?!.)\n?/m;
+export const MathBlockRule: BlockMDRule = {
+  match: (text) => text.match(MATHBLOCK_REG_1),
+  html: (match) => {
+    const tex = match[1].trim();
+    return `<div data-mx-maths="${tex}"><code>${tex}</code></div>`;
+  },
+};
+
 const BLOCKQUOTE_MD_1 = '>';
 const QUOTE_LINE_PREFIX = /^> */;
 const BLOCKQUOTE_TRAILING_NEWLINE = /\n$/;

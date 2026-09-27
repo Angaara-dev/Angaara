@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { Box, Text, IconButton, Icon, Icons, Scroll, Switch, Button } from 'folds';
-import { Page, PageContent, PageHeader } from '../../../components/page';
+import { Box, Text, Scroll, Switch, Button } from 'folds';
+import { Page, PageContent } from '../../../components/page';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
@@ -13,6 +13,7 @@ import {
 } from '../../../components/AccountDataEditor';
 import { copyToClipboard } from '../../../utils/dom';
 import { AccountData } from './AccountData';
+import { SettingsPageHeader } from '../SettingsPageHeader';
 
 type DeveloperToolsProps = {
   requestClose: () => void;
@@ -43,20 +44,7 @@ export function DeveloperTools({ requestClose }: DeveloperToolsProps) {
 
   return (
     <Page>
-      <PageHeader outlined={false}>
-        <Box grow="Yes" gap="200">
-          <Box grow="Yes" alignItems="Center" gap="200">
-            <Text size="H3" truncate>
-              Developer Tools
-            </Text>
-          </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
-        </Box>
-      </PageHeader>
+      <SettingsPageHeader title="Developer Tools" requestClose={requestClose} />
       <Box grow="Yes">
         <Scroll hideTrack visibility="Hover">
           <PageContent>

@@ -10,9 +10,14 @@ export enum ScreenSize {
   Mobile = 'Mobile',
 }
 
+// Without a touch screen, narrow windows keep the side-by-side PC layout down to this width.
+const PC_MOBILE_BREAKPOINT = 480;
+const hasCoarsePointer = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
+
 export const getScreenSize = (width: number): ScreenSize => {
   if (width > TABLET_BREAKPOINT) return ScreenSize.Desktop;
-  if (width > MOBILE_BREAKPOINT) return ScreenSize.Tablet;
+  const mobileBelow = hasCoarsePointer() ? MOBILE_BREAKPOINT : PC_MOBILE_BREAKPOINT;
+  if (width > mobileBelow) return ScreenSize.Tablet;
   return ScreenSize.Mobile;
 };
 
@@ -37,3 +42,8 @@ export const useScreenSizeContext = (): ScreenSize => {
   }
   return screenSize;
 };
+
+// A real phone: narrow screen plus a touch (coarse) pointer. Narrow PC windows keep the PC look.
+export const PHONE_MEDIA = `screen and (max-width: ${MOBILE_BREAKPOINT}px) and (pointer: coarse)`;
+export const usePhone = (): boolean =>
+  useScreenSizeContext() === ScreenSize.Mobile && hasCoarsePointer();

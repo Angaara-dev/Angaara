@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { useMatch } from 'react-router-dom';
+import { SwipeUnderlay } from '../components/SwipeNavigation';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 import { DIRECT_PATH, EXPLORE_PATH, HOME_PATH, INBOX_PATH, SPACE_PATH } from './paths';
 
@@ -14,14 +15,14 @@ export function MobileFriendlyClientNav({ children }: MobileFriendlyClientNavPro
   const exploreMatch = useMatch({ path: EXPLORE_PATH, caseSensitive: true, end: true });
   const inboxMatch = useMatch({ path: INBOX_PATH, caseSensitive: true, end: true });
 
-  if (
+  const behindChat =
     screenSize === ScreenSize.Mobile &&
-    !(homeMatch || directMatch || spaceMatch || exploreMatch || inboxMatch)
-  ) {
-    return null;
-  }
-
-  return children;
+    !(homeMatch || directMatch || spaceMatch || exploreMatch || inboxMatch);
+  return (
+    <SwipeUnderlay slot="rail" active={behindChat}>
+      {children}
+    </SwipeUnderlay>
+  );
 }
 
 type MobileFriendlyPageNavProps = {
@@ -36,9 +37,9 @@ export function MobileFriendlyPageNav({ path, children }: MobileFriendlyPageNavP
     end: true,
   });
 
-  if (screenSize === ScreenSize.Mobile && !exactPath) {
-    return null;
-  }
-
-  return children;
+  return (
+    <SwipeUnderlay slot="nav" active={screenSize === ScreenSize.Mobile && !exactPath}>
+      {children}
+    </SwipeUnderlay>
+  );
 }

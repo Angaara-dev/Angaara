@@ -8,11 +8,13 @@ import { Membership } from '../../../types/matrix/room';
 import { RoomInputPlaceholder } from './RoomInputPlaceholder';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { getViaServers } from '../../plugins/via-servers';
+import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
 
 type RoomTombstoneProps = { roomId: string; body?: string; replacementRoomId: string };
 export function RoomTombstone({ roomId, body, replacementRoomId }: RoomTombstoneProps) {
   const mx = useMatrixClient();
   const { navigateRoom } = useRoomNavigate();
+  const mobile = useScreenSizeContext() === ScreenSize.Mobile;
 
   const [joinState, handleJoin] = useAsyncCallback(
     useCallback(() => {
@@ -31,9 +33,17 @@ export function RoomTombstone({ roomId, body, replacementRoomId }: RoomTombstone
   };
 
   return (
-    <RoomInputPlaceholder alignItems="Center" gap="600" className={css.RoomTombstone}>
-      <Box direction="Column" grow="Yes">
-        <Text size="T400">{body || 'This room has been replaced and is no longer active.'}</Text>
+    <RoomInputPlaceholder
+      direction={mobile ? 'Column' : 'Row'}
+      alignItems={mobile ? 'Start' : 'Center'}
+      gap={mobile ? '300' : '600'}
+      className={css.RoomTombstone}
+    >
+      <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
+        {/* Upgrade notices often hold long matrix.to links; let them wrap. */}
+        <Text size="T400" style={{ overflowWrap: 'anywhere' }}>
+          {body || 'This room has been replaced and is no longer active.'}
+        </Text>
         {joinState.status === AsyncStatus.Error && (
           <Text style={{ color: color.Critical.Main }} size="T200">
             {(joinState.error as any)?.message ?? 'Failed to join replacement room!'}

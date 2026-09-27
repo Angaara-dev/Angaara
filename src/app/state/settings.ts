@@ -21,10 +21,16 @@ export interface Settings {
   lightThemeId?: string;
   darkThemeId?: string;
   monochromeMode?: boolean;
+  // Hex color replacing the theme's primary color; unset keeps the theme's own.
+  accentColor?: string;
   isMarkdown: boolean;
   editorToolbar: boolean;
   twitterEmoji: boolean;
   pageZoom: number;
+  // Phones only: scales chat text, avatars and the message box, in percent.
+  phoneMessageScale: number;
+  // Phones only: fling speed limit from 1 (calmest) to 10 (native scrolling).
+  phoneScrollSpeed: number;
   hideActivity: boolean;
 
   isPeopleDrawer: boolean;
@@ -32,7 +38,7 @@ export interface Settings {
   enterForNewline: boolean;
   messageLayout: MessageLayout;
   messageSpacing: MessageSpacing;
-  hideMembershipEvents: boolean;
+  hideJoinLeaveEvents: boolean;
   hideNickAvatarEvents: boolean;
   mediaAutoLoad: boolean;
   urlPreview: boolean;
@@ -41,7 +47,10 @@ export interface Settings {
   legacyUsernameColor: boolean;
 
   showNotifications: boolean;
-  isNotificationSounds: boolean;
+  // Renamed from isNotificationSounds so the new off-by-default reaches existing users too.
+  notificationSounds: boolean;
+  // Count XP from the IDs and times of messages you send; off stops all reporting.
+  earnXp: boolean;
 
   hour24Clock: boolean;
   dateFormatString: string;
@@ -51,14 +60,17 @@ export interface Settings {
 
 const defaultSettings: Settings = {
   themeId: undefined,
-  useSystemTheme: true,
+  useSystemTheme: false,
   lightThemeId: undefined,
   darkThemeId: undefined,
   monochromeMode: false,
+  accentColor: undefined,
   isMarkdown: true,
   editorToolbar: false,
   twitterEmoji: false,
   pageZoom: 100,
+  phoneMessageScale: 100,
+  phoneScrollSpeed: 5,
   hideActivity: false,
 
   isPeopleDrawer: true,
@@ -66,7 +78,7 @@ const defaultSettings: Settings = {
   enterForNewline: false,
   messageLayout: 0,
   messageSpacing: '400',
-  hideMembershipEvents: false,
+  hideJoinLeaveEvents: true,
   hideNickAvatarEvents: true,
   mediaAutoLoad: true,
   urlPreview: true,
@@ -75,7 +87,8 @@ const defaultSettings: Settings = {
   legacyUsernameColor: false,
 
   showNotifications: true,
-  isNotificationSounds: true,
+  notificationSounds: false,
+  earnXp: true,
 
   hour24Clock: false,
   dateFormatString: 'D MMM YYYY',

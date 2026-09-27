@@ -4,18 +4,46 @@ import { getPowerLevelTag, PowerLevelTags, usePowerLevelTags } from './usePowerL
 import { IPowerLevels, readPowerLevel } from './usePowerLevels';
 import { MemberPowerTag, MemberPowerTagIcon } from '../../types/matrix/room';
 import { useRoomCreatorsTag } from './useRoomCreatorsTag';
+import { LEVEL_ROLE_BADGES, LEVEL_ROLE_GRADIENTS, useRoomServerLevel } from './useSpaceLevel';
 import { ThemeKind } from './useTheme';
 import { accessibleColor } from '../plugins/color';
 
 export type GetMemberPowerTag = (userId: string) => MemberPowerTag;
+
+// Role badges and two-colour roles are server level perks; below that a role is one plain colour.
+export const gatePowerTag = (tag: MemberPowerTag, level: number): MemberPowerTag => {
+  if (level >= LEVEL_ROLE_GRADIENTS) return tag;
+  return {
+    name: tag.name,
+    color: tag.color,
+    icon: level >= LEVEL_ROLE_BADGES ? tag.icon : undefined,
+  };
+};
+
+export const useGatedPowerTags = (room: Room, tags: PowerLevelTags): PowerLevelTags => {
+  const level = useRoomServerLevel(room);
+  return useMemo(() => {
+    const gated: PowerLevelTags = {};
+    Object.entries(tags).forEach(([power, tag]) => {
+      gated[Number(power)] = gatePowerTag(tag, level);
+    });
+    return gated;
+  }, [tags, level]);
+};
+
+export const useGatedCreatorsTag = (room: Room): MemberPowerTag => {
+  const tag = useRoomCreatorsTag();
+  const level = useRoomServerLevel(room);
+  return useMemo(() => gatePowerTag(tag, level), [tag, level]);
+};
 
 export const useGetMemberPowerTag = (
   room: Room,
   creators: Set<string>,
   powerLevels: IPowerLevels
 ) => {
-  const creatorsTag = useRoomCreatorsTag();
-  const powerLevelTags = usePowerLevelTags(room, powerLevels);
+  const creatorsTag = useGatedCreatorsTag(room);
+  const powerLevelTags = useGatedPowerTags(room, usePowerLevelTags(room, powerLevels));
 
   const getMemberPowerTag: GetMemberPowerTag = useCallback(
     (userId) => {
@@ -48,15 +76,10 @@ export const useAccessiblePowerTagColors = (
 ): Map<string, string> => {
   const accessibleColors: Map<string, string> = useMemo(() => {
     const colors: Map<string, string> = new Map();
-    if (creatorsTag.color) {
-      colors.set(creatorsTag.color, accessibleColor(themeKind, creatorsTag.color));
-    }
-
-    Object.values(powerLevelTags).forEach((tag) => {
-      const { color } = tag;
-      if (!color) return;
-
-      colors.set(color, accessibleColor(themeKind, color));
+    [creatorsTag, ...Object.values(powerLevelTags)].forEach((tag) => {
+      [tag.color, tag.gradient].forEach((color) => {
+        if (color) colors.set(color, accessibleColor(themeKind, color));
+      });
     });
 
     return colors;

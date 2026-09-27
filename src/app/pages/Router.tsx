@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import {
   Outlet,
   Route,
@@ -20,6 +20,7 @@ import {
   RESET_PASSWORD_PATH,
   SPACE_PATH,
   _CREATE_PATH,
+  _FRIENDS_PATH,
   _FEATURED_PATH,
   _INVITES_PATH,
   _JOIN_PATH,
@@ -27,6 +28,7 @@ import {
   _NOTIFICATIONS_PATH,
   _ROOM_PATH,
   _SEARCH_PATH,
+  _DEVELOPER_PATH,
   _SERVER_PATH,
   CREATE_PATH,
 } from './paths';
@@ -42,6 +44,7 @@ import {
 import { ClientBindAtoms, ClientLayout, ClientRoot } from './client';
 import { Home, HomeRouteRoomProvider, HomeSearch } from './client/home';
 import { Direct, DirectCreate, DirectRouteRoomProvider } from './client/direct';
+import { Friends } from '../features/friends';
 import { RouteSpaceProvider, Space, SpaceRouteRoomProvider, SpaceSearch } from './client/space';
 import { Explore, FeaturedRooms, PublicRooms } from './client/explore';
 import { Notifications, Inbox, Invites } from './client/inbox';
@@ -59,6 +62,7 @@ import { AuthRouteThemeManager, UnAuthRouteThemeManager } from './ThemeManager';
 import { ReceiveSelfDeviceVerification } from '../components/DeviceVerification';
 import { AutoRestoreBackupOnVerification } from '../components/BackupRestore';
 import { RoomSettingsRenderer } from '../features/room-settings';
+import { UserSettingsRenderer } from '../features/settings';
 import { ClientRoomsNotificationPreferences } from './client/ClientRoomsNotificationPreferences';
 import { SpaceSettingsRenderer } from '../features/space-settings';
 import { UserRoomProfileRenderer } from '../components/UserRoomProfileRenderer';
@@ -70,6 +74,11 @@ import { SearchModalRenderer } from '../features/search';
 import { getFallbackSession } from '../state/sessions';
 import { CallStatusRenderer } from './CallStatusRenderer';
 import { CallEmbedProvider } from '../components/CallEmbedProvider';
+
+// Only developers open this page, so it and the embedded SDK source load on demand.
+const HomeDeveloperTools = lazy(() =>
+  import('./client/home/DeveloperTools').then((m) => ({ default: m.HomeDeveloperTools }))
+);
 
 export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize) => {
   const { hashRouter } = clientConfig;
@@ -143,6 +152,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
                       <CreateRoomModalRenderer />
                       <CreateSpaceModalRenderer />
                       <RoomSettingsRenderer />
+                      <UserSettingsRenderer />
                       <SpaceSettingsRenderer />
                       <ReceiveSelfDeviceVerification />
                       <AutoRestoreBackupOnVerification />
@@ -158,6 +168,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           path={HOME_PATH}
           element={
             <PageRoot
+              framed
               nav={
                 <MobileFriendlyPageNav path={HOME_PATH}>
                   <Home />
@@ -173,6 +184,14 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           <Route path={_JOIN_PATH} element={<p>join</p>} />
           <Route path={_SEARCH_PATH} element={<HomeSearch />} />
           <Route
+            path={_DEVELOPER_PATH}
+            element={
+              <Suspense fallback={null}>
+                <HomeDeveloperTools />
+              </Suspense>
+            }
+          />
+          <Route
             path={_ROOM_PATH}
             element={
               <HomeRouteRoomProvider>
@@ -185,6 +204,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           path={DIRECT_PATH}
           element={
             <PageRoot
+              framed
               nav={
                 <MobileFriendlyPageNav path={DIRECT_PATH}>
                   <Direct />
@@ -197,6 +217,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
         >
           {mobile ? null : <Route index element={<WelcomePage />} />}
           <Route path={_CREATE_PATH} element={<DirectCreate />} />
+          <Route path={_FRIENDS_PATH} element={<Friends />} />
           <Route
             path={_ROOM_PATH}
             element={
@@ -211,6 +232,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           element={
             <RouteSpaceProvider>
               <PageRoot
+                framed
                 nav={
                   <MobileFriendlyPageNav path={SPACE_PATH}>
                     <Space />
@@ -250,6 +272,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           path={EXPLORE_PATH}
           element={
             <PageRoot
+              framed
               nav={
                 <MobileFriendlyPageNav path={EXPLORE_PATH}>
                   <Explore />
@@ -275,6 +298,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           path={INBOX_PATH}
           element={
             <PageRoot
+              framed
               nav={
                 <MobileFriendlyPageNav path={INBOX_PATH}>
                   <Inbox />

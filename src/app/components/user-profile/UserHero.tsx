@@ -14,20 +14,23 @@ import classNames from 'classnames';
 import FocusTrap from 'focus-trap-react';
 import * as css from './styles.css';
 import { UserAvatar } from '../user-avatar';
-import colorMXID from '../../../util/colorMXID';
 import { getMxIdLocalPart } from '../../utils/matrix';
 import { BreakWord, LineClamp3 } from '../../styles/Text.css';
-import { UserPresence } from '../../hooks/useUserPresence';
-import { AvatarPresence, PresenceBadge } from '../presence';
+import { ActivityStatus } from '../../hooks/useActivityStatus';
+import { AvatarPresence, StatusIcon } from '../presence';
 import { ImageViewer } from '../image-viewer';
 import { stopPropagation } from '../../utils/keyboard';
+import { ServerTagBadge } from './ServerTagBadge';
+import { bannerFallback } from './bannerFallback';
+import { UserBadges } from './UserBadges';
 
 type UserHeroProps = {
   userId: string;
   avatarUrl?: string;
-  presence?: UserPresence;
+  bannerUrl?: string;
+  activity?: ActivityStatus;
 };
-export function UserHero({ userId, avatarUrl, presence }: UserHeroProps) {
+export function UserHero({ userId, avatarUrl, bannerUrl, activity }: UserHeroProps) {
   const [viewAvatar, setViewAvatar] = useState<string>();
 
   return (
@@ -35,26 +38,28 @@ export function UserHero({ userId, avatarUrl, presence }: UserHeroProps) {
       <div
         className={css.UserHeroCoverContainer}
         style={{
-          backgroundColor: colorMXID(userId),
-          filter: avatarUrl ? undefined : 'brightness(50%)',
+          backgroundColor: bannerFallback(userId),
+          filter: avatarUrl || bannerUrl ? undefined : 'brightness(50%)',
         }}
       >
-        {avatarUrl && (
+        {bannerUrl && (
+          <img className={css.UserHeroBanner} src={bannerUrl} alt="" draggable="false" />
+        )}
+        {!bannerUrl && avatarUrl && (
           <img className={css.UserHeroCover} src={avatarUrl} alt={userId} draggable="false" />
         )}
       </div>
       <div className={css.UserHeroAvatarContainer}>
         <AvatarPresence
           className={css.UserAvatarContainer}
-          badge={
-            presence && <PresenceBadge presence={presence.presence} status={presence.status} />
-          }
+          badge={activity && <StatusIcon status={activity} size={18} />}
         >
           <Avatar
             as={avatarUrl ? 'button' : 'div'}
             onClick={avatarUrl ? () => setViewAvatar(avatarUrl) : undefined}
             className={css.UserHeroAvatar}
             size="500"
+            radii="Pill"
           >
             <UserAvatar
               className={css.UserHeroAvatarImg}
@@ -103,7 +108,7 @@ export function UserHeroName({ displayName, userId }: UserHeroNameProps) {
     <Box grow="Yes" direction="Column" gap="0">
       <Box alignItems="Baseline" gap="200" wrap="Wrap">
         <Text
-          size="H4"
+          size="H3"
           className={classNames(BreakWord, LineClamp3)}
           title={displayName ?? username}
         >
@@ -114,6 +119,8 @@ export function UserHeroName({ displayName, userId }: UserHeroNameProps) {
         <Text size="T200" className={classNames(BreakWord, LineClamp3)} title={username}>
           @{username}
         </Text>
+        <ServerTagBadge userId={userId} size="normal" />
+        <UserBadges userId={userId} size="small" />
       </Box>
     </Box>
   );

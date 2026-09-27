@@ -1,5 +1,6 @@
 import { keyframes, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config } from 'folds';
+import { themeBackdrop } from '../../styles/themeBackdrop';
 
 const SlideUpAnime = keyframes({
   from: {
@@ -16,6 +17,7 @@ export const RoomViewTyping = style([
     padding: `0 ${config.space.S500}`,
     width: '100%',
     backgroundColor: color.Surface.Container,
+    ...themeBackdrop('surface'),
     color: color.Surface.OnContainer,
     position: 'absolute',
     bottom: 0,

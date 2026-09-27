@@ -74,8 +74,16 @@ export const createRoomParentState = (parent: Room) => ({
   },
 });
 
+// Roles, theme and banner are Admin-only from the start; Matrix would otherwise let Moderators edit them.
+const ADMIN_ONLY_EVENTS = {
+  [StateEvent.PowerLevelTags]: 100,
+  [StateEvent.AngaaraSpaceTheme]: 100,
+  [StateEvent.AngaaraRoomBanner]: 100,
+};
+
 const createSpacePowerLevelsOverride = () => ({
   events_default: 50,
+  events: ADMIN_ONLY_EVENTS,
 });
 
 export const createRoomEncryptionState = () => ({
@@ -94,6 +102,7 @@ export const createRoomCallState = () => ({
 
 export const createVoiceRoomPowerLevelsOverride = () => ({
   events: {
+    ...ADMIN_ONLY_EVENTS,
     [StateEvent.GroupCallMemberPrefix]: 0,
   },
 });
@@ -139,7 +148,9 @@ export const createRoom = async (mx: MatrixClient, data: CreateRoomData): Promis
       data.additionalCreators
     ),
     power_level_content_override:
-      data.type === RoomType.Call ? createVoiceRoomPowerLevelsOverride() : undefined,
+      data.type === RoomType.Call
+        ? createVoiceRoomPowerLevelsOverride()
+        : { events: ADMIN_ONLY_EVENTS },
     initial_state: initialState,
   };
 

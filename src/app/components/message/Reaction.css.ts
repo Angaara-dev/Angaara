@@ -1,5 +1,6 @@
-import { createVar, style } from '@vanilla-extract/css';
+import { createVar, globalStyle, style } from '@vanilla-extract/css';
 import { DefaultReset, FocusOutline, color, config, toRem } from 'folds';
+import { PHONE, phoneSize } from '../../styles/phone';
 
 const Container = createVar();
 const ContainerHover = createVar();
@@ -17,10 +18,17 @@ export const Reaction = style([
       [ContainerLine]: color.SurfaceVariant.ContainerLine,
       [OnContainer]: color.SurfaceVariant.OnContainer,
     },
-    padding: `${toRem(2)} ${config.space.S200} ${toRem(2)} ${config.space.S100}`,
+    // Rounder chips; on phones they follow the Message Size setting.
+    padding: `${toRem(4)} ${toRem(10)} ${toRem(4)} ${toRem(8)}`,
     backgroundColor: Container,
     border: `${config.borderWidth.B300} solid ${ContainerLine}`,
-    borderRadius: config.radii.R300,
+    borderRadius: toRem(10),
+    '@media': {
+      [PHONE]: {
+        padding: `${phoneSize(3)} ${phoneSize(9)} ${phoneSize(3)} ${phoneSize(7)}`,
+        borderRadius: phoneSize(9),
+      },
+    },
 
     selectors: {
       'button&': {
@@ -60,9 +68,18 @@ export const ReactionText = style([
     maxWidth: toRem(150),
     display: 'inline-flex',
     alignItems: 'center',
-    lineHeight: toRem(20),
+    // Doubled class so it wins over the Text size class on the same element.
+    selectors: { '&&': { fontSize: toRem(18), lineHeight: toRem(24) } },
+    '@media': {
+      [PHONE]: { selectors: { '&&': { fontSize: phoneSize(16), lineHeight: phoneSize(20) } } },
+    },
   },
 ]);
+
+// The count next to the emoji.
+globalStyle(`${Reaction} > span:last-child`, {
+  '@media': { [PHONE]: { fontSize: phoneSize(13) } },
+});
 
 export const ReactionImg = style([
   DefaultReset,

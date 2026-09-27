@@ -1,8 +1,8 @@
 import React, { ReactNode } from 'react';
-import { Box, Dialog, config, Text, Button, Spinner } from 'folds';
+import { Box, Dialog, config, Text, Button } from 'folds';
 import { SpecVersionsLoader } from '../../components/SpecVersionsLoader';
 import { SpecVersionsProvider } from '../../hooks/useSpecVersions';
-import { SplashScreen } from '../../components/splash-screen';
+import { SplashLoading, SplashScreen } from '../../components/splash-screen';
 
 export function SpecVersions({ baseUrl, children }: { baseUrl: string; children: ReactNode }) {
   return (
@@ -10,10 +10,7 @@ export function SpecVersions({ baseUrl, children }: { baseUrl: string; children:
       baseUrl={baseUrl}
       fallback={() => (
         <SplashScreen>
-          <Box direction="Column" grow="Yes" alignItems="Center" justifyContent="Center" gap="400">
-            <Spinner variant="Secondary" size="600" />
-            <Text>Connecting to server</Text>
-          </Box>
+          <SplashLoading label="Connecting to server" />
         </SplashScreen>
       )}
       error={(err, retry, ignore) => (
@@ -22,7 +19,8 @@ export function SpecVersions({ baseUrl, children }: { baseUrl: string; children:
             <Dialog>
               <Box direction="Column" gap="400" style={{ padding: config.space.S400 }}>
                 <Text>
-                  Unable to connect to the homeserver. The homeserver or your internet connection may be down.
+                  Unable to connect to the homeserver. The homeserver or your internet connection
+                  may be down.
                 </Text>
                 <Button variant="Critical" onClick={retry}>
                   <Text as="span" size="B400">

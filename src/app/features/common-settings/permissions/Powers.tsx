@@ -137,7 +137,9 @@ export function Powers({ powerLevels, permissionGroups, onEdit }: PowersProps) {
                 disabled
                 variant="Secondary"
                 radii="300"
-                before={<PowerColorBadge color={creatorsTag.color} />}
+                before={
+                  <PowerColorBadge color={creatorsTag.color} gradient={creatorsTag.gradient} />
+                }
                 after={creatorTagIconSrc && <PowerIcon size="50" iconSrc={creatorTagIconSrc} />}
               >
                 <Text size="T300" truncate>
@@ -155,8 +157,8 @@ export function Powers({ powerLevels, permissionGroups, onEdit }: PowersProps) {
         gap="400"
       >
         <SettingTile
-          title="Power Levels"
-          description="Manage and customize incremental power levels for users."
+          title="Roles"
+          description="Names, colours and badges for each power level."
           after={
             onEdit && (
               <Box gap="200">
@@ -193,7 +195,7 @@ export function Powers({ powerLevels, permissionGroups, onEdit }: PowersProps) {
                       variant="Secondary"
                       aria-pressed={opened}
                       radii="300"
-                      before={<PowerColorBadge color={tag.color} />}
+                      before={<PowerColorBadge color={tag.color} gradient={tag.gradient} />}
                       after={tagIconSrc && <PowerIcon size="50" iconSrc={tagIconSrc} />}
                     >
                       <Text size="T300" truncate>

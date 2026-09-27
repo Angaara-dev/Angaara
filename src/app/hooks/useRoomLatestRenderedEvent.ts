@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { settingsAtom } from '../state/settings';
 import { useSetting } from '../state/hooks/settings';
 import { MessageEvent, StateEvent } from '../../types/matrix/room';
-import { isMembershipChanged, reactionOrEditEvent } from '../utils/room';
+import { isJoinOrLeave, isMembershipChanged, reactionOrEditEvent } from '../utils/room';
 
 export const useRoomLatestRenderedEvent = (room: Room) => {
-  const [hideMembershipEvents] = useSetting(settingsAtom, 'hideMembershipEvents');
+  const [hideJoinLeaveEvents] = useSetting(settingsAtom, 'hideJoinLeaveEvents');
   const [hideNickAvatarEvents] = useSetting(settingsAtom, 'hideNickAvatarEvents');
   const [showHiddenEvents] = useSetting(settingsAtom, 'showHiddenEvents');
   const [latestEvent, setLatestEvent] = useState<MatrixEvent>();
@@ -22,7 +22,7 @@ export const useRoomLatestRenderedEvent = (room: Room) => {
         if (reactionOrEditEvent(evt)) continue;
         if (evt.getType() === StateEvent.RoomMember) {
           const membershipChanged = isMembershipChanged(evt);
-          if (membershipChanged && hideMembershipEvents) continue;
+          if (membershipChanged && hideJoinLeaveEvents && isJoinOrLeave(evt)) continue;
           if (!membershipChanged && hideNickAvatarEvents) continue;
           return evt;
         }
@@ -52,7 +52,7 @@ export const useRoomLatestRenderedEvent = (room: Room) => {
     return () => {
       room.removeListener(RoomEvent.Timeline, handleTimelineEvent);
     };
-  }, [room, hideMembershipEvents, hideNickAvatarEvents, showHiddenEvents]);
+  }, [room, hideJoinLeaveEvents, hideNickAvatarEvents, showHiddenEvents]);
 
   return latestEvent;
 };

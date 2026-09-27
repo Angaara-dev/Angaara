@@ -155,7 +155,28 @@ export const usePermissionGroups = (): PermissionGroup[] => {
             state: true,
             key: StateEvent.PowerLevelTags,
           },
-          name: 'Edit Power Levels',
+          name: 'Edit Roles',
+        },
+        {
+          location: {
+            state: true,
+            key: StateEvent.AngaaraDisabledCommands,
+          },
+          name: 'Manage Commands',
+        },
+        {
+          location: {
+            state: true,
+            key: StateEvent.AngaaraPrivateReactions,
+          },
+          name: 'Private Reactions',
+        },
+        {
+          location: {
+            state: true,
+            key: StateEvent.AngaaraHiddenProfile,
+          },
+          name: 'Hidden Channel Profile',
         },
         {
           location: {

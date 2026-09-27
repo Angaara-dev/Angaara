@@ -1,4 +1,4 @@
-import React, { FormEventHandler, useCallback, useEffect, useState } from 'react';
+import React, { FormEventHandler, useCallback, useEffect, useRef, useState } from 'react';
 import { MatrixError, Room } from 'matrix-js-sdk';
 import {
   Box,
@@ -38,7 +38,18 @@ import {
   RoomVersionSelector,
   useAdditionalCreators,
 } from '../../components/create-room';
-import { RoomType } from '../../../types/matrix/room';
+import { RoomType, StateEvent } from '../../../types/matrix/room';
+import { ImageDropZone } from '../../components/image-drop-zone';
+import { useObjectURL } from '../../hooks/useObjectURL';
+import { MAX_BANNER_BYTES, MAX_BANNER_LABEL } from '../../hooks/useUserBanner';
+import {
+  cropSizeLabel,
+  SPACE_BANNER_CROP,
+  SPACE_BANNER_PREVIEW,
+  useImageCropper,
+} from '../../components/image-cropper';
+import { TOGGLEABLE_COMMANDS } from '../../hooks/useDisabledCommands';
+import { EmojiInsertButton } from '../../components/EmojiInsertButton';
 
 const getCreateSpaceAccessToIcon = (access: CreateRoomAccess) => {
   if (access === CreateRoomAccess.Private) return Icons.SpaceLock;
@@ -75,6 +86,27 @@ export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceF
   const [federation, setFederation] = useState(true);
   const [knock, setKnock] = useState(false);
   const [advance, setAdvance] = useState(false);
+  const [bannerFile, setBannerFile] = useState<File>();
+  const bannerPreview = useObjectURL(bannerFile);
+  const [bannerError, setBannerError] = useState<string>();
+  const [disabledCommands, setDisabledCommands] = useState<Set<string>>(new Set());
+  const toggleCommand = (command: string, enabled: boolean) =>
+    setDisabledCommands((prev) => {
+      const next = new Set(prev);
+      if (enabled) next.delete(command);
+      else next.add(command);
+      return next;
+    });
+
+  const pickBanner = (file: File) => {
+    if (!file.type.startsWith('image/') || file.size > MAX_BANNER_BYTES) {
+      setBannerError(`Pick an image under ${MAX_BANNER_LABEL}.`);
+      return;
+    }
+    setBannerError(undefined);
+    setBannerFile(file);
+  };
+  const { open: cropBanner, cropper } = useImageCropper(SPACE_BANNER_CROP, pickBanner);
 
   const allowKnock = access === CreateRoomAccess.Private && knockSupported(selectedRoomVersion);
   const allowKnockRestricted =
@@ -88,12 +120,37 @@ export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceF
   };
 
   const [createState, create] = useAsyncCallback<string, Error | MatrixError, [CreateRoomData]>(
-    useCallback((data) => createRoom(mx, data), [mx])
+    useCallback(
+      async (data) => {
+        const roomId = await createRoom(mx, data);
+        // Best effort: the space exists even if the banner upload fails; it can be set in settings.
+        if (bannerFile) {
+          try {
+            const { content_uri: url } = await mx.uploadContent(bannerFile);
+            await mx.sendStateEvent(roomId, StateEvent.AngaaraRoomBanner as any, { url });
+          } catch {
+            // ignore
+          }
+        }
+        if (disabledCommands.size > 0) {
+          try {
+            await mx.sendStateEvent(roomId, StateEvent.AngaaraDisabledCommands as any, {
+              commands: Array.from(disabledCommands),
+            });
+          } catch {
+            // Can be set again in the space's settings.
+          }
+        }
+        return roomId;
+      },
+      [mx, bannerFile, disabledCommands]
+    )
   );
   const loading = createState.status === AsyncStatus.Loading;
   const error = createState.status === AsyncStatus.Error ? createState.error : undefined;
   const disabled = createState.status === AsyncStatus.Loading;
 
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
     evt.preventDefault();
     if (disabled) return;
@@ -152,6 +209,7 @@ export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceF
         <Input
           required
           before={<Icon size="100" src={getCreateSpaceAccessToIcon(access)} />}
+          ref={nameInputRef}
           name="nameInput"
           autoFocus
           size="500"
@@ -159,6 +217,7 @@ export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceF
           radii="400"
           autoComplete="off"
           disabled={disabled}
+          after={<EmojiInsertButton inputRef={nameInputRef} disabled={disabled} />}
         />
       </Box>
       <Box shrink="No" direction="Column" gap="100">
@@ -170,6 +229,65 @@ export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceF
           radii="400"
           disabled={disabled}
         />
+      </Box>
+
+      <Box shrink="No" direction="Column" gap="100">
+        <Text size="L400">Banner (Optional)</Text>
+        <Text size="T200" priority="300">
+          {`Best at ${cropSizeLabel(
+            SPACE_BANNER_CROP
+          )}. GIFs animate once the server reaches Level 1.`}
+        </Text>
+        <ImageDropZone
+          imageUrl={bannerPreview}
+          width={SPACE_BANNER_PREVIEW.width}
+          height={SPACE_BANNER_PREVIEW.height}
+          label="space banner"
+          onFile={cropBanner}
+          disabled={disabled}
+        />
+        {cropper}
+        {bannerFile && (
+          <Box>
+            <Chip type="button" radii="Pill" onClick={() => setBannerFile(undefined)}>
+              <Text size="T200">Remove banner</Text>
+            </Chip>
+          </Box>
+        )}
+        {bannerError && (
+          <Text size="T200" style={{ color: color.Critical.Main }}>
+            {bannerError}
+          </Text>
+        )}
+      </Box>
+
+      <Box shrink="No" direction="Column" gap="100">
+        <Text size="L400">Commands</Text>
+        <SequenceCard
+          style={{ padding: config.space.S300 }}
+          variant="SurfaceVariant"
+          direction="Column"
+          gap="300"
+        >
+          <Text size="T200" priority="300">
+            Turn off fun commands in every room of this space. Only Angaara follows this.
+          </Text>
+          {TOGGLEABLE_COMMANDS.map(({ command, label }) => (
+            <Box key={command} alignItems="Center" gap="300">
+              <Box direction="Column" grow="Yes">
+                <Text size="T300">/{command}</Text>
+                <Text size="T200" priority="300">
+                  {label}
+                </Text>
+              </Box>
+              <Switch
+                value={!disabledCommands.has(command)}
+                onChange={(enabled: boolean) => toggleCommand(command, enabled)}
+                disabled={disabled}
+              />
+            </Box>
+          ))}
+        </SequenceCard>
       </Box>
 
       {access === CreateRoomAccess.Public && <CreateRoomAliasInput disabled={disabled} />}

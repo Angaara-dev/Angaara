@@ -40,6 +40,13 @@ export enum StateEvent {
 
   PoniesRoomEmotes = 'im.ponies.room_emotes',
   PowerLevelTags = 'in.cinny.room.power_level_tags',
+  AngaaraRoomBanner = 'io.angaara.room.banner',
+  AngaaraDisabledCommands = 'io.angaara.disabled_commands',
+  AngaaraPrivateReactions = 'io.angaara.private_reactions',
+  AngaaraHiddenProfile = 'io.angaara.hidden_profile',
+  AngaaraSpaceTag = 'io.angaara.space.tag',
+  AngaaraSpaceTheme = 'io.angaara.space.theme',
+  LegacyRoomBanner = 'io.hearth.room.banner',
 }
 
 export enum MessageEvent {
@@ -107,5 +114,7 @@ export type MemberPowerTagIcon = {
 export type MemberPowerTag = {
   name: string;
   color?: string;
+  // Second colour: names and chips fade from `color` into this (server level 3).
+  gradient?: string;
   icon?: MemberPowerTagIcon;
 };

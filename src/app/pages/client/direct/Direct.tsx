@@ -29,9 +29,8 @@ import {
   NavItem,
   NavItemContent,
 } from '../../../components/nav';
-import { getDirectCreatePath, getDirectRoomPath } from '../../pathUtils';
+import { getDirectCreatePath, getDirectFriendsPath, getDirectRoomPath } from '../../pathUtils';
 import { getCanonicalAliasOrRoomId } from '../../../utils/matrix';
-import { useSelectedRoom } from '../../../hooks/router/useSelectedRoom';
 import { VirtualTile } from '../../../components/virtualizer';
 import { RoomNavCategoryButton, RoomNavItem } from '../../../features/room-nav';
 import { makeNavCategoryId } from '../../../state/closedNavCategories';
@@ -50,7 +49,14 @@ import {
   getRoomNotificationMode,
   useRoomsNotificationPreferencesContext,
 } from '../../../hooks/useRoomsNotificationPreferences';
-import { useDirectCreateSelected } from '../../../hooks/router/useDirectSelected';
+import {
+  useDirectCreateSelected,
+  useDirectFriendsSelected,
+} from '../../../hooks/router/useDirectSelected';
+import { useIncomingRequests } from '../../../hooks/useFriends';
+import { UnreadBadge, UnreadBadgeCenter } from '../../../components/unread-badge';
+import { UserPanel } from '../UserPanel';
+import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
 
 type DirectMenuProps = {
   requestClose: () => void;
@@ -138,6 +144,37 @@ function DirectHeader() {
   );
 }
 
+// Friends page link, with a count of incoming requests.
+function FriendsNavItem() {
+  const navigate = useNavigate();
+  const selected = useDirectFriendsSelected();
+  const incoming = useIncomingRequests();
+
+  return (
+    <NavItem variant="Background" radii="400" aria-selected={selected}>
+      <NavButton onClick={() => navigate(getDirectFriendsPath())}>
+        <NavItemContent>
+          <Box as="span" grow="Yes" alignItems="Center" gap="200">
+            <Avatar size="200" radii="400">
+              <Icon src={Icons.User} size="100" filled={selected} />
+            </Avatar>
+            <Box as="span" grow="Yes">
+              <Text as="span" size="Inherit" truncate>
+                Friends
+              </Text>
+            </Box>
+            {incoming.length > 0 && (
+              <UnreadBadgeCenter>
+                <UnreadBadge highlight count={incoming.length} />
+              </UnreadBadgeCenter>
+            )}
+          </Box>
+        </NavItemContent>
+      </NavButton>
+    </NavItem>
+  );
+}
+
 function DirectEmpty() {
   const navigate = useNavigate();
 
@@ -156,11 +193,23 @@ function DirectEmpty() {
           </Text>
         }
         options={
-          <Button variant="Secondary" size="300" onClick={() => navigate(getDirectCreatePath())}>
-            <Text size="B300" truncate>
-              Direct Message
-            </Text>
-          </Button>
+          <Box direction="Column" gap="200">
+            <Button variant="Secondary" size="300" onClick={() => navigate(getDirectCreatePath())}>
+              <Text size="B300" truncate>
+                Direct Message
+              </Text>
+            </Button>
+            <Button
+              variant="Secondary"
+              fill="Soft"
+              size="300"
+              onClick={() => navigate(getDirectFriendsPath())}
+            >
+              <Text size="B300" truncate>
+                Friends
+              </Text>
+            </Button>
+          </Box>
         }
       />
     </NavEmptyCenter>
@@ -179,7 +228,7 @@ export function Direct() {
 
   const createDirectSelected = useDirectCreateSelected();
 
-  const selectedRoomId = useSelectedRoom();
+  const selectedRoomId = useStickySelectedRoom('direct', createDirectSelected);
   const noRoomToDisplay = directs.length === 0;
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
@@ -211,6 +260,7 @@ export function Direct() {
         <PageNavContent scrollRef={scrollRef}>
           <Box direction="Column" gap="300">
             <NavCategory>
+              <FriendsNavItem />
               <NavItem variant="Background" radii="400" aria-selected={createDirectSelected}>
                 <NavButton onClick={() => navigate(getDirectCreatePath())}>
                   <NavItemContent>
@@ -275,6 +325,7 @@ export function Direct() {
           </Box>
         </PageNavContent>
       )}
+      <UserPanel />
     </PageNav>
   );
 }

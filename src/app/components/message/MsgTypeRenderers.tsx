@@ -27,6 +27,7 @@ import {
 } from '../../../types/matrix/common';
 import { FALLBACK_MIMETYPE, getBlobSafeMimeType } from '../../utils/mimeTypes';
 import { parseGeoUri, scaleYDimension } from '../../utils/common';
+import { usePhone } from '../../hooks/useScreenSize';
 import { Attachment, AttachmentBox, AttachmentContent, AttachmentHeader } from './attachment';
 import { FileHeader, FileDownloadButton } from './FileHeader';
 
@@ -190,18 +191,25 @@ type MImageProps = {
   outlined?: boolean;
 };
 export function MImage({ content, renderImageContent, outlined }: MImageProps) {
+  const phone = usePhone();
   const imgInfo = content?.info;
   const mxcUrl = content.file?.url ?? content.url;
   if (typeof mxcUrl !== 'string') {
     return <BrokenContent />;
   }
-  const height = scaleYDimension(imgInfo?.w || 400, 400, imgInfo?.h || 400);
+  // Phones get smaller pictures, so they don't fill the whole chat.
+  // Tall ones get narrower instead of cropped.
+  const base = phone ? 280 : 400;
+  const scaled = scaleYDimension(imgInfo?.w || base, base, imgInfo?.h || base);
+  const height = phone ? Math.min(scaled, 360) : scaled;
+  const width = phone ? toRem(Math.max(120, (base * height) / scaled)) : undefined;
 
   return (
-    <Attachment outlined={outlined}>
+    <Attachment outlined={outlined} style={phone ? { width } : undefined}>
       <AttachmentBox
         style={{
           height: toRem(height < 48 ? 48 : height),
+          width,
         }}
       >
         {renderImageContent({

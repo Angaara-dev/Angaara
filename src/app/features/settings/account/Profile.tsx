@@ -23,11 +23,17 @@ import {
   Header,
   config,
   Spinner,
+  TextArea,
+  color,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
+import { ProfileServerTag } from './ProfileServerTag';
+import { ProfileThemeSetting } from './ProfileThemeSetting';
+import { XP_PERKS } from '../../../../client/xp';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { UserProfile, useUserProfile } from '../../../hooks/useUserProfile';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
@@ -39,10 +45,36 @@ import { useFilePicker } from '../../../hooks/useFilePicker';
 import { useObjectURL } from '../../../hooks/useObjectURL';
 import { stopPropagation } from '../../../utils/keyboard';
 import { ImageEditor } from '../../../components/image-editor';
+import { ImageDropZone } from '../../../components/image-drop-zone';
+import {
+  AVATAR_CROP,
+  cropSizeLabel,
+  CropPreset,
+  PANEL_BG_CROP,
+  PANEL_BG_PREVIEW,
+  PROFILE_BANNER_CROP,
+  PROFILE_BANNER_PREVIEW,
+  useImageCropper,
+} from '../../../components/image-cropper';
 import { ModalWide } from '../../../styles/Modal.css';
 import { createUploadAtom, UploadSuccess } from '../../../state/upload';
 import { CompactUploadCardRenderer } from '../../../components/upload-card';
 import { useCapabilities } from '../../../hooks/useCapabilities';
+import {
+  BANNER_PROFILE_KEY,
+  LEGACY_BANNER_KEYS,
+  MAX_BANNER_BYTES,
+  MAX_BANNER_LABEL,
+  extendedProfileQueryKey,
+  useExtendedProfileSupport,
+  useUserBannerUrl,
+  useUserPanelBgUrl,
+  PANEL_BG_PROFILE_KEY,
+  LEGACY_PANEL_BG_KEYS,
+  readProfileString,
+  useExtendedProfile,
+} from '../../../hooks/useUserBanner';
+import { BIO_PROFILE_KEY, LEGACY_BIO_KEY, MAX_BIO_LENGTH } from '../../../hooks/useUserBio';
 
 type ProfileProps = {
   profile: UserProfile;
@@ -67,7 +99,8 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
     return undefined;
   }, [imageFile]);
 
-  const pickFile = useFilePicker(setImageFile, false);
+  const { open: cropAvatar, cropper } = useImageCropper(AVATAR_CROP, setImageFile);
+  const pickFile = useFilePicker(cropAvatar, false);
 
   const handleRemoveUpload = useCallback(() => {
     setImageFile(undefined);
@@ -163,6 +196,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
         </Overlay>
       )}
 
+      {cropper}
       <Overlay open={alertRemove} backdrop={<OverlayBackdrop />}>
         <OverlayCenter>
           <FocusTrap
@@ -202,6 +236,200 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
         </OverlayCenter>
       </Overlay>
     </SettingTile>
+  );
+}
+
+type ProfileImageProps = {
+  title: string;
+  description: string;
+  imageUrl?: string;
+  // Key written on upload, plus older keys cleared so they can't shadow it.
+  profileKey: string;
+  clearKeys?: string[];
+  crop: CropPreset;
+  preview: { width: number; height: number };
+  userId: string;
+};
+function ProfileImage({
+  title,
+  description,
+  imageUrl,
+  profileKey,
+  clearKeys = [],
+  crop,
+  preview,
+  userId,
+}: ProfileImageProps) {
+  const mx = useMatrixClient();
+  const queryClient = useQueryClient();
+  const supported = useExtendedProfileSupport();
+  const [error, setError] = useState<string>();
+  const label = title.toLowerCase();
+
+  const [saveState, saveImage] = useAsyncCallback(
+    useCallback(
+      async (file?: File) => {
+        if (file) {
+          const { content_uri: mxc } = await mx.uploadContent(file);
+          await mx.setExtendedProfileProperty(profileKey, mxc);
+        } else {
+          await mx.deleteExtendedProfileProperty(profileKey);
+        }
+        await Promise.all(
+          clearKeys.map((key) => mx.deleteExtendedProfileProperty(key).catch(() => undefined))
+        );
+        await queryClient.invalidateQueries({ queryKey: extendedProfileQueryKey(userId) });
+      },
+      [mx, queryClient, userId, profileKey, clearKeys]
+    )
+  );
+  const saving = saveState.status === AsyncStatus.Loading;
+  const disabled = !supported || saving;
+
+  const handleFile = useCallback(
+    (file?: File) => {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        setError('That file is not an image.');
+        return;
+      }
+      if (file.size > MAX_BANNER_BYTES) {
+        setError(`${title} must be under ${MAX_BANNER_LABEL}.`);
+        return;
+      }
+      setError(undefined);
+      saveImage(file).catch(() => setError(`Failed to save ${label}. Please try again.`));
+    },
+    [saveImage, title, label]
+  );
+  const { open: cropImage, cropper } = useImageCropper(crop, handleFile);
+  // Downloads the linked image and re-uploads it, so viewers never load it from the GIF site.
+  const [linkState, loadLink] = useAsyncCallback(
+    useCallback(async (link: string) => {
+      const res = await fetch(link.trim());
+      if (!res.ok) throw new Error('Bad response');
+      const blob = await res.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('Not an image');
+      return new File([blob], 'image', { type: blob.type });
+    }, [])
+  );
+  const loadingLink = linkState.status === AsyncStatus.Loading;
+
+  const handleLinkSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
+    evt.preventDefault();
+    const input = (evt.target as HTMLFormElement).imageLinkInput as HTMLInputElement;
+    if (!input.value.trim() || loadingLink) return;
+    setError(undefined);
+    loadLink(input.value)
+      .then((file) => {
+        cropImage(file);
+        input.value = '';
+      })
+      .catch(() =>
+        setError("Couldn't load that link. Some sites block this, so save the GIF and upload it.")
+      );
+  };
+
+  return (
+    <SettingTile
+      title={
+        <Text as="span" size="L400">
+          {title}
+        </Text>
+      }
+      description={
+        supported === false ? "Your server doesn't support profile images yet." : description
+      }
+    >
+      <ImageDropZone
+        imageUrl={imageUrl}
+        width={preview.width}
+        height={preview.height}
+        label={label}
+        onFile={cropImage}
+        disabled={disabled || loadingLink}
+        busy={saving}
+      />
+      {cropper}
+      <Box as="form" onSubmit={handleLinkSubmit} gap="200" alignItems="Center">
+        <Box grow="Yes" direction="Column">
+          <Input
+            name="imageLinkInput"
+            size="300"
+            variant="Secondary"
+            radii="300"
+            placeholder="Or paste an image address (right-click GIF, Copy image address)"
+            disabled={disabled || loadingLink}
+          />
+        </Box>
+        <Button
+          type="submit"
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          outlined
+          radii="300"
+          disabled={disabled || loadingLink}
+          before={loadingLink && <Spinner size="100" variant="Secondary" />}
+        >
+          <Text size="B300">Use Link</Text>
+        </Button>
+        {imageUrl && (
+          <Button
+            size="300"
+            variant="Critical"
+            fill="None"
+            radii="300"
+            disabled={saving}
+            onClick={() =>
+              saveImage().catch(() => setError(`Failed to remove ${label}. Please try again.`))
+            }
+          >
+            <Text size="B300">Remove</Text>
+          </Button>
+        )}
+      </Box>
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {error}
+        </Text>
+      )}
+    </SettingTile>
+  );
+}
+
+const BANNER_CLEAR_KEYS = ['m.banner_url', ...LEGACY_BANNER_KEYS];
+function ProfileBanner({ userId }: { userId: string }) {
+  return (
+    <ProfileImage
+      title="Banner"
+      description={`Shown at the top of your profile. Best at ${cropSizeLabel(
+        PROFILE_BANNER_CROP
+      )}. GIFs animate at ${XP_PERKS.bannerGif.toLocaleString()} XP, up to ${MAX_BANNER_LABEL}.`}
+      imageUrl={useUserBannerUrl(userId)}
+      profileKey={BANNER_PROFILE_KEY}
+      clearKeys={BANNER_CLEAR_KEYS}
+      crop={PROFILE_BANNER_CROP}
+      preview={PROFILE_BANNER_PREVIEW}
+      userId={userId}
+    />
+  );
+}
+
+function ProfilePanelBackground({ userId }: { userId: string }) {
+  return (
+    <ProfileImage
+      title="Panel Background"
+      description={`Behind your name at the bottom of the sidebar. Best at ${cropSizeLabel(
+        PANEL_BG_CROP
+      )}. GIFs animate at ${XP_PERKS.panelGif.toLocaleString()} XP.`}
+      imageUrl={useUserPanelBgUrl(userId)}
+      profileKey={PANEL_BG_PROFILE_KEY}
+      clearKeys={LEGACY_PANEL_BG_KEYS}
+      crop={PANEL_BG_CROP}
+      preview={PANEL_BG_PREVIEW}
+      userId={userId}
+    />
   );
 }
 
@@ -303,6 +531,92 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
   );
 }
 
+function ProfileBio({ userId }: { userId: string }) {
+  const mx = useMatrixClient();
+  const queryClient = useQueryClient();
+  const supported = useExtendedProfileSupport();
+  const profile = useExtendedProfile(userId);
+  const saved = readProfileString(profile, [BIO_PROFILE_KEY, LEGACY_BIO_KEY]) ?? '';
+  const [bio, setBio] = useState(saved);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    setBio(saved);
+  }, [saved]);
+
+  const [saveState, saveBio] = useAsyncCallback(
+    useCallback(
+      async (value: string) => {
+        if (value) await mx.setExtendedProfileProperty(BIO_PROFILE_KEY, value);
+        else await mx.deleteExtendedProfileProperty(BIO_PROFILE_KEY);
+        await mx.deleteExtendedProfileProperty(LEGACY_BIO_KEY).catch(() => undefined);
+        await queryClient.invalidateQueries({ queryKey: extendedProfileQueryKey(userId) });
+      },
+      [mx, queryClient, userId]
+    )
+  );
+  const saving = saveState.status === AsyncStatus.Loading;
+  const hasChanges = bio.trim() !== saved.trim();
+
+  const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
+    evt.preventDefault();
+    if (!hasChanges || saving) return;
+    setError(undefined);
+    saveBio(bio.trim()).catch(() => setError('Failed to save your bio. Please try again.'));
+  };
+
+  return (
+    <SettingTile
+      title={
+        <Text as="span" size="L400">
+          About Me
+        </Text>
+      }
+      description={
+        supported === false
+          ? "Your server doesn't support profile bios yet."
+          : 'Shown on your profile when people click your name. Links work.'
+      }
+    >
+      <Box as="form" onSubmit={handleSubmit} direction="Column" gap="200">
+        <TextArea
+          value={bio}
+          onChange={(evt) => setBio(evt.currentTarget.value.slice(0, MAX_BIO_LENGTH))}
+          maxLength={MAX_BIO_LENGTH}
+          rows={3}
+          resize="Vertical"
+          variant="Secondary"
+          radii="300"
+          placeholder="Tell people a bit about yourself"
+          readOnly={saving || supported === false}
+        />
+        <Box alignItems="Center" gap="200">
+          <Text size="T200" priority="300" style={{ flexGrow: 1 }}>
+            {bio.length}/{MAX_BIO_LENGTH}
+          </Text>
+          <Button
+            type="submit"
+            size="300"
+            variant={hasChanges ? 'Success' : 'Secondary'}
+            fill={hasChanges ? 'Solid' : 'Soft'}
+            outlined
+            radii="300"
+            disabled={!hasChanges || saving}
+            before={saving && <Spinner variant="Success" fill="Solid" size="100" />}
+          >
+            <Text size="B300">Save</Text>
+          </Button>
+        </Box>
+      </Box>
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {error}
+        </Text>
+      )}
+    </SettingTile>
+  );
+}
+
 export function Profile() {
   const mx = useMatrixClient();
   const userId = mx.getUserId()!;
@@ -318,7 +632,12 @@ export function Profile() {
         gap="400"
       >
         <ProfileAvatar userId={userId} profile={profile} />
+        <ProfileBanner userId={userId} />
+        <ProfilePanelBackground userId={userId} />
+        <ProfileThemeSetting userId={userId} />
         <ProfileDisplayName userId={userId} profile={profile} />
+        <ProfileBio userId={userId} />
+        <ProfileServerTag userId={userId} />
       </SequenceCard>
     </Box>
   );

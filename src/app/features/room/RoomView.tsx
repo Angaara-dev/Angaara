@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Text, config } from 'folds';
 import { EventType } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
@@ -7,7 +7,7 @@ import { useStateEvent } from '../../hooks/useStateEvent';
 import { StateEvent } from '../../../types/matrix/room';
 import { usePowerLevelsContext } from '../../hooks/usePowerLevels';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { useEditor } from '../../components/editor';
+import { createMentionElement, moveCursor, useEditor } from '../../components/editor';
 import { RoomInputPlaceholder } from './RoomInputPlaceholder';
 import { RoomTimeline } from './RoomTimeline';
 import { RoomViewTyping } from './RoomViewTyping';
@@ -22,6 +22,10 @@ import { useSetting } from '../../state/hooks/settings';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
 import { useRoom } from '../../hooks/useRoom';
+import { usePhone } from '../../hooks/useScreenSize';
+import { getMemberDisplayName } from '../../utils/room';
+import { getMxIdLocalPart } from '../../utils/matrix';
+import { MENTION_EVENT, MentionEventDetail } from './MemberContextMenu';
 
 const FN_KEYS_REGEX = /^F\d+$/;
 const shouldFocusMessageField = (evt: KeyboardEvent): boolean => {
@@ -66,9 +70,35 @@ export function RoomView({ eventId }: { eventId?: string }) {
 
   const mx = useMatrixClient();
 
+  // "Mention" from the member list's right-click menu drops a pill into this room's composer.
+  useEffect(() => {
+    const onMention = (evt: Event) => {
+      const { roomId: target, userId } = (evt as CustomEvent<MentionEventDetail>).detail;
+      if (target !== roomId) return;
+      const name = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
+      editor.insertNode(
+        createMentionElement(
+          userId,
+          name.startsWith('@') ? name : `@${name}`,
+          userId === mx.getUserId()
+        )
+      );
+      ReactEditor.focus(editor);
+      moveCursor(editor);
+    };
+    window.addEventListener(MENTION_EVENT, onMention);
+    return () => window.removeEventListener(MENTION_EVENT, onMention);
+  }, [mx, room, roomId, editor]);
+
   const tombstoneEvent = useStateEvent(room, StateEvent.RoomTombstone);
   const powerLevels = usePowerLevelsContext();
   const creators = useRoomCreators(room);
+
+  // Phones slide the room in straight away and build the messages in small chunks behind it,
+  // so a long first render can't freeze the slide.
+  const phone = usePhone();
+  const [shownRoom, setShownRoom] = useState(phone ? undefined : roomId);
+  useEffect(() => startTransition(() => setShownRoom(roomId)), [roomId]);
 
   const permissions = useRoomPermissions(creators, powerLevels);
   const canMessage = permissions.event(EventType.RoomMessage, mx.getSafeUserId());
@@ -91,15 +121,19 @@ export function RoomView({ eventId }: { eventId?: string }) {
   );
 
   return (
-    <Page ref={roomViewRef}>
+    <Page ref={roomViewRef} data-room-ready={shownRoom === roomId || !phone || undefined}>
       <Box grow="Yes" direction="Column">
-        <RoomTimeline
-          key={roomId}
-          room={room}
-          eventId={eventId}
-          roomInputRef={roomInputRef}
-          editor={editor}
-        />
+        {shownRoom === roomId || !phone ? (
+          <RoomTimeline
+            key={roomId}
+            room={room}
+            eventId={eventId}
+            roomInputRef={roomInputRef}
+            editor={editor}
+          />
+        ) : (
+          <Box grow="Yes" />
+        )}
         <RoomViewTyping room={room} />
       </Box>
       <Box shrink="No" direction="Column">

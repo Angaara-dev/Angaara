@@ -1,5 +1,5 @@
 import React, { RefObject, useEffect, useMemo, useRef } from 'react';
-import { Text, Box, Icon, Icons, config, Spinner, IconButton, Line, toRem } from 'folds';
+import { Text, Box, Chip, Icon, Icons, config, Spinner, IconButton, Line, toRem } from 'folds';
 import { useAtomValue } from 'jotai';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -32,6 +32,7 @@ const useSearchPathSearchParams = (searchParams: URLSearchParams): _SearchPathSe
       order: searchParams.get('order') ?? undefined,
       rooms: searchParams.get('rooms') ?? undefined,
       senders: searchParams.get('senders') ?? undefined,
+      has: searchParams.get('has') ?? undefined,
     }),
     [searchParams]
   );
@@ -91,6 +92,7 @@ export function MessageSearch({
       order: searchPathSearchParams.order ?? SearchOrderBy.Recent,
       rooms: searchParamRooms ?? defaultRooms,
       senders: searchParamsSenders ?? senders,
+      hasFile: searchPathSearchParams.has === 'file',
     };
   }, [searchPathSearchParams, searchParamRooms, searchParamsSenders, rooms, senders]);
 
@@ -104,6 +106,7 @@ export function MessageSearch({
       msgSearchParams.order,
       msgSearchParams.rooms,
       msgSearchParams.senders,
+      msgSearchParams.hasFile,
     ],
     queryFn: ({ pageParam }) => searchMessages(pageParam),
     initialPageParam: '',
@@ -164,6 +167,13 @@ export function MessageSearch({
     });
   };
 
+  const clearParam = (key: 'senders' | 'has') =>
+    setSearchParams((prevParams) => {
+      const newParams = new URLSearchParams(prevParams);
+      newParams.delete(key);
+      return newParams;
+    });
+
   const handleOrderChange = (order?: string) => {
     setSearchParams((prevParams) => {
       const newParams = new URLSearchParams(prevParams);
@@ -205,6 +215,8 @@ export function MessageSearch({
       </ScrollTopContainer>
       <Box ref={scrollTopAnchorRef} direction="Column" gap="300">
         <SearchInput
+          key={msgSearchParams.term}
+          defaultTerm={msgSearchParams.term}
           active={!!msgSearchParams.term}
           loading={status === 'pending'}
           searchInputRef={searchInputRef}
@@ -222,6 +234,36 @@ export function MessageSearch({
           order={msgSearchParams.order}
           onOrderChange={handleOrderChange}
         />
+        {(searchParamsSenders || msgSearchParams.hasFile) && (
+          <Box gap="200" wrap="Wrap">
+            {searchParamsSenders && (
+              <Chip
+                variant="Primary"
+                radii="Pill"
+                aria-pressed
+                onClick={() => clearParam('senders')}
+                after={<Icon size="50" src={Icons.Cross} />}
+              >
+                <Text size="T200">
+                  {`From: ${searchParamsSenders
+                    .map((id) => mx.getUser(id)?.displayName ?? id)
+                    .join(', ')}`}
+                </Text>
+              </Chip>
+            )}
+            {msgSearchParams.hasFile && (
+              <Chip
+                variant="Primary"
+                radii="Pill"
+                aria-pressed
+                onClick={() => clearParam('has')}
+                after={<Icon size="50" src={Icons.Cross} />}
+              >
+                <Text size="T200">Has: file</Text>
+              </Chip>
+            )}
+          </Box>
+        )}
       </Box>
 
       {!msgSearchParams.term && status === 'pending' && (

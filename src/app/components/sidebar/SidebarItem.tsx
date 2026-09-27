@@ -6,7 +6,8 @@ import * as css from './Sidebar.css';
 export const SidebarItem = as<'div', css.SidebarItemVariants>(
   ({ as: AsSidebarAvatarBox = 'div', className, active, ...props }, ref) => (
     <AsSidebarAvatarBox
-      className={classNames(css.SidebarItem({ active }), className)}
+      className={classNames(css.SidebarItem({ active }), css.SidebarItemRoot, className)}
+      data-active={active ? 'true' : undefined}
       {...props}
       ref={ref}
     />
@@ -52,7 +53,11 @@ export function SidebarItemTooltip({
 export const SidebarAvatar = as<'div', css.SidebarAvatarVariants & ComponentProps<typeof Avatar>>(
   ({ className, size, outlined, radii, ...props }, ref) => (
     <Avatar
-      className={classNames(css.SidebarAvatar({ size, outlined }), className)}
+      className={classNames(
+        css.SidebarAvatar({ size, outlined }),
+        (size ?? '400') === '400' && css.SidebarAvatarShape,
+        className
+      )}
       radii={radii}
       {...props}
       ref={ref}

@@ -15,3 +15,13 @@ export const useObjectURL = (object?: Blob): string | undefined => {
 
   return url;
 };
+
+// Frees a blob: URL made elsewhere once it's replaced or the component unmounts.
+export const useRevokeObjectURL = (url?: string) => {
+  useEffect(
+    () => () => {
+      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+    },
+    [url]
+  );
+};

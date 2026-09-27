@@ -104,7 +104,35 @@ export const usePermissionGroups = (): PermissionGroup[] => {
             state: true,
             key: StateEvent.PowerLevelTags,
           },
-          name: 'Edit Power Levels',
+          name: 'Edit Roles',
+        },
+        {
+          location: {
+            state: true,
+            key: StateEvent.AngaaraSpaceTheme,
+          },
+          name: 'Change Server Colours',
+        },
+        {
+          location: {
+            state: true,
+            key: StateEvent.AngaaraRoomBanner,
+          },
+          name: 'Change Server Banner',
+        },
+        {
+          location: {
+            state: true,
+            key: StateEvent.AngaaraSpaceTag,
+          },
+          name: 'Change Server Tag',
+        },
+        {
+          location: {
+            state: true,
+            key: StateEvent.AngaaraDisabledCommands,
+          },
+          name: 'Manage Commands',
         },
         {
           location: {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { Box, Header, Scroll, Spinner, Text, color } from 'folds';
+import { Box, Scroll, Spinner, Text, color, toRem } from 'folds';
 import {
   Outlet,
   generatePath,
@@ -12,7 +12,6 @@ import classNames from 'classnames';
 
 import { AuthFooter } from './AuthFooter';
 import * as css from './styles.css';
-import * as PatternsCss from '../../styles/Patterns.css';
 import {
   clientAllowedServer,
   clientDefaultServer,
@@ -20,7 +19,7 @@ import {
 } from '../../hooks/useClientConfig';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { LOGIN_PATH, REGISTER_PATH, RESET_PASSWORD_PATH } from '../paths';
-import CinnySVG from '../../../../public/res/svg/cinny.svg';
+import { AngaaraLogo } from '../../components/angaara-logo';
 import { ServerPicker } from './ServerPicker';
 import { AutoDiscoveryAction, autoDiscovery } from '../../cs-api';
 import { SpecVersionsLoader } from '../../components/SpecVersionsLoader';
@@ -30,6 +29,7 @@ import { AuthFlowsLoader } from '../../components/AuthFlowsLoader';
 import { AuthFlowsProvider } from '../../hooks/useAuthFlows';
 import { AuthServerProvider } from '../../hooks/useAuthServer';
 import { tryDecodeURIComponent } from '../../utils/dom';
+import { BRAND_NAME } from '../../brand';
 
 const currentAuthPath = (pathname: string): string => {
   if (matchPath(LOGIN_PATH, pathname)) {
@@ -43,6 +43,38 @@ const currentAuthPath = (pathname: string): string => {
   }
   return LOGIN_PATH;
 };
+
+// Fixed positions so the embers don't jump around on re-render.
+const EMBERS = Array.from({ length: 28 }, (_, i) => ({
+  left: `${(i * 47 + 7) % 100}%`,
+  size: 4 + ((i * 7) % 6),
+  duration: 7 + ((i * 3) % 6),
+  delay: -((i * 1.7) % 12),
+  drift: `${((i * 29) % 80) - 40}px`,
+}));
+
+function Embers() {
+  return (
+    <div className={css.Embers} aria-hidden>
+      {EMBERS.map((ember) => (
+        <span
+          key={ember.left}
+          className={css.Ember}
+          style={
+            {
+              left: ember.left,
+              width: toRem(ember.size),
+              height: toRem(ember.size),
+              animationDuration: `${ember.duration}s`,
+              animationDelay: `${ember.delay}s`,
+              '--drift': ember.drift,
+            } as React.CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
 
 function AuthLayoutLoading({ message }: { message: string }) {
   return (
@@ -125,81 +157,84 @@ export function AuthLayout() {
   return (
     <Scroll variant="Background" visibility="Hover" size="300" hideTrack>
       <Box
-        className={classNames(css.AuthLayout, PatternsCss.BackgroundDotPattern)}
+        className={classNames(css.AuthLayout)}
         direction="Column"
         alignItems="Center"
         justifyContent="SpaceBetween"
         gap="400"
       >
-        <Box direction="Column" className={css.AuthCard}>
-          <Header className={css.AuthHeader} size="600" variant="Surface">
-            <Box grow="Yes" direction="Row" gap="300" alignItems="Center">
-              <img className={css.AuthLogo} src={CinnySVG} alt="Cinny Logo" />
-              <Text size="H3">Cinny</Text>
+        <Embers />
+        <Box direction="Column" alignItems="Center" gap="600" style={{ width: '100%' }}>
+          <Box className={css.AuthHero} direction="Column" alignItems="Center" gap="300">
+            <AngaaraLogo size={76} animated />
+            <Text as="h1" className={css.AuthTitle}>
+              {BRAND_NAME}
+            </Text>
+          </Box>
+          <Box direction="Column" className={css.AuthCard}>
+            <Box className={css.AuthCardContent} direction="Column">
+              <Box direction="Column" gap="100">
+                <Text as="label" size="L400" priority="300">
+                  Homeserver
+                </Text>
+                <ServerPicker
+                  server={server}
+                  serverList={clientConfig.homeserverList ?? []}
+                  allowCustomServer={clientConfig.allowCustomHomeservers}
+                  onServerChange={selectServer}
+                />
+              </Box>
+              {discoveryState.status === AsyncStatus.Loading && (
+                <AuthLayoutLoading message="Looking for homeserver..." />
+              )}
+              {discoveryState.status === AsyncStatus.Error && (
+                <AuthLayoutError message="Failed to find homeserver." />
+              )}
+              {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_PROMPT && (
+                <AuthLayoutError
+                  message={`Failed to connect. Homeserver configuration found with ${autoDiscoveryError.host} appears unusable.`}
+                />
+              )}
+              {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_ERROR && (
+                <AuthLayoutError message="Failed to connect. Homeserver configuration base_url appears invalid." />
+              )}
+              {discoveryState.status === AsyncStatus.Success && autoDiscoveryInfo && (
+                <AuthServerProvider value={discoveryState.data.serverName}>
+                  <AutoDiscoveryInfoProvider value={autoDiscoveryInfo}>
+                    <SpecVersionsLoader
+                      baseUrl={autoDiscoveryInfo['m.homeserver'].base_url}
+                      fallback={() => (
+                        <AuthLayoutLoading
+                          message={`Connecting to ${autoDiscoveryInfo['m.homeserver'].base_url}`}
+                        />
+                      )}
+                      error={() => (
+                        <AuthLayoutError message="Failed to connect. Either homeserver is unavailable at this moment or does not exist." />
+                      )}
+                    >
+                      {(specVersions) => (
+                        <SpecVersionsProvider value={specVersions}>
+                          <AuthFlowsLoader
+                            fallback={() => (
+                              <AuthLayoutLoading message="Loading authentication flow..." />
+                            )}
+                            error={() => (
+                              <AuthLayoutError message="Failed to get authentication flow information." />
+                            )}
+                          >
+                            {(authFlows) => (
+                              <AuthFlowsProvider value={authFlows}>
+                                <Outlet />
+                              </AuthFlowsProvider>
+                            )}
+                          </AuthFlowsLoader>
+                        </SpecVersionsProvider>
+                      )}
+                    </SpecVersionsLoader>
+                  </AutoDiscoveryInfoProvider>
+                </AuthServerProvider>
+              )}
             </Box>
-          </Header>
-          <Box className={css.AuthCardContent} direction="Column">
-            <Box direction="Column" gap="100">
-              <Text as="label" size="L400" priority="300">
-                Homeserver
-              </Text>
-              <ServerPicker
-                server={server}
-                serverList={clientConfig.homeserverList ?? []}
-                allowCustomServer={clientConfig.allowCustomHomeservers}
-                onServerChange={selectServer}
-              />
-            </Box>
-            {discoveryState.status === AsyncStatus.Loading && (
-              <AuthLayoutLoading message="Looking for homeserver..." />
-            )}
-            {discoveryState.status === AsyncStatus.Error && (
-              <AuthLayoutError message="Failed to find homeserver." />
-            )}
-            {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_PROMPT && (
-              <AuthLayoutError
-                message={`Failed to connect. Homeserver configuration found with ${autoDiscoveryError.host} appears unusable.`}
-              />
-            )}
-            {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_ERROR && (
-              <AuthLayoutError message="Failed to connect. Homeserver configuration base_url appears invalid." />
-            )}
-            {discoveryState.status === AsyncStatus.Success && autoDiscoveryInfo && (
-              <AuthServerProvider value={discoveryState.data.serverName}>
-                <AutoDiscoveryInfoProvider value={autoDiscoveryInfo}>
-                  <SpecVersionsLoader
-                    baseUrl={autoDiscoveryInfo['m.homeserver'].base_url}
-                    fallback={() => (
-                      <AuthLayoutLoading
-                        message={`Connecting to ${autoDiscoveryInfo['m.homeserver'].base_url}`}
-                      />
-                    )}
-                    error={() => (
-                      <AuthLayoutError message="Failed to connect. Either homeserver is unavailable at this moment or does not exist." />
-                    )}
-                  >
-                    {(specVersions) => (
-                      <SpecVersionsProvider value={specVersions}>
-                        <AuthFlowsLoader
-                          fallback={() => (
-                            <AuthLayoutLoading message="Loading authentication flow..." />
-                          )}
-                          error={() => (
-                            <AuthLayoutError message="Failed to get authentication flow information." />
-                          )}
-                        >
-                          {(authFlows) => (
-                            <AuthFlowsProvider value={authFlows}>
-                              <Outlet />
-                            </AuthFlowsProvider>
-                          )}
-                        </AuthFlowsLoader>
-                      </SpecVersionsProvider>
-                    )}
-                  </SpecVersionsLoader>
-                </AutoDiscoveryInfoProvider>
-              </AuthServerProvider>
-            )}
           </Box>
         </Box>
         <AuthFooter />

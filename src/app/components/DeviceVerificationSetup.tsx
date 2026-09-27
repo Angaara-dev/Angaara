@@ -11,6 +11,7 @@ import {
   Button,
   Chip,
   color,
+  Input,
   Spinner,
 } from 'folds';
 import FileSaver from 'file-saver';
@@ -24,7 +25,6 @@ import { clearSecretStorageKeys } from '../../client/secretStorageKeys';
 import { ActionUIA, ActionUIAFlowsLoader } from './ActionUIA';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { useAlive } from '../hooks/useAlive';
-import { UseStateProvider } from './UseStateProvider';
 
 type UIACallback<T> = (
   authDict: AuthDict | null
@@ -66,6 +66,8 @@ function makeUIAAction<T>(
 
   return action;
 }
+
+const MIN_PASSPHRASE_LENGTH = 8;
 
 type SetupVerificationProps = {
   onComplete: (recoveryKey: string) => void;
@@ -133,7 +135,9 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
     [alive, resetUIA]
   );
 
-  const [setupState, setup] = useAsyncCallback<void, Error, [string | undefined]>(
+  const [formError, setFormError] = useState<string>();
+
+  const [setupState, setup] = useAsyncCallback<void, Error, [string]>(
     useCallback(
       async (passphrase) => {
         const crypto = mx.getCrypto();
@@ -170,24 +174,53 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
     if (loading) return;
 
     const target = evt.target as HTMLFormElement | undefined;
-    const passphraseInput = target?.passphraseInput as HTMLInputElement | undefined;
-    let passphrase: string | undefined;
-    if (passphraseInput && passphraseInput.value.length > 0) {
-      passphrase = passphraseInput.value;
-    }
+    const passphrase = (target?.passphraseInput as HTMLInputElement | undefined)?.value ?? '';
+    const confirm = (target?.confirmPassphraseInput as HTMLInputElement | undefined)?.value ?? '';
 
+    if (/\s/.test(passphrase)) {
+      setFormError('Passphrase cannot contain spaces.');
+      return;
+    }
+    if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+      setFormError(`Passphrase must be at least ${MIN_PASSPHRASE_LENGTH} characters.`);
+      return;
+    }
+    if (passphrase !== confirm) {
+      setFormError('Passphrases do not match.');
+      return;
+    }
+    setFormError(undefined);
     setup(passphrase);
   };
 
   return (
     <Box as="form" onSubmit={handleSubmit} direction="Column" gap="400">
       <Text size="T300">
-        Generate a <b>Recovery Key</b> for verifying identity if you do not have access to other
-        devices. Additionally, setup a passphrase as a memorable alternative.
+        Choose a <b>Passphrase</b> to unlock your encrypted messages on new devices. You will also
+        get a backup <b>Recovery Code</b> in the next step.
       </Text>
       <Box direction="Column" gap="100">
-        <Text size="L400">Passphrase (Optional)</Text>
-        <PasswordInput name="passphraseInput" size="400" readOnly={loading} />
+        <Text size="L400">Passphrase</Text>
+        <PasswordInput name="passphraseInput" size="400" readOnly={loading} required />
+        <Text size="T200" priority="300">
+          No spaces, at least {MIN_PASSPHRASE_LENGTH} characters.
+        </Text>
+      </Box>
+      <Box direction="Column" gap="100">
+        <Text size="L400">Confirm Passphrase</Text>
+        <PasswordInput name="confirmPassphraseInput" size="400" readOnly={loading} required />
+      </Box>
+      <Box
+        className={ContainerColor({ variant: 'Warning' })}
+        style={{ padding: config.space.S300, borderRadius: config.radii.R400 }}
+        direction="Column"
+        gap="100"
+      >
+        <Text size="L400">Don&apos;t forget this passphrase!</Text>
+        <Text size="T200">
+          If you lose both your passphrase and your recovery code while logged out of every device,
+          your encrypted messages are gone for good. Nobody can recover them, not even the server.
+        </Text>
       </Box>
       <Button
         type="submit"
@@ -196,6 +229,11 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
       >
         <Text size="B400">Continue</Text>
       </Button>
+      {formError && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          <b>{formError}</b>
+        </Text>
+      )}
       {setupState.status === AsyncStatus.Error && (
         <Text size="T200" style={{ color: color.Critical.Main }}>
           <b>{setupState.error ? setupState.error.message : 'Unexpected Error!'}</b>
@@ -226,8 +264,9 @@ function SetupVerification({ onComplete }: SetupVerificationProps) {
 
 type RecoveryKeyDisplayProps = {
   recoveryKey: string;
+  onContinue: () => void;
 };
-function RecoveryKeyDisplay({ recoveryKey }: RecoveryKeyDisplayProps) {
+function RecoveryKeyDisplay({ recoveryKey, onContinue }: RecoveryKeyDisplayProps) {
   const [show, setShow] = useState(false);
 
   const handleCopy = () => {
@@ -246,11 +285,11 @@ function RecoveryKeyDisplay({ recoveryKey }: RecoveryKeyDisplayProps) {
   return (
     <Box direction="Column" gap="400">
       <Text size="T300">
-        Store the Recovery Key in a safe place for future use, as you will need it to verify your
-        identity if you do not have access to other devices.
+        This is your <b>Recovery Code</b>. It works if you ever forget your passphrase. Save it
+        somewhere safe, like a password manager.
       </Text>
       <Box direction="Column" gap="100">
-        <Text size="L400">Recovery Key</Text>
+        <Text size="L400">Recovery Code</Text>
         <Box
           className={ContainerColor({ variant: 'SurfaceVariant' })}
           style={{
@@ -276,9 +315,111 @@ function RecoveryKeyDisplay({ recoveryKey }: RecoveryKeyDisplayProps) {
         <Button onClick={handleDownload} fill="Soft">
           <Text size="B400">Download</Text>
         </Button>
+        <Button onClick={onContinue} variant="Success">
+          <Text size="B400">OK, I&apos;ve Saved It</Text>
+        </Button>
       </Box>
     </Box>
   );
+}
+
+const normalizeRecoveryKey = (key: string) => key.replace(/\s/g, '');
+
+type RecoveryKeyConfirmProps = {
+  recoveryKey: string;
+  onConfirmed: () => void;
+  onShowAgain: () => void;
+};
+function RecoveryKeyConfirm({ recoveryKey, onConfirmed, onShowAgain }: RecoveryKeyConfirmProps) {
+  const [error, setError] = useState(false);
+
+  const handleSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
+    evt.preventDefault();
+    const target = evt.target as HTMLFormElement | undefined;
+    const value = (target?.recoveryCodeInput as HTMLInputElement | undefined)?.value ?? '';
+    if (normalizeRecoveryKey(value) === normalizeRecoveryKey(recoveryKey)) {
+      onConfirmed();
+      return;
+    }
+    setError(true);
+  };
+
+  return (
+    <Box as="form" onSubmit={handleSubmit} direction="Column" gap="400">
+      <Text size="T300">
+        Let&apos;s make sure you saved it. Enter your <b>Recovery Code</b> below.
+      </Text>
+      <Box direction="Column" gap="100">
+        <Text size="L400">Recovery Code</Text>
+        <Input
+          name="recoveryCodeInput"
+          size="400"
+          variant="Background"
+          autoComplete="off"
+          spellCheck={false}
+          style={{ fontFamily: 'monospace' }}
+          onChange={() => setError(false)}
+          required
+        />
+      </Box>
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          <b>That code doesn&apos;t match. Check for typos, or view it again.</b>
+        </Text>
+      )}
+      <Box direction="Column" gap="200">
+        <Button type="submit">
+          <Text size="B400">Confirm</Text>
+        </Button>
+        <Button type="button" onClick={onShowAgain} fill="Soft">
+          <Text size="B400">Show My Code Again</Text>
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
+type SetupStep = 'setup' | 'display' | 'confirm' | 'done';
+
+// Close is hidden mid-flow so the recovery code can't be skipped before it's confirmed.
+function useSetupFlow(onClose: () => void) {
+  const [step, setStep] = useState<SetupStep>('setup');
+  const [recoveryKey, setRecoveryKey] = useState<string>();
+
+  const handleComplete = useCallback((key: string) => {
+    setRecoveryKey(key);
+    setStep('display');
+  }, []);
+
+  let body: React.ReactNode;
+  if (step === 'setup' || !recoveryKey) {
+    body = <SetupVerification onComplete={handleComplete} />;
+  } else if (step === 'display') {
+    body = <RecoveryKeyDisplay recoveryKey={recoveryKey} onContinue={() => setStep('confirm')} />;
+  } else if (step === 'confirm') {
+    body = (
+      <RecoveryKeyConfirm
+        recoveryKey={recoveryKey}
+        onConfirmed={() => setStep('done')}
+        onShowAgain={() => setStep('display')}
+      />
+    );
+  } else {
+    body = (
+      <Box direction="Column" gap="400">
+        <Text size="H1">🔐</Text>
+        <Text size="T300">
+          You&apos;re all set! Your messages are backed up and you can unlock them with your
+          passphrase or recovery code.
+        </Text>
+        <Button onClick={onClose}>
+          <Text size="B400">Done</Text>
+        </Button>
+      </Box>
+    );
+  }
+
+  return { body, canClose: step === 'setup' || step === 'done' };
 }
 
 type DeviceVerificationSetupProps = {
@@ -286,7 +427,7 @@ type DeviceVerificationSetupProps = {
 };
 export const DeviceVerificationSetup = forwardRef<HTMLDivElement, DeviceVerificationSetupProps>(
   ({ onCancel }, ref) => {
-    const [recoveryKey, setRecoveryKey] = useState<string>();
+    const { body, canClose } = useSetupFlow(onCancel);
 
     return (
       <Dialog ref={ref}>
@@ -301,16 +442,14 @@ export const DeviceVerificationSetup = forwardRef<HTMLDivElement, DeviceVerifica
           <Box grow="Yes">
             <Text size="H4">Setup Device Verification</Text>
           </Box>
-          <IconButton size="300" radii="300" onClick={onCancel}>
-            <Icon src={Icons.Cross} />
-          </IconButton>
+          {canClose && (
+            <IconButton size="300" radii="300" onClick={onCancel}>
+              <Icon src={Icons.Cross} />
+            </IconButton>
+          )}
         </Header>
         <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
-          {recoveryKey ? (
-            <RecoveryKeyDisplay recoveryKey={recoveryKey} />
-          ) : (
-            <SetupVerification onComplete={setRecoveryKey} />
-          )}
+          {body}
         </Box>
       </Dialog>
     );
@@ -322,6 +461,7 @@ type DeviceVerificationResetProps = {
 export const DeviceVerificationReset = forwardRef<HTMLDivElement, DeviceVerificationResetProps>(
   ({ onCancel }, ref) => {
     const [reset, setReset] = useState(false);
+    const { body, canClose } = useSetupFlow(onCancel);
 
     return (
       <Dialog ref={ref}>
@@ -336,21 +476,15 @@ export const DeviceVerificationReset = forwardRef<HTMLDivElement, DeviceVerifica
           <Box grow="Yes">
             <Text size="H4">Reset Device Verification</Text>
           </Box>
-          <IconButton size="300" radii="300" onClick={onCancel}>
-            <Icon src={Icons.Cross} />
-          </IconButton>
+          {(!reset || canClose) && (
+            <IconButton size="300" radii="300" onClick={onCancel}>
+              <Icon src={Icons.Cross} />
+            </IconButton>
+          )}
         </Header>
         {reset ? (
           <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">
-            <UseStateProvider initial={undefined}>
-              {(recoveryKey: string | undefined, setRecoveryKey) =>
-                recoveryKey ? (
-                  <RecoveryKeyDisplay recoveryKey={recoveryKey} />
-                ) : (
-                  <SetupVerification onComplete={setRecoveryKey} />
-                )
-              }
-            </UseStateProvider>
+            {body}
           </Box>
         ) : (
           <Box style={{ padding: config.space.S400 }} direction="Column" gap="400">

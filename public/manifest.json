@@ -1,14 +1,14 @@
 {
-  "name": "Cinny",
-  "short_name": "Cinny",
-  "description": "Yet another matrix client",
+  "name": "Angaara",
+  "short_name": "Angaara",
+  "description": "Your communities, on an open network.",
   "dir": "auto",
   "lang": "en-US",
   "display": "standalone",
   "orientation": "portrait",
   "start_url": "./",
-  "background_color": "#fff",
-  "theme_color": "#fff",
+  "background_color": "#0E0E10",
+  "theme_color": "#0E0E10",
   "icons": [
     {
       "src": "./public/android/android-chrome-36x36.png",

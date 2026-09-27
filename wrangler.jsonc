@@ -1,0 +1,22 @@
+// Cloudflare Workers: serves the Vite build, plus worker/index.js for GitHub sign-in and XP.
+{
+  "name": "matrix-ui-code",
+  "compatibility_date": "2025-09-01",
+  "main": "worker/index.js",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Unknown paths get index.html so client-side routes like /home/ work on reload.
+    "not_found_handling": "single-page-application",
+    // Only these paths reach the worker first; everything else is served as a static file.
+    "run_worker_first": ["/api/*"]
+  },
+  // XP counter storage for worker/xp.js; see docs/XP.md.
+  "d1_databases": [
+    {
+      "binding": "XP_DB",
+      "database_name": "angaara-xp",
+      "database_id": "a0a090fc-7efe-4360-9d92-9a4b9560fd21"
+    }
+  ]
+}

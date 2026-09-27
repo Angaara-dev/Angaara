@@ -2,6 +2,7 @@ import {
   Avatar,
   Box,
   Button,
+  Chip,
   Dialog,
   Header,
   Icon,
@@ -17,17 +18,21 @@ import {
   OverlayCenter,
   PopOut,
   RectCords,
+  IconSrc,
   Spinner,
   Text,
+  TextArea,
   as,
   color,
   config,
+  toRem,
 } from 'folds';
 import React, {
   FormEventHandler,
   MouseEventHandler,
   ReactNode,
   useCallback,
+  useMemo,
   useState,
 } from 'react';
 import FocusTrap from 'focus-trap-react';
@@ -66,7 +71,7 @@ import { EventReaders } from '../../../components/event-readers';
 import { TextViewer } from '../../../components/text-viewer';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { EmojiBoard } from '../../../components/emoji-board';
-import { ReactionViewer } from '../reaction-viewer';
+import { ReactionViewerDialog } from '../reaction-viewer';
 import { MessageEditor } from './MessageEditor';
 import { UserAvatar } from '../../../components/user-avatar';
 import { copyToClipboard } from '../../../utils/dom';
@@ -76,9 +81,14 @@ import { getViaServers } from '../../../plugins/via-servers';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useRoomPinnedEvents } from '../../../hooks/useRoomPinnedEvents';
 import { MemberPowerTag, StateEvent } from '../../../../types/matrix/room';
-import { PowerIcon } from '../../../components/power';
+import { PowerIcon, roleNameStyle } from '../../../components/power';
 import colorMXID from '../../../../util/colorMXID';
 import { getPowerTagIconSrc } from '../../../hooks/useMemberPowerTag';
+import { buildReportReason, historyBefore, reportLine } from './reportContext';
+import { UserHoverCard } from '../../../components/user-profile/UserHoverCard';
+import { ServerTagBadge } from '../../../components/user-profile/ServerTagBadge';
+import { usePhone } from '../../../hooks/useScreenSize';
+import { BottomSheet } from '../../../components/bottom-sheet';
 
 export type ReactionHandler = (keyOrMxc: string, shortcode: string) => void;
 
@@ -122,6 +132,55 @@ export const MessageQuickReactions = as<'div', MessageQuickReactionsProps>(
   }
 );
 
+// Fills the phone sheet's reaction row when there aren't enough recent emojis yet.
+const DEFAULT_QUICK_REACTIONS = [
+  { unicode: '👍', shortcode: 'thumbsup' },
+  { unicode: '❤️', shortcode: 'heart' },
+  { unicode: '😂', shortcode: 'joy' },
+  { unicode: '🔥', shortcode: 'fire' },
+  { unicode: '😭', shortcode: 'sob' },
+];
+
+// Phone sheet: five quick reactions plus a button for the full emoji board.
+function MessageSheetReactions({
+  onReaction,
+  onMore,
+}: {
+  onReaction: ReactionHandler;
+  onMore: () => void;
+}) {
+  const mx = useMatrixClient();
+  const recent = useRecentEmoji(mx, 5);
+  const picks = recent.map(({ unicode, shortcode }) => ({ unicode, shortcode }));
+  DEFAULT_QUICK_REACTIONS.forEach((emoji) => {
+    if (picks.length < 5 && !picks.some((p) => p.unicode === emoji.unicode)) picks.push(emoji);
+  });
+
+  return (
+    <div className={css.SheetReactions}>
+      {picks.map((emoji) => (
+        <button
+          key={emoji.unicode}
+          type="button"
+          className={css.SheetReaction}
+          aria-label={emoji.shortcode}
+          onClick={() => onReaction(emoji.unicode, emoji.shortcode)}
+        >
+          {emoji.unicode}
+        </button>
+      ))}
+      <button
+        type="button"
+        className={css.SheetReaction}
+        aria-label="Add Reaction"
+        onClick={onMore}
+      >
+        <Icon src={Icons.SmilePlus} size="300" />
+      </button>
+    </div>
+  );
+}
+
 export const MessageAllReactionItem = as<
   'button',
   {
@@ -139,33 +198,7 @@ export const MessageAllReactionItem = as<
 
   return (
     <>
-      <Overlay
-        onContextMenu={(evt: any) => {
-          evt.stopPropagation();
-        }}
-        open={open}
-        backdrop={<OverlayBackdrop />}
-      >
-        <OverlayCenter>
-          <FocusTrap
-            focusTrapOptions={{
-              initialFocus: false,
-              returnFocusOnDeactivate: false,
-              onDeactivate: () => handleClose(),
-              clickOutsideDeactivates: true,
-              escapeDeactivates: stopPropagation,
-            }}
-          >
-            <Modal variant="Surface" size="300">
-              <ReactionViewer
-                room={room}
-                relations={relations}
-                requestClose={() => setOpen(false)}
-              />
-            </Modal>
-          </FocusTrap>
-        </OverlayCenter>
-      </Overlay>
+      <ReactionViewerDialog room={room} relations={relations} open={open} onClose={handleClose} />
       <MenuItem
         size="300"
         after={<Icon size="100" src={Icons.Smile} />}
@@ -528,6 +561,18 @@ export const MessageReportItem = as<
 >(({ room, mEvent, onClose, ...props }, ref) => {
   const mx = useMatrixClient();
   const [open, setOpen] = useState(false);
+  const [description, setDescription] = useState('');
+  const [historyCount, setHistoryCount] = useState(0);
+  // Admins can't read encrypted messages, so the reporter can share the decrypted text.
+  const encrypted = mEvent.isEncrypted();
+  const reportEventId = mEvent.getId();
+  const sharedLines = useMemo(() => {
+    if (!open || !encrypted || !reportEventId) return undefined;
+    return {
+      reported: reportLine(room, mEvent),
+      history: historyBefore(room, reportEventId, historyCount).map((e) => reportLine(room, e)),
+    };
+  }, [open, encrypted, room, mEvent, reportEventId, historyCount]);
 
   const [reportState, reportMessage] = useAsyncCallback(
     useCallback(
@@ -546,11 +591,13 @@ export const MessageReportItem = as<
       reportState.status === AsyncStatus.Success
     )
       return;
-    const target = evt.target as HTMLFormElement | undefined;
-    const reasonInput = target?.reasonInput as HTMLInputElement | undefined;
-    const reason = reasonInput && reasonInput.value.trim();
-    if (reasonInput) reasonInput.value = '';
-    reportMessage(eventId, reason ? -100 : -50, reason || 'No reason provided');
+    const reason = description.trim();
+    if (!reason) return;
+    reportMessage(
+      eventId,
+      -100,
+      sharedLines ? buildReportReason(reason, sharedLines.reported, sharedLines.history) : reason
+    );
   };
 
   const handleClose = () => {
@@ -570,7 +617,11 @@ export const MessageReportItem = as<
               escapeDeactivates: stopPropagation,
             }}
           >
-            <Dialog variant="Surface">
+            <Dialog
+              variant="Surface"
+              // Grows with the screen so the shared-messages preview is readable on PC.
+              style={{ width: encrypted ? 'min(94vw, 48rem)' : undefined, maxWidth: '94vw' }}
+            >
               <Header
                 style={{
                   padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
@@ -593,13 +644,36 @@ export const MessageReportItem = as<
                 direction="Column"
                 gap="400"
               >
-                <Text priority="400">
-                  Report this message to server, which may then notify the appropriate people to
-                  take action.
-                </Text>
+                <Text priority="400">This report will go to the server administrators.</Text>
+                {encrypted && (
+                  <Text
+                    size="T300"
+                    style={{
+                      color: color.Critical.OnMain,
+                      background: color.Critical.Main,
+                      fontWeight: 400,
+                      padding: config.space.S300,
+                      borderRadius: config.radii.R300,
+                    }}
+                  >
+                    This message is end-to-end encrypted, so the server administrators can&apos;t
+                    read it. This report will decrypt the chosen messages and send them to the
+                    administrators.
+                  </Text>
+                )}
                 <Box direction="Column" gap="100">
-                  <Text size="L400">Reason</Text>
-                  <Input name="reasonInput" variant="Background" required />
+                  <Text size="L400">Describe your report</Text>
+                  <TextArea
+                    name="reasonInput"
+                    variant="Background"
+                    required
+                    rows={3}
+                    placeholder="What happened?"
+                    value={description}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      setDescription(e.target.value)
+                    }
+                  />
                   {reportState.status === AsyncStatus.Error && (
                     <Text style={{ color: color.Critical.Main }} size="T300">
                       Failed to report message! Please try again.
@@ -607,10 +681,52 @@ export const MessageReportItem = as<
                   )}
                   {reportState.status === AsyncStatus.Success && (
                     <Text style={{ color: color.Success.Main }} size="T300">
-                      Message has been reported to server.
+                      Message reported to the server administrators.
                     </Text>
                   )}
                 </Box>
+                {sharedLines && (
+                  <Box direction="Column" gap="200">
+                    <Text size="L400">Include earlier messages</Text>
+                    <Box gap="200" wrap="Wrap">
+                      {[0, 20, 50].map((count) => (
+                        <Chip
+                          key={count}
+                          type="button"
+                          radii="Pill"
+                          variant={historyCount === count ? 'Primary' : 'SurfaceVariant'}
+                          aria-pressed={historyCount === count}
+                          onClick={() => setHistoryCount(count)}
+                        >
+                          <Text size="B300">{count === 0 ? 'None' : `Last ${count}`}</Text>
+                        </Chip>
+                      ))}
+                    </Box>
+                    <Text size="L400">What will be shared</Text>
+                    <Text
+                      as="pre"
+                      size="T200"
+                      style={{
+                        margin: 0,
+                        maxHeight: `min(40vh, ${toRem(360)})`,
+                        overflow: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'anywhere',
+                        padding: config.space.S200,
+                        borderRadius: config.radii.R300,
+                        background: color.Background.Container,
+                      }}
+                    >
+                      {[
+                        `Reported message: ${sharedLines.reported}`,
+                        ...(sharedLines.history.length > 0
+                          ? ['', `Earlier messages (${sharedLines.history.length}):`]
+                          : []),
+                        ...sharedLines.history,
+                      ].join('\n')}
+                    </Text>
+                  </Box>
+                )}
                 <Button
                   type="submit"
                   variant="Critical"
@@ -727,10 +843,21 @@ export const Message = as<'div', MessageProps>(
     const { focusWithinProps } = useFocusWithin({ onFocusWithinChange: setHover });
     const [menuAnchor, setMenuAnchor] = useState<RectCords>();
     const [emojiBoardAnchor, setEmojiBoardAnchor] = useState<RectCords>();
+    // Phones: long-press opens a sheet instead of the hover toolbar.
+    const phone = usePhone();
+    const [sheetOpen, setSheetOpen] = useState(false);
 
     const senderDisplayName =
       getMemberDisplayName(room, senderId) ?? getMxIdLocalPart(senderId) ?? senderId;
     const senderAvatarMxc = getMemberAvatarMxc(room, senderId);
+
+    // Push rules cover @mentions; the reply check catches replies without m.mentions.
+    const myUserId = mx.getUserId();
+    const { replyEventId } = mEvent;
+    const mentionsMe =
+      senderId !== myUserId &&
+      (!!mx.getPushActionsForEvent(mEvent)?.tweaks?.highlight ||
+        (!!replyEventId && room.findEventById(replyEventId)?.getSender() === myUserId));
 
     const tagColor = memberPowerTag?.color
       ? accessibleTagColors?.get(memberPowerTag.color)
@@ -740,6 +867,12 @@ export const Message = as<'div', MessageProps>(
       : undefined;
 
     const usernameColor = legacyUsernameColor ? colorMXID(senderId) : tagColor;
+    const tagGradient = memberPowerTag?.gradient
+      ? accessibleTagColors?.get(memberPowerTag.gradient)
+      : undefined;
+    const usernameStyle = legacyUsernameColor
+      ? { color: usernameColor }
+      : roleNameStyle(tagColor, tagGradient);
 
     const headerJSX = !collapse && (
       <Box
@@ -750,21 +883,32 @@ export const Message = as<'div', MessageProps>(
         grow="Yes"
       >
         <Box alignItems="Center" gap="200">
-          <Username
-            as="button"
-            style={{ color: usernameColor }}
-            data-user-id={senderId}
-            onContextMenu={onUserClick}
-            onClick={onUsernameClick}
+          <UserHoverCard
+            room={room}
+            userId={senderId}
+            tagName={memberPowerTag?.name}
+            tagColor={tagColor}
           >
-            <Text
-              as="span"
-              size={messageLayout === MessageLayout.Bubble ? 'T300' : 'T400'}
-              truncate
-            >
-              <UsernameBold>{senderDisplayName}</UsernameBold>
-            </Text>
-          </Username>
+            {(triggerRef) => (
+              <Username
+                as="button"
+                ref={triggerRef}
+                style={usernameStyle}
+                data-user-id={senderId}
+                onContextMenu={onUserClick}
+                onClick={onUsernameClick}
+              >
+                <Text
+                  as="span"
+                  size={messageLayout === MessageLayout.Bubble ? 'T300' : 'T400'}
+                  truncate
+                >
+                  <UsernameBold>{senderDisplayName}</UsernameBold>
+                </Text>
+              </Username>
+            )}
+          </UserHoverCard>
+          <ServerTagBadge userId={senderId} />
           {tagIconSrc && <PowerIcon size="100" iconSrc={tagIconSrc} />}
         </Box>
         <Box shrink="No" gap="100">
@@ -840,6 +984,11 @@ export const Message = as<'div', MessageProps>(
       const tag = (evt.target as any).tagName;
       if (typeof tag === 'string' && tag.toLowerCase() === 'a') return;
       evt.preventDefault();
+      if (phone) {
+        navigator.vibrate?.(10);
+        setSheetOpen(true);
+        return;
+      }
       setMenuAnchor({
         x: evt.clientX,
         y: evt.clientY,
@@ -874,6 +1023,150 @@ export const Message = as<'div', MessageProps>(
 
     const isThreadedMessage = mEvent.threadRootId !== undefined;
 
+    const closeSheet = () => setSheetOpen(false);
+    const sheetEmojiAnchor = (): RectCords => ({
+      x: window.innerWidth / 2,
+      y: window.innerHeight - 8,
+      width: 0,
+      height: 0,
+    });
+    const textBody = mEvent.getContent().body;
+    const canCopyText =
+      !mEvent.isRedacted() &&
+      typeof textBody === 'string' &&
+      ['m.text', 'm.notice', 'm.emote'].includes(mEvent.getContent().msgtype);
+
+    const sheetItem = (label: string, icon: IconSrc, onClick: () => void, critical?: boolean) => (
+      <MenuItem
+        size="300"
+        radii="0"
+        variant={critical ? 'Critical' : undefined}
+        fill={critical ? 'None' : undefined}
+        after={<Icon size="100" src={icon} />}
+        onClick={onClick}
+      >
+        <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
+          {label}
+        </Text>
+      </MenuItem>
+    );
+
+    const phoneSheet = phone && (
+      <>
+        <BottomSheet open={sheetOpen} onClose={closeSheet} label="Message actions">
+          <div className={css.SheetBody}>
+            {canSendReaction && (
+              <MessageSheetReactions
+                onReaction={(key, shortcode) => {
+                  onReactionToggle(mEvent.getId()!, key, shortcode);
+                  closeSheet();
+                }}
+                onMore={() => {
+                  closeSheet();
+                  setTimeout(() => setEmojiBoardAnchor(sheetEmojiAnchor()), 100);
+                }}
+              />
+            )}
+            <div className={css.SheetGroup}>
+              <MenuItem
+                size="300"
+                radii="0"
+                after={<Icon size="100" src={Icons.ReplyArrow} />}
+                data-event-id={mEvent.getId()}
+                onClick={(evt: any) => {
+                  onReplyClick(evt);
+                  closeSheet();
+                }}
+              >
+                <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
+                  Reply
+                </Text>
+              </MenuItem>
+              {!isThreadedMessage && (
+                <MenuItem
+                  size="300"
+                  radii="0"
+                  after={<Icon size="100" src={Icons.ThreadPlus} />}
+                  data-event-id={mEvent.getId()}
+                  onClick={(evt: any) => {
+                    onReplyClick(evt, true);
+                    closeSheet();
+                  }}
+                >
+                  <Text className={css.MessageMenuItemText} as="span" size="T300" truncate>
+                    Reply in Thread
+                  </Text>
+                </MenuItem>
+              )}
+              {canEditEvent(mx, mEvent) &&
+                onEditId &&
+                sheetItem('Edit Message', Icons.Pencil, () => {
+                  onEditId(mEvent.getId());
+                  closeSheet();
+                })}
+            </div>
+            <div className={css.SheetGroup}>
+              {canCopyText &&
+                sheetItem('Copy Text', Icons.Text, () => {
+                  copyToClipboard(textBody);
+                  closeSheet();
+                })}
+              {relations && (
+                <MessageAllReactionItem room={room} relations={relations} onClose={closeSheet} />
+              )}
+              {!hideReadReceipts && (
+                <MessageReadReceiptItem
+                  room={room}
+                  eventId={mEvent.getId() ?? ''}
+                  onClose={closeSheet}
+                />
+              )}
+              {canPinEvent && <MessagePinItem room={room} mEvent={mEvent} onClose={closeSheet} />}
+              <MessageCopyLinkItem room={room} mEvent={mEvent} onClose={closeSheet} />
+              {showDeveloperTools && (
+                <MessageSourceCodeItem room={room} mEvent={mEvent} onClose={closeSheet} />
+              )}
+            </div>
+            {((!mEvent.isRedacted() && canDelete) || mEvent.getSender() !== mx.getUserId()) && (
+              <div className={css.SheetGroup}>
+                {!mEvent.isRedacted() && canDelete && (
+                  <MessageDeleteItem room={room} mEvent={mEvent} onClose={closeSheet} />
+                )}
+                {mEvent.getSender() !== mx.getUserId() && (
+                  <MessageReportItem room={room} mEvent={mEvent} onClose={closeSheet} />
+                )}
+              </div>
+            )}
+          </div>
+        </BottomSheet>
+        {canSendReaction && emojiBoardAnchor && (
+          <PopOut
+            position="Top"
+            align="Center"
+            anchor={emojiBoardAnchor}
+            content={
+              <EmojiBoard
+                imagePackRooms={imagePackRooms ?? []}
+                returnFocusOnDeactivate={false}
+                allowTextCustomEmoji
+                onEmojiSelect={(key) => {
+                  onReactionToggle(mEvent.getId()!, key);
+                  setEmojiBoardAnchor(undefined);
+                }}
+                onCustomEmojiSelect={(mxc, shortcode) => {
+                  onReactionToggle(mEvent.getId()!, mxc, shortcode);
+                  setEmojiBoardAnchor(undefined);
+                }}
+                requestClose={() => setEmojiBoardAnchor(undefined)}
+              />
+            }
+          >
+            <span />
+          </PopOut>
+        )}
+      </>
+    );
+
     return (
       <MessageBase
         className={classNames(css.MessageBase, className, {
@@ -883,13 +1176,15 @@ export const Message = as<'div', MessageProps>(
         space={messageSpacing}
         collapse={collapse}
         highlight={highlight}
-        selected={!!menuAnchor || !!emojiBoardAnchor}
+        mentioned={mentionsMe}
+        selected={!!menuAnchor || !!emojiBoardAnchor || sheetOpen}
         {...props}
         {...hoverProps}
         {...focusWithinProps}
         ref={ref}
       >
-        {!edit && (hover || !!menuAnchor || !!emojiBoardAnchor) && (
+        {phoneSheet}
+        {!phone && !edit && (hover || !!menuAnchor || !!emojiBoardAnchor) && (
           <div className={css.MessageOptionsBase}>
             <Menu className={css.MessageOptionsBar} variant="SurfaceVariant">
               <Box gap="100">
@@ -1130,17 +1425,30 @@ export const Message = as<'div', MessageProps>(
           </div>
         )}
         {messageLayout === MessageLayout.Compact && (
-          <CompactLayout before={headerJSX} onContextMenu={handleContextMenu}>
+          <CompactLayout
+            before={headerJSX}
+            onContextMenu={handleContextMenu}
+            className={css.PhoneNoSelect}
+          >
             {msgContentJSX}
           </CompactLayout>
         )}
         {messageLayout === MessageLayout.Bubble && (
-          <BubbleLayout before={avatarJSX} header={headerJSX} onContextMenu={handleContextMenu}>
+          <BubbleLayout
+            before={avatarJSX}
+            header={headerJSX}
+            onContextMenu={handleContextMenu}
+            className={css.PhoneNoSelect}
+          >
             {msgContentJSX}
           </BubbleLayout>
         )}
         {messageLayout !== MessageLayout.Compact && messageLayout !== MessageLayout.Bubble && (
-          <ModernLayout before={avatarJSX} onContextMenu={handleContextMenu}>
+          <ModernLayout
+            before={avatarJSX}
+            onContextMenu={handleContextMenu}
+            className={css.PhoneNoSelect}
+          >
             {headerJSX}
             {msgContentJSX}
           </ModernLayout>

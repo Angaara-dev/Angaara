@@ -1,14 +1,21 @@
-import { createVar, style } from '@vanilla-extract/css';
+import { createVar, globalStyle, style } from '@vanilla-extract/css';
 import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { color, config, DefaultReset, Disabled, FocusOutline, toRem } from 'folds';
 import { ContainerColor } from '../../styles/ContainerColor.css';
+import { themeBackdrop } from '../../styles/themeBackdrop';
+
+// Phones get bigger rail icons: bigger, filled, rounded squares.
+const PHONE = 'screen and (max-width: 750px) and (pointer: coarse)';
 
 export const Sidebar = style([
   DefaultReset,
   {
     width: toRem(66),
     backgroundColor: color.Background.Container,
-    borderRight: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+    ...themeBackdrop('bg'),
+    '@media': {
+      [PHONE]: { width: toRem(82) },
+    },
 
     display: 'flex',
     flexDirection: 'column',
@@ -79,19 +86,22 @@ export const SidebarItem = recipe({
         '&:hover': {
           transform: `translateX(${toRem(PUSH_X)})`,
         },
+        // The pill grows in from nothing: small on hover, tall when active.
         '&::before': {
           content: '',
-          display: 'none',
+          display: 'block',
           position: 'absolute',
           left: toRem(-11.5 - PUSH_X),
           width: toRem(3 + PUSH_X),
-          height: toRem(16),
+          height: 0,
+          opacity: 0,
           borderRadius: `0 ${toRem(4)} ${toRem(4)} 0`,
           background: 'CurrentColor',
-          transition: 'height 200ms linear',
+          transition: 'height 200ms ease, opacity 200ms ease, width 200ms ease',
         },
         '&:hover::before': {
-          display: 'block',
+          height: toRem(16),
+          opacity: 1,
           width: toRem(3),
         },
       },
@@ -104,8 +114,8 @@ export const SidebarItem = recipe({
       true: {
         selectors: {
           '&::before': {
-            display: 'block',
-            height: toRem(24),
+            height: toRem(28),
+            opacity: 1,
           },
           '&:hover::before': {
             width: toRem(3 + PUSH_X),
@@ -116,6 +126,27 @@ export const SidebarItem = recipe({
   },
 });
 export type SidebarItemVariants = RecipeVariants<typeof SidebarItem>;
+
+// Plain classes so the hover/active shape change can target avatars inside items.
+export const SidebarItemRoot = style({});
+export const SidebarAvatarShape = style({
+  transition: 'border-radius 180ms ease',
+});
+// Circles, turning into rounded squares when open (or hovered, with a mouse).
+globalStyle(`${SidebarItemRoot} ${SidebarAvatarShape}`, {
+  borderRadius: '50%',
+});
+globalStyle(`${SidebarItemRoot}[data-active="true"] ${SidebarAvatarShape}`, {
+  borderRadius: config.radii.R400,
+});
+globalStyle(`${SidebarItemRoot}:hover ${SidebarAvatarShape}`, {
+  '@media': { '(hover: hover)': { borderRadius: config.radii.R400 } },
+});
+// Images inside (including round user avatars on DMs) follow the icon's shape.
+globalStyle(`${SidebarItemRoot} ${SidebarAvatarShape} > *`, {
+  borderRadius: 'inherit',
+  transition: 'border-radius 180ms ease',
+});
 
 export const SidebarItemBadge = recipe({
   base: [
@@ -171,11 +202,17 @@ export const SidebarAvatar = recipe({
       '400': {
         width: toRem(42),
         height: toRem(42),
+        '@media': {
+          [PHONE]: { width: toRem(56), height: toRem(56) },
+        },
       },
     },
     outlined: {
       true: {
         border: `${config.borderWidth.B300} solid ${color.Background.ContainerLine}`,
+        '@media': {
+          [PHONE]: { borderColor: 'transparent', backgroundColor: color.Surface.Container },
+        },
       },
     },
   },

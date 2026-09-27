@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Avatar, Box, Button, Spinner, Text, as } from 'folds';
+import { Avatar, Box, Button, Icon, Icons, Spinner, Text, as, color, config } from 'folds';
 import { Room } from 'matrix-js-sdk';
 import { useAtomValue } from 'jotai';
 import { IRoomCreateContent, Membership, StateEvent } from '../../../types/matrix/room';
@@ -17,6 +17,7 @@ import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
 import { InviteUserPrompt } from '../invite-user-prompt';
+import { useStateEvent } from '../../hooks/useStateEvent';
 
 export type RoomIntroProps = {
   room: Room;
@@ -47,9 +48,33 @@ export const RoomIntro = as<'div', RoomIntroProps>(({ room, ...props }, ref) => 
   );
 
   const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
+  const encrypted = !!useStateEvent(room, StateEvent.RoomEncryption);
 
   return (
     <Box direction="Column" grow="Yes" gap="500" {...props} ref={ref}>
+      {encrypted && (
+        <Box
+          alignItems="Center"
+          gap="300"
+          style={{
+            alignSelf: 'flex-start',
+            padding: `${config.space.S200} ${config.space.S400}`,
+            borderRadius: config.radii.R400,
+            background: color.SurfaceVariant.Container,
+            color: color.SurfaceVariant.OnContainer,
+          }}
+        >
+          <Icon size="200" src={Icons.Lock} />
+          <Box direction="Column">
+            <Text size="T300" priority="500">
+              This chat is end-to-end encrypted
+            </Text>
+            <Text size="T200" priority="300">
+              Only the people in it can read its messages, not even the server.
+            </Text>
+          </Box>
+        </Box>
+      )}
       <Box>
         <Avatar size="500">
           <RoomAvatar
@@ -77,7 +102,13 @@ export const RoomIntro = as<'div', RoomIntroProps>(({ room, ...props }, ref) => 
           )}
         </Box>
         <Box gap="200" wrap="Wrap">
-          <Button onClick={() => setInvitePrompt(true)} variant="Secondary" size="300" radii="300">
+          <Button
+            onClick={() => setInvitePrompt(true)}
+            variant="Secondary"
+            fill="Soft"
+            size="300"
+            radii="300"
+          >
             <Text size="B300">Invite Member</Text>
           </Button>
 

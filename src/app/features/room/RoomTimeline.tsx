@@ -16,12 +16,15 @@ import {
   EventTimeline,
   EventTimelineSet,
   EventTimelineSetHandlerMap,
+  EventType,
   IContent,
   MatrixClient,
   MatrixEvent,
+  MatrixEventEvent,
   Room,
   RoomEvent,
   RoomEventHandlerMap,
+  RelationType,
 } from 'matrix-js-sdk';
 import { HTMLReactParserOptions } from 'html-react-parser';
 import classNames from 'classnames';
@@ -42,6 +45,7 @@ import {
   as,
   color,
   config,
+  IconButton,
   toRem,
 } from 'folds';
 import { isKeyHotkey } from 'is-hotkey';
@@ -53,8 +57,7 @@ import { useVirtualPaginator, ItemRange } from '../../hooks/useVirtualPaginator'
 import { useAlive } from '../../hooks/useAlive';
 import { editableActiveElement, scrollToBottom } from '../../utils/dom';
 import {
-  DefaultPlaceholder,
-  CompactPlaceholder,
+  TimelineSkeleton,
   Reply,
   MessageBase,
   MessageUnsupportedContent,
@@ -80,13 +83,17 @@ import {
   getLatestEditableEvt,
   getMemberDisplayName,
   getReactionContent,
+  isJoinOrLeave,
   isMembershipChanged,
+  isThreadReply,
   reactionOrEditEvent,
 } from '../../utils/room';
+import { openThreadAtom } from '../../state/room/openThread';
+import { ThreadSummary } from './thread';
 import { useSetting } from '../../state/hooks/settings';
 import { MessageLayout, settingsAtom } from '../../state/settings';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
-import { Reactions, Message, Event, EncryptedContent } from './message';
+import { Reactions, Message, Event, EncryptedContent, HideDecryptedMeta } from './message';
 import { useMemberEventParser } from '../../hooks/useMemberEventParser';
 import * as customHtmlCss from '../../styles/CustomHtml.css';
 import { RoomIntro } from '../../components/room-intro';
@@ -126,6 +133,10 @@ import { useAccessiblePowerTagColors, useGetMemberPowerTag } from '../../hooks/u
 import { useTheme } from '../../hooks/useTheme';
 import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
 import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
+import colorMXID from '../../../util/colorMXID';
+import { sendReaction } from '../../../client/privateReactions';
+import { useSwipeToReply } from '../../hooks/useSwipeToReply';
+import { usePhone } from '../../hooks/useScreenSize';
 
 const TimelineFloat = as<'div', css.TimelineFloatVariants>(
   ({ position, className, ...props }, ref) => (
@@ -231,6 +242,10 @@ type RoomTimelineProps = {
 };
 
 const PAGINATION_LIMIT = 80;
+// Messages rendered when a room opens; enough to fill the screen, the rest loads on scroll.
+const INITIAL_WINDOW = 30;
+// Messages added per scroll step; smaller steps mean shorter freezes.
+const RENDER_STEP = 40;
 
 type Timeline = {
   linkedTimelines: EventTimeline[];
@@ -337,7 +352,8 @@ const useTimelinePagination = (
         })
       );
       if (err) {
-        // TODO: handle pagination error.
+        // Clear the flag, or this room could never load older messages again.
+        fetching = false;
         return;
       }
       const fetchedTimeline =
@@ -407,7 +423,7 @@ const getInitialTimeline = (room: Room) => {
   return {
     linkedTimelines,
     range: {
-      start: Math.max(evLength - PAGINATION_LIMIT, 0),
+      start: Math.max(evLength - INITIAL_WINDOW, 0),
       end: evLength,
     },
   };
@@ -438,7 +454,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const [messageSpacing] = useSetting(settingsAtom, 'messageSpacing');
   const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
   const direct = useIsDirectRoom();
-  const [hideMembershipEvents] = useSetting(settingsAtom, 'hideMembershipEvents');
+  const [hideJoinLeaveEvents] = useSetting(settingsAtom, 'hideJoinLeaveEvents');
   const [hideNickAvatarEvents] = useSetting(settingsAtom, 'hideNickAvatarEvents');
   const [mediaAutoLoad] = useSetting(settingsAtom, 'mediaAutoLoad');
   const [urlPreview] = useSetting(settingsAtom, 'urlPreview');
@@ -454,6 +470,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const ignoredUsersSet = useMemo(() => new Set(ignoredUsersList), [ignoredUsersList]);
 
   const setReplyDraft = useSetAtom(roomIdToReplyDraftAtomFamily(room.roomId));
+  const setOpenThread = useSetAtom(openThreadAtom);
   const powerLevels = usePowerLevelsContext();
   const creators = useRoomCreators(room);
 
@@ -473,6 +490,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const canRedact = permissions.action('redact', mx.getSafeUserId());
   const canDeleteOwn = permissions.event(MessageEvent.RoomRedaction, mx.getSafeUserId());
   const canSendReaction = permissions.event(MessageEvent.Reaction, mx.getSafeUserId());
+  const phone = usePhone();
   const canPinEvent = permissions.stateEvent(StateEvent.RoomPinnedEvents, mx.getSafeUserId());
   const [editId, setEditId] = useState<string>();
 
@@ -513,14 +531,30 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   >();
   const alive = useAlive();
 
+  // Pings use the same color as the mentioned user's name.
+  const getMentionColor = useCallback(
+    (userId: string): string | undefined => {
+      if (legacyUsernameColor || direct) return colorMXID(userId);
+      const tagColor = getMemberPowerTag(userId).color;
+      return tagColor ? accessiblePowerTagColors.get(tagColor) : undefined;
+    },
+    [legacyUsernameColor, direct, getMemberPowerTag, accessiblePowerTagColors]
+  );
+
   const linkifyOpts = useMemo<LinkifyOpts>(
     () => ({
       ...LINKIFY_OPTS,
       render: factoryRenderLinkifyWithMention((href) =>
-        renderMatrixMention(mx, room.roomId, href, makeMentionCustomProps(mentionClickHandler))
+        renderMatrixMention(
+          mx,
+          room.roomId,
+          href,
+          makeMentionCustomProps(mentionClickHandler),
+          getMentionColor
+        )
       ),
     }),
-    [mx, room, mentionClickHandler]
+    [mx, room, mentionClickHandler, getMentionColor]
   );
   const htmlReactParserOptions = useMemo<HTMLReactParserOptions>(
     () =>
@@ -529,8 +563,17 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         useAuthentication,
         handleSpoilerClick: spoilerClickHandler,
         handleMentionClick: mentionClickHandler,
+        getMentionColor,
       }),
-    [mx, room, linkifyOpts, spoilerClickHandler, mentionClickHandler, useAuthentication]
+    [
+      mx,
+      room,
+      linkifyOpts,
+      spoilerClickHandler,
+      mentionClickHandler,
+      useAuthentication,
+      getMentionColor,
+    ]
   );
   const parseMemberEvent = useMemberEventParser();
 
@@ -559,7 +602,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const { getItems, scrollToItem, scrollToElement, observeBackAnchor, observeFrontAnchor } =
     useVirtualPaginator({
       count: eventsLength,
-      limit: PAGINATION_LIMIT,
+      limit: RENDER_STEP,
       range: timeline.range,
       onRangeChange: useCallback((r) => setTimeline((cs) => ({ ...cs, range: r })), []),
       getScrollElement,
@@ -635,14 +678,41 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
           }));
           return;
         }
+        // Sending a message while scrolled up snaps back down to it.
+        const sentHere =
+          mEvt.getSender() === mx.getUserId() &&
+          mEvt.status !== null &&
+          !mEvt.isRedaction() &&
+          mEvt.getType() !== EventType.Reaction &&
+          !mEvt.isRelation(RelationType.Replace);
+        if (sentHere) {
+          if (eventId) navigateRoom(room.roomId, undefined, { replace: true });
+          setTimeline(getInitialTimeline(room));
+          scrollToBottomRef.current.count += 1;
+          scrollToBottomRef.current.smooth = false;
+          return;
+        }
         setTimeline((ct) => ({ ...ct }));
         if (!unreadInfo) {
           setUnreadInfo(getRoomUnreadInfo(room));
         }
       },
-      [mx, room, unreadInfo, hideActivity]
+      [mx, room, unreadInfo, hideActivity, eventId, navigateRoom]
     )
   );
+
+  // Private reactions only become reactions once decrypted; redraw so their target shows them.
+  useEffect(() => {
+    const handleDecrypted = (mEvent: MatrixEvent) => {
+      if (mEvent.getRoomId() === room.roomId && mEvent.getType() === EventType.Reaction) {
+        setTimeline((ct) => ({ ...ct }));
+      }
+    };
+    mx.on(MatrixEventEvent.Decrypted, handleDecrypted);
+    return () => {
+      mx.removeListener(MatrixEventEvent.Decrypted, handleDecrypted);
+    };
+  }, [mx, room]);
 
   const handleOpenEvent = useCallback(
     async (
@@ -951,21 +1021,14 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     [mx, room, editor]
   );
 
-  const handleReplyClick: MouseEventHandler<HTMLButtonElement> = useCallback(
-    (evt, startThread = false) => {
-      const replyId = evt.currentTarget.getAttribute('data-event-id');
-      if (!replyId) {
-        console.warn('Button should have "data-event-id" attribute!');
-        return;
-      }
+  const startReply = useCallback(
+    (replyId: string) => {
       const replyEvt = room.findEventById(replyId);
       if (!replyEvt) return;
       const editedReply = getEditedEvent(replyId, replyEvt, room.getUnfilteredTimelineSet());
       const content: IContent = editedReply?.getContent()['m.new_content'] ?? replyEvt.getContent();
       const { body, formatted_body: formattedBody } = content;
-      const { 'm.relates_to': relation } = startThread
-        ? { 'm.relates_to': { rel_type: 'm.thread', event_id: replyId } }
-        : replyEvt.getWireContent();
+      const { 'm.relates_to': relation } = replyEvt.getWireContent();
       const senderId = replyEvt.getSender();
       if (senderId && typeof body === 'string') {
         setReplyDraft({
@@ -979,6 +1042,42 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       }
     },
     [room, setReplyDraft, editor]
+  );
+
+  const handleReplyClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (evt, startThread = false) => {
+      const replyId = evt.currentTarget.getAttribute('data-event-id');
+      if (!replyId) {
+        console.warn('Button should have "data-event-id" attribute!');
+        return;
+      }
+      if (startThread) {
+        setOpenThread({ roomId: room.roomId, rootId: replyId });
+        return;
+      }
+      startReply(replyId);
+    },
+    [room.roomId, setOpenThread, startReply]
+  );
+
+  const canMessage = permissions.event(MessageEvent.RoomMessage, mx.getSafeUserId());
+  useSwipeToReply(
+    scrollRef,
+    phone && canMessage,
+    useCallback(
+      (targetId: string) => {
+        const mEvent = room.findEventById(targetId);
+        return (
+          !!mEvent &&
+          !mEvent.isState() &&
+          !mEvent.isRedacted() &&
+          (mEvent.getType() === MessageEvent.RoomMessage ||
+            mEvent.getType() === MessageEvent.Sticker)
+        );
+      },
+      [room]
+    ),
+    startReply
   );
 
   const handleReactionToggle = useCallback(
@@ -996,11 +1095,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       const rShortcode =
         shortcode ||
         (reactions.find(eventWithShortcode)?.getContent().shortcode as string | undefined);
-      mx.sendEvent(
-        room.roomId,
-        MessageEvent.Reaction as any,
-        getReactionContent(targetEventId, key, rShortcode)
-      );
+      sendReaction(mx, room, getReactionContent(targetEventId, key, rShortcode));
     },
     [mx, room]
   );
@@ -1073,16 +1168,24 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
               )
             }
             reactions={
-              reactionRelations && (
-                <Reactions
-                  style={{ marginTop: config.space.S200 }}
+              <>
+                {reactionRelations && (
+                  <Reactions
+                    style={{ marginTop: config.space.S200 }}
+                    room={room}
+                    relations={reactionRelations}
+                    mEventId={mEventId}
+                    canSendReaction={canSendReaction}
+                    onReactionToggle={handleReactionToggle}
+                  />
+                )}
+                <ThreadSummary
                   room={room}
-                  relations={reactionRelations}
-                  mEventId={mEventId}
-                  canSendReaction={canSendReaction}
-                  onReactionToggle={handleReactionToggle}
+                  mEvent={mEvent}
+                  hour24Clock={hour24Clock}
+                  dateFormatString={dateFormatString}
                 />
-              )
+              </>
             }
             hideReadReceipts={hideActivity}
             showDeveloperTools={showDeveloperTools}
@@ -1119,116 +1222,127 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const highlighted = focusItem?.index === item && focusItem.highlight;
 
         return (
-          <Message
-            key={mEvent.getId()}
-            data-message-item={item}
-            data-message-id={mEventId}
-            room={room}
-            mEvent={mEvent}
-            messageSpacing={messageSpacing}
-            messageLayout={messageLayout}
-            collapse={collapse}
-            highlight={highlighted}
-            edit={editId === mEventId}
-            canDelete={canRedact || (canDeleteOwn && mEvent.getSender() === mx.getUserId())}
-            canSendReaction={canSendReaction}
-            canPinEvent={canPinEvent}
-            imagePackRooms={imagePackRooms}
-            relations={hasReactions ? reactionRelations : undefined}
-            onUserClick={handleUserClick}
-            onUsernameClick={handleUsernameClick}
-            onReplyClick={handleReplyClick}
-            onReactionToggle={handleReactionToggle}
-            onEditId={handleEdit}
-            reply={
-              replyEventId && (
-                <Reply
-                  room={room}
-                  timelineSet={timelineSet}
-                  replyEventId={replyEventId}
-                  threadRootId={threadRootId}
-                  onClick={handleOpenReply}
-                  getMemberPowerTag={getMemberPowerTag}
-                  accessibleTagColors={accessiblePowerTagColors}
-                  legacyUsernameColor={legacyUsernameColor || direct}
-                />
-              )
-            }
-            reactions={
-              reactionRelations && (
-                <Reactions
-                  style={{ marginTop: config.space.S200 }}
-                  room={room}
-                  relations={reactionRelations}
-                  mEventId={mEventId}
-                  canSendReaction={canSendReaction}
-                  onReactionToggle={handleReactionToggle}
-                />
-              )
-            }
-            hideReadReceipts={hideActivity}
-            showDeveloperTools={showDeveloperTools}
-            memberPowerTag={getMemberPowerTag(mEvent.getSender() ?? '')}
-            accessibleTagColors={accessiblePowerTagColors}
-            legacyUsernameColor={legacyUsernameColor || direct}
-            hour24Clock={hour24Clock}
-            dateFormatString={dateFormatString}
-          >
-            <EncryptedContent mEvent={mEvent}>
-              {() => {
-                if (mEvent.isRedacted()) return <RedactedContent />;
-                if (mEvent.getType() === MessageEvent.Sticker)
-                  return (
-                    <MSticker
-                      content={mEvent.getContent()}
-                      renderImageContent={(props) => (
-                        <ImageContent
-                          {...props}
-                          autoPlay={mediaAutoLoad}
-                          renderImage={(p) => <Image {...p} loading="lazy" />}
-                          renderViewer={(p) => <ImageViewer {...p} />}
-                        />
-                      )}
+          <HideDecryptedMeta key={mEvent.getId()} mEvent={mEvent}>
+            <Message
+              data-message-item={item}
+              data-message-id={mEventId}
+              room={room}
+              mEvent={mEvent}
+              messageSpacing={messageSpacing}
+              messageLayout={messageLayout}
+              collapse={collapse}
+              highlight={highlighted}
+              edit={editId === mEventId}
+              canDelete={canRedact || (canDeleteOwn && mEvent.getSender() === mx.getUserId())}
+              canSendReaction={canSendReaction}
+              canPinEvent={canPinEvent}
+              imagePackRooms={imagePackRooms}
+              relations={hasReactions ? reactionRelations : undefined}
+              onUserClick={handleUserClick}
+              onUsernameClick={handleUsernameClick}
+              onReplyClick={handleReplyClick}
+              onReactionToggle={handleReactionToggle}
+              onEditId={handleEdit}
+              reply={
+                replyEventId && (
+                  <Reply
+                    room={room}
+                    timelineSet={timelineSet}
+                    replyEventId={replyEventId}
+                    threadRootId={threadRootId}
+                    onClick={handleOpenReply}
+                    getMemberPowerTag={getMemberPowerTag}
+                    accessibleTagColors={accessiblePowerTagColors}
+                    legacyUsernameColor={legacyUsernameColor || direct}
+                  />
+                )
+              }
+              reactions={
+                <>
+                  {reactionRelations && (
+                    <Reactions
+                      style={{ marginTop: config.space.S200 }}
+                      room={room}
+                      relations={reactionRelations}
+                      mEventId={mEventId}
+                      canSendReaction={canSendReaction}
+                      onReactionToggle={handleReactionToggle}
                     />
-                  );
-                if (mEvent.getType() === MessageEvent.RoomMessage) {
-                  const editedEvent = getEditedEvent(mEventId, mEvent, timelineSet);
-                  const getContent = (() =>
-                    editedEvent?.getContent()['m.new_content'] ??
-                    mEvent.getContent()) as GetContentCallback;
+                  )}
+                  <ThreadSummary
+                    room={room}
+                    mEvent={mEvent}
+                    hour24Clock={hour24Clock}
+                    dateFormatString={dateFormatString}
+                  />
+                </>
+              }
+              hideReadReceipts={hideActivity}
+              showDeveloperTools={showDeveloperTools}
+              memberPowerTag={getMemberPowerTag(mEvent.getSender() ?? '')}
+              accessibleTagColors={accessiblePowerTagColors}
+              legacyUsernameColor={legacyUsernameColor || direct}
+              hour24Clock={hour24Clock}
+              dateFormatString={dateFormatString}
+            >
+              <EncryptedContent mEvent={mEvent}>
+                {() => {
+                  if (mEvent.isRedacted()) return <RedactedContent />;
+                  if (mEvent.getType() === MessageEvent.Sticker)
+                    return (
+                      <MSticker
+                        content={mEvent.getContent()}
+                        renderImageContent={(props) => (
+                          <ImageContent
+                            {...props}
+                            autoPlay={mediaAutoLoad}
+                            renderImage={(p) => <Image {...p} loading="lazy" />}
+                            renderViewer={(p) => <ImageViewer {...p} />}
+                          />
+                        )}
+                      />
+                    );
+                  if (mEvent.getType() === MessageEvent.RoomMessage) {
+                    const editedEvent = getEditedEvent(mEventId, mEvent, timelineSet);
+                    const getContent = (() =>
+                      editedEvent?.getContent()['m.new_content'] ??
+                      mEvent.getContent()) as GetContentCallback;
 
-                  const senderId = mEvent.getSender() ?? '';
-                  const senderDisplayName =
-                    getMemberDisplayName(room, senderId) ?? getMxIdLocalPart(senderId) ?? senderId;
-                  return (
-                    <RenderMessageContent
-                      displayName={senderDisplayName}
-                      msgType={mEvent.getContent().msgtype ?? ''}
-                      ts={mEvent.getTs()}
-                      edited={!!editedEvent}
-                      getContent={getContent}
-                      mediaAutoLoad={mediaAutoLoad}
-                      urlPreview={showUrlPreview}
-                      htmlReactParserOptions={htmlReactParserOptions}
-                      linkifyOpts={linkifyOpts}
-                      outlineAttachment={messageLayout === MessageLayout.Bubble}
-                    />
-                  );
-                }
-                if (mEvent.getType() === MessageEvent.RoomMessageEncrypted)
+                    const senderId = mEvent.getSender() ?? '';
+                    const senderDisplayName =
+                      getMemberDisplayName(room, senderId) ??
+                      getMxIdLocalPart(senderId) ??
+                      senderId;
+                    return (
+                      <RenderMessageContent
+                        displayName={senderDisplayName}
+                        msgType={mEvent.getContent().msgtype ?? ''}
+                        ts={mEvent.getTs()}
+                        edited={!!editedEvent}
+                        getContent={getContent}
+                        mediaAutoLoad={mediaAutoLoad}
+                        urlPreview={showUrlPreview}
+                        htmlReactParserOptions={htmlReactParserOptions}
+                        linkifyOpts={linkifyOpts}
+                        outlineAttachment={messageLayout === MessageLayout.Bubble}
+                      />
+                    );
+                  }
+                  if (mEvent.getType() === MessageEvent.RoomMessageEncrypted)
+                    return (
+                      <Text>
+                        <MessageNotDecryptedContent />
+                      </Text>
+                    );
                   return (
                     <Text>
-                      <MessageNotDecryptedContent />
+                      <MessageUnsupportedContent />
                     </Text>
                   );
-                return (
-                  <Text>
-                    <MessageUnsupportedContent />
-                  </Text>
-                );
-              }}
-            </EncryptedContent>
-          </Message>
+                }}
+              </EncryptedContent>
+            </Message>
+          </HideDecryptedMeta>
         );
       },
       [MessageEvent.Sticker]: (mEventId, mEvent, item, timelineSet, collapse) => {
@@ -1258,16 +1372,24 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             onReplyClick={handleReplyClick}
             onReactionToggle={handleReactionToggle}
             reactions={
-              reactionRelations && (
-                <Reactions
-                  style={{ marginTop: config.space.S200 }}
+              <>
+                {reactionRelations && (
+                  <Reactions
+                    style={{ marginTop: config.space.S200 }}
+                    room={room}
+                    relations={reactionRelations}
+                    mEventId={mEventId}
+                    canSendReaction={canSendReaction}
+                    onReactionToggle={handleReactionToggle}
+                  />
+                )}
+                <ThreadSummary
                   room={room}
-                  relations={reactionRelations}
-                  mEventId={mEventId}
-                  canSendReaction={canSendReaction}
-                  onReactionToggle={handleReactionToggle}
+                  mEvent={mEvent}
+                  hour24Clock={hour24Clock}
+                  dateFormatString={dateFormatString}
                 />
-              )
+              </>
             }
             hideReadReceipts={hideActivity}
             showDeveloperTools={showDeveloperTools}
@@ -1297,7 +1419,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       },
       [StateEvent.RoomMember]: (mEventId, mEvent, item) => {
         const membershipChanged = isMembershipChanged(mEvent);
-        if (membershipChanged && hideMembershipEvents) return null;
+        if (membershipChanged && hideJoinLeaveEvents && isJoinOrLeave(mEvent)) return null;
         if (!membershipChanged && hideNickAvatarEvents) return null;
 
         const highlighted = focusItem?.index === item && focusItem.highlight;
@@ -1656,17 +1778,18 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       prevEvent.getType() === mEvent.getType() &&
       minuteDifference(prevEvent.getTs(), mEvent.getTs()) < 2;
 
-    const eventJSX = reactionOrEditEvent(mEvent)
-      ? null
-      : renderMatrixEvent(
-          mEvent.getType(),
-          typeof mEvent.getStateKey() === 'string',
-          mEventId,
-          mEvent,
-          item,
-          timelineSet,
-          collapsed
-        );
+    const eventJSX =
+      reactionOrEditEvent(mEvent) || isThreadReply(mEvent)
+        ? null
+        : renderMatrixEvent(
+            mEvent.getType(),
+            typeof mEvent.getStateKey() === 'string',
+            mEventId,
+            mEvent,
+            item,
+            timelineSet,
+            collapsed
+          );
     prevEvent = mEvent;
     isPrevRendered = !!eventJSX;
 
@@ -1756,77 +1879,51 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
               <RoomIntro room={room} />
             </div>
           )}
-          {(canPaginateBack || !rangeAtStart) &&
-            (messageLayout === MessageLayout.Compact ? (
-              <>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase ref={observeBackAnchor}>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ) : (
-              <>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase ref={observeBackAnchor}>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ))}
+          {(canPaginateBack || !rangeAtStart) && (
+            <TimelineSkeleton
+              // Remount when the range moves, so a still-visible anchor fires again.
+              key={`${timeline.range.start}:${eventsLength}`}
+              compact={messageLayout === MessageLayout.Compact}
+              anchorRef={observeBackAnchor}
+              anchorAt="end"
+            />
+          )}
 
           {getItems().map(eventRenderer)}
 
-          {(!liveTimelineLinked || !rangeAtEnd) &&
-            (messageLayout === MessageLayout.Compact ? (
-              <>
-                <MessageBase ref={observeFrontAnchor}>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <CompactPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ) : (
-              <>
-                <MessageBase ref={observeFrontAnchor}>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-                <MessageBase>
-                  <DefaultPlaceholder key={getItems().length} />
-                </MessageBase>
-              </>
-            ))}
+          {(!liveTimelineLinked || !rangeAtEnd) && (
+            <TimelineSkeleton
+              key={`${timeline.range.end}:${eventsLength}`}
+              compact={messageLayout === MessageLayout.Compact}
+              anchorRef={observeFrontAnchor}
+              anchorAt="start"
+            />
+          )}
           <span ref={atBottomAnchorRef} />
         </Box>
       </Scroll>
-      {!atBottom && (
+      {!atBottom && phone && (
+        // Phones: a round arrow at the bottom right.
+        <IconButton
+          variant="SurfaceVariant"
+          radii="Pill"
+          outlined
+          aria-label="Jump to Latest"
+          onClick={handleJumpToLatest}
+          style={{
+            position: 'absolute',
+            right: config.space.S400,
+            bottom: config.space.S400,
+            zIndex: 1,
+            width: '44px',
+            height: '44px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
+          }}
+        >
+          <Icon size="300" src={Icons.ArrowBottom} />
+        </IconButton>
+      )}
+      {!atBottom && !phone && (
         <TimelineFloat position="Bottom">
           <Chip
             variant="SurfaceVariant"

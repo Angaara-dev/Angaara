@@ -49,7 +49,9 @@ export const getImageMsgContent = async (
   mxc: string
 ): Promise<IContent> => {
   const { file, originalFile, encInfo, metadata } = item;
-  const [imgError, imgEl] = await to(loadImageElement(getImageFileUrl(originalFile)));
+  const imgUrl = getImageFileUrl(originalFile);
+  const [imgError, imgEl] = await to(loadImageElement(imgUrl));
+  URL.revokeObjectURL(imgUrl);
   if (imgError) console.warn(imgError);
 
   const content: IContent = {
@@ -84,7 +86,8 @@ export const getVideoMsgContent = async (
 ): Promise<IContent> => {
   const { file, originalFile, encInfo, metadata } = item;
 
-  const [videoError, videoEl] = await to(loadVideoElement(getVideoFileUrl(originalFile)));
+  const videoUrl = getVideoFileUrl(originalFile);
+  const [videoError, videoEl] = await to(loadVideoElement(videoUrl));
   if (videoError) console.warn(videoError);
 
   const content: IContent = {
@@ -115,6 +118,7 @@ export const getVideoMsgContent = async (
       ...thumbContent,
     };
   }
+  URL.revokeObjectURL(videoUrl);
   if (encInfo) {
     content.file = {
       ...encInfo,

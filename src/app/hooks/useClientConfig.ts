@@ -18,6 +18,11 @@ export type ClientConfig = {
   };
 
   hashRouter?: HashRouterConfig;
+
+  // Profile badges by user ID, e.g. { "@you:matrix.org": ["developer"] }.
+  badges?: Record<string, string[]>;
+  // Space IDs or aliases given every server level perk, on top of spaces founders created.
+  fullAccessSpaces?: string[];
 };
 
 const ClientConfigContext = createContext<ClientConfig | null>(null);

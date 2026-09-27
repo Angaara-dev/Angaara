@@ -26,10 +26,11 @@ import {
   Switch,
   Text,
   toRem,
+  color,
 } from 'folds';
 import { isKeyHotkey } from 'is-hotkey';
 import FocusTrap from 'focus-trap-react';
-import { Page, PageContent, PageHeader } from '../../../components/page';
+import { Page, PageContent } from '../../../components/page';
 import { SequenceCard } from '../../../components/sequence-card';
 import { useSetting } from '../../../state/hooks/settings';
 import { DateFormat, MessageLayout, MessageSpacing, settingsAtom } from '../../../state/settings';
@@ -37,7 +38,7 @@ import { SettingTile } from '../../../components/setting-tile';
 import { KeySymbol } from '../../../utils/key-symbol';
 import { isMacOS } from '../../../utils/user-agent';
 import {
-  DarkTheme,
+  EmberTheme,
   LightTheme,
   Theme,
   ThemeKind,
@@ -50,6 +51,10 @@ import { useMessageLayoutItems } from '../../../hooks/useMessageLayout';
 import { useMessageSpacingItems } from '../../../hooks/useMessageSpacing';
 import { useDateFormatItems } from '../../../hooks/useDateFormat';
 import { SequenceCardStyle } from '../styles.css';
+import { ACCENT_PRESETS, isHexColor } from '../../../utils/accent';
+import { PHONE_SCROLL_NATIVE } from '../../../utils/touchScroll';
+import { SettingsPageHeader } from '../SettingsPageHeader';
+import { usePhone } from '../../../hooks/useScreenSize';
 
 type ThemeSelectorProps = {
   themeNames: Record<string, string>;
@@ -82,7 +87,7 @@ function SelectTheme({ disabled }: { disabled?: boolean }) {
   const themeNames = useThemeNames();
   const [themeId, setThemeId] = useSetting(settingsAtom, 'themeId');
   const [menuCords, setMenuCords] = useState<RectCords>();
-  const selectedTheme = themes.find((theme) => theme.id === themeId) ?? LightTheme;
+  const selectedTheme = themes.find((theme) => theme.id === themeId) ?? EmberTheme;
 
   const handleThemeMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     setMenuCords(evt.currentTarget.getBoundingClientRect());
@@ -149,7 +154,7 @@ function SystemThemePreferences() {
   const darkThemes = themes.filter((theme) => theme.kind === ThemeKind.Dark);
 
   const selectedLightTheme = lightThemes.find((theme) => theme.id === lightThemeId) ?? LightTheme;
-  const selectedDarkTheme = darkThemes.find((theme) => theme.id === darkThemeId) ?? DarkTheme;
+  const selectedDarkTheme = darkThemes.find((theme) => theme.id === darkThemeId) ?? EmberTheme;
 
   const [ltCords, setLTCords] = useState<RectCords>();
   const [dtCords, setDTCords] = useState<RectCords>();
@@ -303,7 +308,152 @@ function PageZoomInput() {
   );
 }
 
+const MESSAGE_SCALE_MIN = 80;
+const MESSAGE_SCALE_MAX = 130;
+
+function ScrollSpeedSlider() {
+  const [speed, setSpeed] = useSetting(settingsAtom, 'phoneScrollSpeed');
+  const native = speed >= PHONE_SCROLL_NATIVE;
+
+  return (
+    <Box alignItems="Center" gap="300">
+      <Text size="T200" priority="300">
+        Calm
+      </Text>
+      <input
+        type="range"
+        aria-label="Scroll speed"
+        min={1}
+        max={PHONE_SCROLL_NATIVE}
+        step={1}
+        value={speed}
+        onChange={(evt) => setSpeed(parseInt(evt.target.value, 10))}
+        style={{ flexGrow: 1, accentColor: color.Primary.Main }}
+      />
+      <Text size="T200" priority="300">
+        Fast
+      </Text>
+      <Text size="T300" style={{ minWidth: toRem(52), textAlign: 'right' }}>
+        {native ? 'Native' : speed}
+      </Text>
+    </Box>
+  );
+}
+
+// Phones: one slider for chat text, avatars and the message box, with a live preview.
+function MessageSizeSlider() {
+  const [scale, setScale] = useSetting(settingsAtom, 'phoneMessageScale');
+
+  return (
+    <Box direction="Column" gap="300">
+      <Box alignItems="Center" gap="300">
+        <Text size="T200" priority="300">
+          A
+        </Text>
+        <input
+          type="range"
+          aria-label="Message size"
+          min={MESSAGE_SCALE_MIN}
+          max={MESSAGE_SCALE_MAX}
+          step={5}
+          value={scale}
+          onChange={(evt) => setScale(parseInt(evt.target.value, 10))}
+          style={{ flexGrow: 1, accentColor: color.Primary.Main }}
+        />
+        <Text size="H4" priority="300">
+          A
+        </Text>
+        <Text size="T300" style={{ minWidth: toRem(44), textAlign: 'right' }}>
+          {`${scale}%`}
+        </Text>
+      </Box>
+      <Text
+        style={{
+          fontSize: `calc(17px * ${scale / 100})`,
+          lineHeight: 1.45,
+          padding: config.space.S300,
+          borderRadius: config.radii.R300,
+          background: color.Background.Container,
+        }}
+      >
+        This is how messages will look.
+      </Text>
+      {scale !== 100 && (
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          radii="300"
+          onClick={() => setScale(100)}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          <Text size="B300">Reset</Text>
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+function AccentColorPicker() {
+  const [accentColor, setAccentColor] = useSetting(settingsAtom, 'accentColor');
+  const current = accentColor ?? ACCENT_PRESETS[0].value;
+  const isPreset = ACCENT_PRESETS.some((p) => p.value.toLowerCase() === current.toLowerCase());
+
+  const swatch = (value: string, selected: boolean): React.CSSProperties => ({
+    width: toRem(28),
+    height: toRem(28),
+    borderRadius: '50%',
+    background: value,
+    border: 'none',
+    padding: 0,
+    cursor: 'pointer',
+    outline: selected ? `2px solid ${color.Surface.OnContainer}` : 'none',
+    outlineOffset: toRem(2),
+  });
+
+  return (
+    <Box gap="200" alignItems="Center" wrap="Wrap">
+      {ACCENT_PRESETS.map((preset) => {
+        const selected = preset.value.toLowerCase() === current.toLowerCase();
+        return (
+          <button
+            key={preset.value}
+            type="button"
+            title={preset.name}
+            aria-label={`${preset.name} accent`}
+            aria-pressed={selected}
+            style={swatch(preset.value, selected)}
+            // The first preset is the theme's own color, so picking it clears the override.
+            onClick={() => setAccentColor(preset === ACCENT_PRESETS[0] ? undefined : preset.value)}
+          />
+        );
+      })}
+      <Box
+        as="label"
+        title="Custom color"
+        alignItems="Center"
+        justifyContent="Center"
+        style={{
+          ...swatch(isPreset ? color.SurfaceVariant.ContainerActive : current, !isPreset),
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {isPreset && <Icon size="100" src={Icons.Plus} />}
+        <input
+          type="color"
+          aria-label="Custom accent color"
+          value={isHexColor(current) ? current : '#ff6b3d'}
+          onChange={(evt) => setAccentColor(evt.currentTarget.value)}
+          style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+        />
+      </Box>
+    </Box>
+  );
+}
+
 function Appearance() {
+  const phone = usePhone();
   const [systemTheme, setSystemTheme] = useSetting(settingsAtom, 'useSystemTheme');
   const [monochromeMode, setMonochromeMode] = useSetting(settingsAtom, 'monochromeMode');
   const [twitterEmoji, setTwitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
@@ -335,6 +485,15 @@ function Appearance() {
 
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile
+          title="Accent Color"
+          description="Buttons, highlights and links. Works with every theme."
+        >
+          <AccentColorPicker />
+        </SettingTile>
+      </SequenceCard>
+
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
           title="Monochrome Mode"
           after={<Switch variant="Primary" value={monochromeMode} onChange={setMonochromeMode} />}
         />
@@ -346,6 +505,20 @@ function Appearance() {
           after={<Switch variant="Primary" value={twitterEmoji} onChange={setTwitterEmoji} />}
         />
       </SequenceCard>
+
+      {phone && (
+        <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+          <SettingTile title="Message Size" description="Chat text, avatars and the message box.">
+            <MessageSizeSlider />
+          </SettingTile>
+          <SettingTile
+            title="Scroll Speed"
+            description="How far a quick swipe carries chats and lists. The last step is your phone's own scrolling."
+          >
+            <ScrollSpeedSlider />
+          </SettingTile>
+        </SequenceCard>
+      )}
 
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile title="Page Zoom" after={<PageZoomInput />} />
@@ -884,9 +1057,9 @@ function Messages() {
     settingsAtom,
     'legacyUsernameColor'
   );
-  const [hideMembershipEvents, setHideMembershipEvents] = useSetting(
+  const [hideJoinLeaveEvents, setHideJoinLeaveEvents] = useSetting(
     settingsAtom,
-    'hideMembershipEvents'
+    'hideJoinLeaveEvents'
   );
   const [hideNickAvatarEvents, setHideNickAvatarEvents] = useSetting(
     settingsAtom,
@@ -920,12 +1093,13 @@ function Messages() {
       </SequenceCard>
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile
-          title="Hide Membership Change"
+          title="Hide Joins & Leaves"
+          description="Kicks, bans and invites always show."
           after={
             <Switch
               variant="Primary"
-              value={hideMembershipEvents}
-              onChange={setHideMembershipEvents}
+              value={hideJoinLeaveEvents}
+              onChange={setHideJoinLeaveEvents}
             />
           }
         />
@@ -984,20 +1158,7 @@ type GeneralProps = {
 export function General({ requestClose }: GeneralProps) {
   return (
     <Page>
-      <PageHeader outlined={false}>
-        <Box grow="Yes" gap="200">
-          <Box grow="Yes" alignItems="Center" gap="200">
-            <Text size="H3" truncate>
-              General
-            </Text>
-          </Box>
-          <Box shrink="No">
-            <IconButton onClick={requestClose} variant="Surface">
-              <Icon src={Icons.Cross} />
-            </IconButton>
-          </Box>
-        </Box>
-      </PageHeader>
+      <SettingsPageHeader title="General" requestClose={requestClose} />
       <Box grow="Yes">
         <Scroll hideTrack visibility="Hover">
           <PageContent>

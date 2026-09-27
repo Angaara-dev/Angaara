@@ -49,6 +49,11 @@ import { useAlive } from '../../../hooks/useAlive';
 import { BetaNoticeBadge } from '../../../components/BetaNoticeBadge';
 import { getPowerTagIconSrc } from '../../../hooks/useMemberPowerTag';
 import { creatorsSupported } from '../../../utils/matrix';
+import {
+  LEVEL_ROLE_BADGES,
+  LEVEL_ROLE_GRADIENTS,
+  useRoomServerLevel,
+} from '../../../hooks/useSpaceLevel';
 
 type EditPowerProps = {
   maxPower: number;
@@ -63,6 +68,9 @@ function EditPower({ maxPower, power, tag, onSave, onClose }: EditPowerProps) {
   const roomToParents = useAtomValue(roomToParentsAtom);
   const useAuthentication = useMediaAuthentication();
   const supportCreators = creatorsSupported(room.getVersion());
+  const level = useRoomServerLevel(room);
+  const badgesUnlocked = level >= LEVEL_ROLE_BADGES;
+  const gradientUnlocked = level >= LEVEL_ROLE_GRADIENTS;
 
   const imagePackRooms = useImagePackRooms(room.roomId, roomToParents);
 
@@ -70,6 +78,7 @@ function EditPower({ maxPower, power, tag, onSave, onClose }: EditPowerProps) {
   const pickFile = useFilePicker(setIconFile, false);
 
   const [tagColor, setTagColor] = useState<string | undefined>(tag?.color);
+  const [tagGradient, setTagGradient] = useState<string | undefined>(tag?.gradient);
   const [tagIcon, setTagIcon] = useState<MemberPowerTagIcon | undefined>(tag?.icon);
   const uploadingIcon = iconFile && !tagIcon;
   const tagIconSrc = tagIcon && getPowerTagIconSrc(mx, useAuthentication, tagIcon);
@@ -108,6 +117,7 @@ function EditPower({ maxPower, power, tag, onSave, onClose }: EditPowerProps) {
     const editedTag: MemberPowerTag = {
       name: tagName,
       color: tagColor,
+      gradient: tagColor ? tagGradient : undefined,
       icon: tagIcon,
     };
 
@@ -141,6 +151,29 @@ function EditPower({ maxPower, power, tag, onSave, onClose }: EditPowerProps) {
                   </Button>
                 )}
               </HexColorPickerPopOut>
+              {gradientUnlocked && tagColor && (
+                <HexColorPickerPopOut
+                  picker={
+                    <HexColorPicker color={tagGradient ?? tagColor} onChange={setTagGradient} />
+                  }
+                  onRemove={() => setTagGradient(undefined)}
+                >
+                  {(openPicker, opened) => (
+                    <Button
+                      aria-pressed={opened}
+                      onClick={openPicker}
+                      size="300"
+                      type="button"
+                      variant="Secondary"
+                      fill="Soft"
+                      radii="300"
+                      before={<PowerColorBadge color={tagColor} gradient={tagGradient} />}
+                    >
+                      <Text size="B300">{tagGradient ? 'Fade' : 'Add fade'}</Text>
+                    </Button>
+                  )}
+                </HexColorPickerPopOut>
+              )}
             </Box>
           </Box>
           <Box grow="Yes" direction="Column" gap="100">
@@ -173,8 +206,18 @@ function EditPower({ maxPower, power, tag, onSave, onClose }: EditPowerProps) {
           </Box>
         </Box>
       </Box>
+      {!gradientUnlocked && (
+        <Text size="T200" priority="300">
+          {`Two-colour role names unlock at server level ${LEVEL_ROLE_GRADIENTS}.`}
+        </Text>
+      )}
       <Box direction="Column" gap="100">
         <Text size="L400">Icon</Text>
+        {!badgesUnlocked && (
+          <Text size="T200" priority="300">
+            {`Role badges show next to names from server level ${LEVEL_ROLE_BADGES}.`}
+          </Text>
+        )}
         {iconUploadAtom && !tagIconSrc ? (
           <CompactUploadCardRenderer
             uploadAtom={iconUploadAtom}
@@ -287,8 +330,10 @@ function EditPower({ maxPower, power, tag, onSave, onClose }: EditPowerProps) {
 type PowersEditorProps = {
   powerLevels: IPowerLevels;
   requestClose: () => void;
+  // Its own settings page (server Roles) rather than a step inside Permissions.
+  standalone?: boolean;
 };
-export function PowersEditor({ powerLevels, requestClose }: PowersEditorProps) {
+export function PowersEditor({ powerLevels, requestClose, standalone }: PowersEditorProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const room = useRoom();
@@ -359,14 +404,20 @@ export function PowersEditor({ powerLevels, requestClose }: PowersEditorProps) {
       <PageHeader outlined={false} balance>
         <Box alignItems="Center" grow="Yes" gap="200">
           <Box alignItems="Inherit" grow="Yes" gap="200">
-            <Chip
-              size="500"
-              radii="Pill"
-              onClick={requestClose}
-              before={<Icon size="100" src={Icons.ArrowLeft} />}
-            >
-              <Text size="T300">Permissions</Text>
-            </Chip>
+            {standalone ? (
+              <Text size="H3" truncate>
+                Roles
+              </Text>
+            ) : (
+              <Chip
+                size="500"
+                radii="Pill"
+                onClick={requestClose}
+                before={<Icon size="100" src={Icons.ArrowLeft} />}
+              >
+                <Text size="T300">Permissions</Text>
+              </Chip>
+            )}
           </Box>
           <Box shrink="No">
             <IconButton onClick={requestClose} variant="Surface">
@@ -381,9 +432,14 @@ export function PowersEditor({ powerLevels, requestClose }: PowersEditorProps) {
             <Box direction="Column" gap="700">
               <Box direction="Column" gap="100">
                 <Box alignItems="Baseline" gap="200" justifyContent="SpaceBetween">
-                  <Text size="L400">Power Levels</Text>
+                  <Text size="L400">Roles</Text>
                   <BetaNoticeBadge />
                 </Box>
+                <Text size="T200" priority="300">
+                  {room.isSpaceRoom()
+                    ? 'Channels in this server use these roles, unless a channel sets its own.'
+                    : "This channel uses its server's roles until you change them here."}
+                </Text>
                 <SequenceCard
                   variant="SurfaceVariant"
                   className={SequenceCardStyle}
@@ -391,8 +447,8 @@ export function PowersEditor({ powerLevels, requestClose }: PowersEditorProps) {
                   gap="400"
                 >
                   <SettingTile
-                    title="New Power Level"
-                    description="Create a new power level."
+                    title="New Role"
+                    description="Create a role for a power level."
                     after={
                       !createTag && (
                         <Button
@@ -442,7 +498,7 @@ export function PowersEditor({ powerLevels, requestClose }: PowersEditorProps) {
                             />
                           ) : (
                             <SettingTile
-                              before={<PowerColorBadge color={tag.color} />}
+                              before={<PowerColorBadge color={tag.color} gradient={tag.gradient} />}
                               title={
                                 <Box as="span" alignItems="Center" gap="200">
                                   <b>{deleted.has(power) ? <s>{tag.name}</s> : tag.name}</b>

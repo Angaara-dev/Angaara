@@ -122,3 +122,17 @@ export const EscapeRule: InlineMDRule = {
     return g2;
   },
 };
+
+// MSC2191 maths, only when wrapped in {latex}...{/latex} so nothing renders by accident.
+// Text is already HTML-escaped here, so it is safe in the attribute and body.
+export const mathHtml = (tag: 'span' | 'div', tex: string) =>
+  `<${tag} data-mx-maths="${tex}"><code>${tex}</code></${tag}>`;
+
+const LATEX_REG = new RegExp(`${ESC_NEG_LB}\\{latex\\}(.+?)\\{\\/latex\\}`);
+export const LatexRule: InlineMDRule = {
+  match: (text) => text.match(LATEX_REG),
+  html: (parse, match) => {
+    const [, g1] = match;
+    return g1.trim() ? mathHtml('span', g1.trim()) : match[0];
+  },
+};

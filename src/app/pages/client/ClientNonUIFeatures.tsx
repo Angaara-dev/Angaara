@@ -1,11 +1,11 @@
 import { useAtomValue } from 'jotai';
-import React, { ReactNode, useCallback, useEffect, useRef } from 'react';
+import React, { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RoomEvent, RoomEventHandlerMap } from 'matrix-js-sdk';
+import { RoomEvent, RoomEventHandlerMap, RoomStateEvent } from 'matrix-js-sdk';
 import { roomToUnreadAtom, unreadEqual, unreadInfoToUnread } from '../../state/room/roomToUnread';
-import LogoSVG from '../../../../public/res/svg/cinny.svg';
-import LogoUnreadSVG from '../../../../public/res/svg/cinny-unread.svg';
-import LogoHighlightSVG from '../../../../public/res/svg/cinny-highlight.svg';
+import LogoSVG from '../../../../public/res/svg/angaara.svg';
+import LogoUnreadSVG from '../../../../public/res/svg/angaara-unread.svg';
+import LogoHighlightSVG from '../../../../public/res/svg/angaara-highlight.svg';
 import NotificationSound from '../../../../public/sound/notification.ogg';
 import InviteSound from '../../../../public/sound/invite.ogg';
 import { notificationPermission, setFavicon } from '../../utils/dom';
@@ -25,7 +25,17 @@ import { NotificationType, UnreadInfo } from '../../../types/matrix/room';
 import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useSelectedRoom } from '../../hooks/router/useSelectedRoom';
 import { useInboxNotificationsSelected } from '../../hooks/router/useInbox';
+import { chosenStatusAtom } from '../../hooks/useActivityStatus';
+import { ActivityPublisher } from './ActivityPublisher';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { trimClosedRooms } from '../../utils/timelineTrim';
+import { installTouchScroll, PHONE_SCROLL_NATIVE, scrollCapFor } from '../../utils/touchScroll';
+import { usePhone } from '../../hooks/useScreenSize';
+import { startXpReporter } from '../../../client/xp';
+import { loadEmojiData } from '../../plugins/emoji';
+import { startVault, subscribeVault, vaultReady } from '../../../client/vault';
+import { reconcileFriends } from '../../../client/friends';
+import { declineBlockedInvites } from '../../../client/communityPrivacy';
 
 function SystemEmojiFeature() {
   const [twitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
@@ -47,6 +57,42 @@ function PageZoomFeature() {
   } else {
     document.documentElement.style.setProperty('font-size', `calc(1em * ${pageZoom / 100})`);
   }
+
+  return null;
+}
+
+// Read by the phone message and composer styles.
+function PhoneMessageScaleFeature() {
+  const [scale] = useSetting(settingsAtom, 'phoneMessageScale');
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--angaara-msg-scale', `${scale / 100}`);
+  }, [scale]);
+
+  return null;
+}
+
+function PhoneScrollFeature() {
+  const [speed] = useSetting(settingsAtom, 'phoneScrollSpeed');
+  const phone = usePhone();
+
+  useEffect(() => {
+    if (!phone || speed >= PHONE_SCROLL_NATIVE) return undefined;
+    return installTouchScroll(scrollCapFor(speed));
+  }, [phone, speed]);
+
+  return null;
+}
+
+function XpReporter() {
+  const mx = useMatrixClient();
+  const [earnXp] = useSetting(settingsAtom, 'earnXp');
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    if (!earnXp || unavailable) return undefined;
+    return startXpReporter(mx, () => setUnavailable(true));
+  }, [mx, earnXp, unavailable]);
 
   return null;
 }
@@ -83,8 +129,12 @@ function InviteNotifications() {
   const mx = useMatrixClient();
 
   const navigate = useNavigate();
-  const [showNotifications] = useSetting(settingsAtom, 'showNotifications');
-  const [notificationSound] = useSetting(settingsAtom, 'isNotificationSounds');
+  const [showNotificationsSetting] = useSetting(settingsAtom, 'showNotifications');
+  const [notificationSoundSetting] = useSetting(settingsAtom, 'notificationSounds');
+  // Do Not Disturb mutes desktop notifications and sounds.
+  const dnd = useAtomValue(chosenStatusAtom) === 'dnd';
+  const showNotifications = showNotificationsSetting && !dnd;
+  const notificationSound = notificationSoundSetting && !dnd;
 
   const notify = useCallback(
     (count: number) => {
@@ -134,8 +184,12 @@ function MessageNotifications() {
   const unreadCacheRef = useRef<Map<string, UnreadInfo>>(new Map());
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
-  const [showNotifications] = useSetting(settingsAtom, 'showNotifications');
-  const [notificationSound] = useSetting(settingsAtom, 'isNotificationSounds');
+  const [showNotificationsSetting] = useSetting(settingsAtom, 'showNotifications');
+  const [notificationSoundSetting] = useSetting(settingsAtom, 'notificationSounds');
+  // Do Not Disturb mutes desktop notifications and sounds.
+  const dnd = useAtomValue(chosenStatusAtom) === 'dnd';
+  const showNotifications = showNotificationsSetting && !dnd;
+  const notificationSound = notificationSoundSetting && !dnd;
 
   const navigate = useNavigate();
   const notificationSelected = useInboxNotificationsSelected();
@@ -257,14 +311,71 @@ type ClientNonUIFeaturesProps = {
   children: ReactNode;
 };
 
+// Frees old history of rooms you're not viewing so memory doesn't grow all session.
+function TimelineTrimmer() {
+  const mx = useMatrixClient();
+  useEffect(() => {
+    const interval = window.setInterval(() => trimClosedRooms(mx), 5 * 60 * 1000);
+    return () => window.clearInterval(interval);
+  }, [mx]);
+  return null;
+}
+
+// Fetches the emoji tables after startup so the picker is ready without slowing first load.
+function EmojiDataPreloader() {
+  useEffect(() => {
+    const timeout = window.setTimeout(loadEmojiData, 3000);
+    return () => window.clearTimeout(timeout);
+  }, []);
+  return null;
+}
+
+// Opens the encrypted vault (friends, DM list, privacy), keeps friends in step with rooms,
+// and declines DMs and friend requests your community privacy settings block.
+function VaultFeature() {
+  const mx = useMatrixClient();
+
+  useEffect(() => startVault(mx), [mx]);
+
+  useEffect(() => {
+    let timer: number | undefined;
+    const reconcile = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (!vaultReady()) return;
+        reconcileFriends(mx).catch(() => undefined);
+        declineBlockedInvites(mx).catch(() => undefined);
+      }, 1000);
+    };
+    const unsubscribe = subscribeVault(reconcile);
+    mx.on(RoomStateEvent.Members, reconcile);
+    mx.on(RoomEvent.MyMembership, reconcile);
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribe();
+      mx.removeListener(RoomStateEvent.Members, reconcile);
+      mx.removeListener(RoomEvent.MyMembership, reconcile);
+    };
+  }, [mx]);
+
+  return null;
+}
+
 export function ClientNonUIFeatures({ children }: ClientNonUIFeaturesProps) {
   return (
     <>
       <SystemEmojiFeature />
       <PageZoomFeature />
+      <PhoneMessageScaleFeature />
+      <PhoneScrollFeature />
+      <XpReporter />
       <FaviconUpdater />
       <InviteNotifications />
       <MessageNotifications />
+      <TimelineTrimmer />
+      <EmojiDataPreloader />
+      <VaultFeature />
+      <ActivityPublisher />
       {children}
     </>
   );

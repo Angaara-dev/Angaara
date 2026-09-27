@@ -12,7 +12,6 @@ import {
   Box,
   Button,
   Icon,
-  IconButton,
   Icons,
   Line,
   Menu,
@@ -30,6 +29,7 @@ import { JoinRule, Room } from 'matrix-js-sdk';
 import { RoomJoinRulesEventContent } from 'matrix-js-sdk/lib/types';
 import FocusTrap from 'focus-trap-react';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
+import { usePhone } from '../../../hooks/useScreenSize';
 import { mDirectAtom } from '../../../state/mDirectList';
 import {
   NavCategory,
@@ -37,10 +37,10 @@ import {
   NavItem,
   NavItemContent,
   NavLink,
+  NavSearchPill,
 } from '../../../components/nav';
 import { getSpaceLobbyPath, getSpaceRoomPath, getSpaceSearchPath } from '../../pathUtils';
-import { getCanonicalAliasOrRoomId, isRoomAlias } from '../../../utils/matrix';
-import { useSelectedRoom } from '../../../hooks/router/useSelectedRoom';
+import { getCanonicalAliasOrRoomId, isRoomAlias, mxcUrlToHttp } from '../../../utils/matrix';
 import {
   useSpaceLobbySelected,
   useSpaceSearchSelected,
@@ -52,10 +52,10 @@ import { makeNavCategoryId } from '../../../state/closedNavCategories';
 import { roomToUnreadAtom } from '../../../state/room/roomToUnread';
 import { useCategoryHandler } from '../../../hooks/useCategoryHandler';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
-import { useRoomName } from '../../../hooks/useRoomMeta';
+import { useRoomAvatar, useRoomName } from '../../../hooks/useRoomMeta';
 import { useSpaceJoinedHierarchy } from '../../../hooks/useSpaceHierarchy';
 import { allRoomsAtom } from '../../../state/room-list/roomList';
-import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
+import { PageNav, PageNavContent } from '../../../components/page';
 import { usePowerLevels } from '../../../hooks/usePowerLevels';
 import { useRecursiveChildScopeFactory, useSpaceChildren } from '../../../state/hooks/roomList';
 import { roomToParentsAtom } from '../../../state/room/roomToParents';
@@ -84,7 +84,16 @@ import { ContainerColor } from '../../../styles/ContainerColor.css';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { BreakWord } from '../../../styles/Text.css';
 import { InviteUserPrompt } from '../../../components/invite-user-prompt';
+import { CommunityPrivacyDialog } from '../../../features/community-privacy';
 import { useCallEmbed } from '../../../hooks/useCallEmbed';
+import { UserPanel } from '../UserPanel';
+import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
+import * as css from './SpaceHeader.css';
+import { ServerLevelPill } from '../../../features/space-level/ServerLevel';
+import { useRoomBannerUrl } from '../../../hooks/useRoomBanner';
+import { LEVEL_ANIMATED_BANNER, useSpaceLevel } from '../../../hooks/useSpaceLevel';
+import { useStillImage } from '../../../hooks/useStillImage';
+import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
 
 type SpaceMenuProps = {
   room: Room;
@@ -104,6 +113,7 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
   const { navigateRoom } = useRoomNavigate();
 
   const [invitePrompt, setInvitePrompt] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   const allChild = useSpaceChildren(
     allRoomsAtom,
@@ -189,15 +199,48 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
           </Text>
         </MenuItem>
         <MenuItem
+          onClick={() => {
+            copyToClipboard(room.roomId);
+            requestClose();
+          }}
+          size="300"
+          after={<Icon size="100" src={Icons.Hash} />}
+          radii="300"
+        >
+          <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+            Copy Server ID
+          </Text>
+        </MenuItem>
+        <MenuItem
           onClick={handleRoomSettings}
           size="300"
           after={<Icon size="100" src={Icons.Setting} />}
           radii="300"
         >
           <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
-            Space Settings
+            Server Settings
           </Text>
         </MenuItem>
+        <MenuItem
+          onClick={() => setPrivacyOpen(true)}
+          size="300"
+          after={<Icon size="100" src={Icons.ShieldLock} />}
+          radii="300"
+          aria-pressed={privacyOpen}
+        >
+          <Text style={{ flexGrow: 1 }} as="span" size="T300" truncate>
+            Privacy Settings
+          </Text>
+        </MenuItem>
+        {privacyOpen && (
+          <CommunityPrivacyDialog
+            space={room}
+            onClose={() => {
+              setPrivacyOpen(false);
+              requestClose();
+            }}
+          />
+        )}
         {developerTools && (
           <MenuItem
             onClick={handleOpenTimeline}
@@ -246,7 +289,15 @@ const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClo
 
 function SpaceHeader() {
   const space = useSpace();
+  const mx = useMatrixClient();
+  const useAuthentication = useMediaAuthentication();
   const spaceName = useRoomName(space);
+  const avatarMxc = useRoomAvatar(space);
+  const { level } = useSpaceLevel(space);
+  const bannerUrl = useStillImage(useRoomBannerUrl(space), level < LEVEL_ANIMATED_BANNER);
+  const avatarUrl = avatarMxc
+    ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 96, 96, 'crop') ?? undefined
+    : undefined;
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
   const joinRules = useStateEvent(
@@ -264,27 +315,46 @@ function SpaceHeader() {
 
   return (
     <>
-      <PageNavHeader>
-        <Box alignItems="Center" grow="Yes" gap="300">
-          <Box grow="Yes" alignItems="Center" gap="100">
-            <Text size="H4" truncate>
+      <header
+        className={css.SpaceHeader}
+        data-art={!!(bannerUrl || avatarUrl)}
+        onContextMenu={(evt) => {
+          evt.preventDefault();
+          setMenuAnchor({ x: evt.clientX, y: evt.clientY, width: 0, height: 0 });
+        }}
+      >
+        {(bannerUrl || avatarUrl) && (
+          <>
+            {bannerUrl ? (
+              <img className={css.Banner} src={bannerUrl} alt="" />
+            ) : (
+              <img className={css.Art} src={avatarUrl} alt="" />
+            )}
+            <div className={css.ArtShade} />
+          </>
+        )}
+        <button
+          type="button"
+          className={css.HeaderButton}
+          onClick={handleOpenMenu}
+          aria-haspopup="menu"
+          aria-expanded={!!menuAnchor}
+        >
+          <Box grow="Yes" alignItems="Center" gap="100" style={{ minWidth: 0 }}>
+            <Text className={css.Name} size="H4" truncate>
               {spaceName}
             </Text>
             {joinRules?.join_rule !== JoinRule.Public && <Icon src={Icons.Lock} size="50" />}
           </Box>
-          <Box shrink="No">
-            <IconButton aria-pressed={!!menuAnchor} variant="Background" onClick={handleOpenMenu}>
-              <Icon src={Icons.VerticalDots} size="200" />
-            </IconButton>
-          </Box>
-        </Box>
-      </PageNavHeader>
+          <Icon src={menuAnchor ? Icons.Cross : Icons.ChevronBottom} size="100" />
+        </button>
+      </header>
       {menuAnchor && (
         <PopOut
           anchor={menuAnchor}
           position="Bottom"
-          align="End"
-          offset={6}
+          align={menuAnchor.width === 0 ? 'Start' : 'End'}
+          offset={menuAnchor.width === 0 ? 0 : 6}
           content={
             <FocusTrap
               focusTrapOptions={{
@@ -388,9 +458,10 @@ export function Space() {
   const notificationPreferences = useRoomsNotificationPreferencesContext();
 
   const tombstoneEvent = useStateEvent(space, StateEvent.RoomTombstone);
-  const selectedRoomId = useSelectedRoom();
   const lobbySelected = useSpaceLobbySelected(spaceIdOrAlias);
   const searchSelected = useSpaceSearchSelected(spaceIdOrAlias);
+  const selectedRoomId = useStickySelectedRoom(space.roomId, lobbySelected || searchSelected);
+  const phone = usePhone();
   const callEmbed = useCallEmbed();
 
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
@@ -451,6 +522,13 @@ export function Space() {
             />
           )}
           <NavCategory>
+            {phone && (
+              <NavSearchPill
+                to={getSpaceSearchPath(getCanonicalAliasOrRoomId(mx, space.roomId))}
+                selected={searchSelected}
+              />
+            )}
+            <ServerLevelPill room={space} />
             <NavItem variant="Background" radii="400" aria-selected={lobbySelected}>
               <NavLink to={getSpaceLobbyPath(getCanonicalAliasOrRoomId(mx, space.roomId))}>
                 <NavItemContent>
@@ -467,22 +545,24 @@ export function Space() {
                 </NavItemContent>
               </NavLink>
             </NavItem>
-            <NavItem variant="Background" radii="400" aria-selected={searchSelected}>
-              <NavLink to={getSpaceSearchPath(getCanonicalAliasOrRoomId(mx, space.roomId))}>
-                <NavItemContent>
-                  <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                    <Avatar size="200" radii="400">
-                      <Icon src={Icons.Search} size="100" filled={searchSelected} />
-                    </Avatar>
-                    <Box as="span" grow="Yes">
-                      <Text as="span" size="Inherit" truncate>
-                        Message Search
-                      </Text>
+            {!phone && (
+              <NavItem variant="Background" radii="400" aria-selected={searchSelected}>
+                <NavLink to={getSpaceSearchPath(getCanonicalAliasOrRoomId(mx, space.roomId))}>
+                  <NavItemContent>
+                    <Box as="span" grow="Yes" alignItems="Center" gap="200">
+                      <Avatar size="200" radii="400">
+                        <Icon src={Icons.Search} size="100" filled={searchSelected} />
+                      </Avatar>
+                      <Box as="span" grow="Yes">
+                        <Text as="span" size="Inherit" truncate>
+                          Message Search
+                        </Text>
+                      </Box>
                     </Box>
-                  </Box>
-                </NavItemContent>
-              </NavLink>
-            </NavItem>
+                  </NavItemContent>
+                </NavLink>
+              </NavItem>
+            )}
           </NavCategory>
           <NavCategory
             style={{
@@ -535,6 +615,7 @@ export function Space() {
           </NavCategory>
         </Box>
       </PageNavContent>
+      <UserPanel />
     </PageNav>
   );
 }

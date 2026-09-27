@@ -246,9 +246,11 @@ function PinnedMessage({
 type RoomPinMenuProps = {
   room: Room;
   requestClose: () => void;
+  // Plain list for the phone room info page, which scrolls it itself.
+  embedded?: boolean;
 };
 export const RoomPinMenu = forwardRef<HTMLDivElement, RoomPinMenuProps>(
-  ({ room, requestClose }, ref) => {
+  ({ room, requestClose, embedded }, ref) => {
     const mx = useMatrixClient();
     const userId = mx.getUserId()!;
     const powerLevels = usePowerLevelsContext();
@@ -449,6 +451,42 @@ export const RoomPinMenu = forwardRef<HTMLDivElement, RoomPinMenuProps>(
       requestClose();
     };
 
+    const renderCard = (eventId: string) => (
+      <SequenceCard
+        style={{ padding: config.space.S400, borderRadius: config.radii.R300 }}
+        variant="SurfaceVariant"
+        direction="Column"
+      >
+        <PinnedMessage
+          room={room}
+          eventId={eventId}
+          renderContent={renderMatrixEvent}
+          onOpen={handleOpen}
+          canPinEvent={canPinEvent}
+          getMemberPowerTag={getMemberPowerTag}
+          accessibleTagColors={accessibleTagColors}
+          legacyUsernameColor={legacyUsernameColor || direct}
+          hour24Clock={hour24Clock}
+          dateFormatString={dateFormatString}
+        />
+      </SequenceCard>
+    );
+
+    if (embedded) {
+      return (
+        <Box ref={ref} direction="Column" gap="200">
+          {sortedPinnedEvent.map((eventId) => (
+            <React.Fragment key={eventId}>{renderCard(eventId)}</React.Fragment>
+          ))}
+          {sortedPinnedEvent.length === 0 && (
+            <Text size="T300" priority="300" align="Center" style={{ padding: config.space.S700 }}>
+              No pinned messages yet. Pin one from its message menu.
+            </Text>
+          )}
+        </Box>
+      );
+    }
+
     return (
       <Menu ref={ref} className={css.PinMenu}>
         <Box grow="Yes" direction="Column">
@@ -483,24 +521,7 @@ export const RoomPinMenu = forwardRef<HTMLDivElement, RoomPinMenuProps>(
                           ref={virtualizer.measureElement}
                           key={vItem.index}
                         >
-                          <SequenceCard
-                            style={{ padding: config.space.S400, borderRadius: config.radii.R300 }}
-                            variant="SurfaceVariant"
-                            direction="Column"
-                          >
-                            <PinnedMessage
-                              room={room}
-                              eventId={eventId}
-                              renderContent={renderMatrixEvent}
-                              onOpen={handleOpen}
-                              canPinEvent={canPinEvent}
-                              getMemberPowerTag={getMemberPowerTag}
-                              accessibleTagColors={accessibleTagColors}
-                              legacyUsernameColor={legacyUsernameColor || direct}
-                              hour24Clock={hour24Clock}
-                              dateFormatString={dateFormatString}
-                            />
-                          </SequenceCard>
+                          {renderCard(eventId)}
                         </VirtualTile>
                       );
                     })}

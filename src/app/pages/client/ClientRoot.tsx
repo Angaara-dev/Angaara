@@ -10,7 +10,6 @@ import {
   MenuItem,
   PopOut,
   RectCords,
-  Spinner,
   Text,
 } from 'folds';
 import { HttpApiEvent, HttpApiEventHandlerMap, MatrixClient } from 'matrix-js-sdk';
@@ -23,7 +22,7 @@ import {
   logoutClient,
   startClient,
 } from '../../../client/initMatrix';
-import { SplashScreen } from '../../components/splash-screen';
+import { SplashLoading, SplashScreen } from '../../components/splash-screen';
 import { ServerConfigsLoader } from '../../components/ServerConfigsLoader';
 import { CapabilitiesProvider } from '../../hooks/useCapabilities';
 import { MediaConfigProvider } from '../../hooks/useMediaConfig';
@@ -35,15 +34,14 @@ import { stopPropagation } from '../../utils/keyboard';
 import { SyncStatus } from './SyncStatus';
 import { AuthMetadataProvider } from '../../hooks/useAuthMetadata';
 import { getFallbackSession } from '../../state/sessions';
+import { AppLockedError, forgetStoreKeys } from '../../../client/storeKey';
+import { AppLockScreen } from './AppLockScreen';
 import { AutoDiscovery } from './AutoDiscovery';
 
 function ClientRootLoading() {
   return (
     <SplashScreen>
-      <Box direction="Column" grow="Yes" alignItems="Center" justifyContent="Center" gap="400">
-        <Spinner variant="Secondary" size="600" />
-        <Text>Heating up</Text>
-      </Box>
+      <SplashLoading />
     </SplashScreen>
   );
 }
@@ -128,6 +126,7 @@ const useLogoutListener = (mx?: MatrixClient) => {
     const handleLogout: HttpApiEventHandlerMap[HttpApiEvent.SessionLoggedOut] = async () => {
       mx?.stopClient();
       await mx?.clearStores();
+      await forgetStoreKeys();
       window.localStorage.clear();
       window.location.reload();
     };
@@ -156,6 +155,8 @@ export function ClientRoot({ children }: ClientRootProps) {
     }, [])
   );
   const mx = loadState.status === AsyncStatus.Success ? loadState.data : undefined;
+  const locked =
+    loadState.status === AsyncStatus.Error && loadState.error instanceof AppLockedError;
   const [startState, startMatrix] = useAsyncCallback<void, Error, [MatrixClient]>(
     useCallback((m) => startClient(m), [])
   );
@@ -187,8 +188,10 @@ export function ClientRoot({ children }: ClientRootProps) {
     <AutoDiscovery userId={userId!} baseUrl={baseUrl!}>
       <SpecVersions baseUrl={baseUrl!}>
         {mx && <SyncStatus mx={mx} />}
-        {loading && <ClientRootOptions mx={mx} />}
-        {(loadState.status === AsyncStatus.Error || startState.status === AsyncStatus.Error) && (
+        {loading && !locked && <ClientRootOptions mx={mx} />}
+        {locked && <AppLockScreen onUnlocked={loadMatrix} />}
+        {((loadState.status === AsyncStatus.Error && !locked) ||
+          startState.status === AsyncStatus.Error) && (
           <SplashScreen>
             <Box
               direction="Column"
@@ -216,7 +219,7 @@ export function ClientRoot({ children }: ClientRootProps) {
           </SplashScreen>
         )}
         {loading || !mx ? (
-          <ClientRootLoading />
+          !locked && <ClientRootLoading />
         ) : (
           <MatrixClientProvider value={mx}>
             <ServerConfigsLoader>

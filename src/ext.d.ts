@@ -33,3 +33,8 @@ declare module '*.svg' {
   const content: string;
   export default content;
 }
+
+// monaco-editor's exports map isn't visible to our module resolution; its types live here.
+declare module 'monaco-editor/editor/editor.api.js' {
+  export * from 'monaco-editor/esm/vs/editor/editor.api';
+}

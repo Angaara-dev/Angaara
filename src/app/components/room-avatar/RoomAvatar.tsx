@@ -1,17 +1,18 @@
 import { JoinRule } from 'matrix-js-sdk';
-import { AvatarFallback, AvatarImage, Icon, Icons, color } from 'folds';
+import { AvatarFallback, AvatarImage, Icon, Icons } from 'folds';
 import React, { ComponentProps, ReactEventHandler, ReactNode, forwardRef, useState } from 'react';
 import * as css from './RoomAvatar.css';
 import { getRoomIconSrc } from '../../utils/room';
-import colorMXID from '../../../util/colorMXID';
 
 type RoomAvatarProps = {
+  // Unused since fallbacks dropped per-room colors; kept so callers don't change.
+  // eslint-disable-next-line react/no-unused-prop-types
   roomId: string;
   src?: string;
   alt?: string;
   renderFallback: () => ReactNode;
 };
-export function RoomAvatar({ roomId, src, alt, renderFallback }: RoomAvatarProps) {
+export function RoomAvatar({ src, alt, renderFallback }: RoomAvatarProps) {
   const [error, setError] = useState(false);
 
   const handleLoad: ReactEventHandler<HTMLImageElement> = (evt) => {
@@ -20,10 +21,7 @@ export function RoomAvatar({ roomId, src, alt, renderFallback }: RoomAvatarProps
 
   if (!src || error) {
     return (
-      <AvatarFallback
-        style={{ backgroundColor: colorMXID(roomId ?? ''), color: color.Surface.Container }}
-        className={css.RoomAvatar}
-      >
+      <AvatarFallback className={css.RoomAvatar} data-solid-tint>
         {renderFallback()}
       </AvatarFallback>
     );

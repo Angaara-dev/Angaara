@@ -3,7 +3,7 @@ import { Box, Text, as } from 'folds';
 import classNames from 'classnames';
 import { MatrixClient, MatrixEvent, Room } from 'matrix-js-sdk';
 import * as css from './Reaction.css';
-import { getHexcodeForEmoji, getShortcodeFor } from '../../plugins/emoji';
+import { getHexcodeForEmoji, useEmojiData } from '../../plugins/emoji';
 import { getMemberDisplayName } from '../../utils/room';
 import { eventWithShortcode, getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 
@@ -29,8 +29,7 @@ export const Reaction = as<
       {reaction.startsWith('mxc://') ? (
         <img
           className={css.ReactionImg}
-          src={mxcUrlToHttp(mx, reaction, useAuthentication) ?? reaction
-          }
+          src={mxcUrlToHttp(mx, reaction, useAuthentication) ?? reaction}
           alt={reaction}
         />
       ) : (
@@ -52,10 +51,11 @@ type ReactionTooltipMsgProps = {
 };
 
 export function ReactionTooltipMsg({ room, reaction, events }: ReactionTooltipMsgProps) {
+  const emojiData = useEmojiData();
   const shortCodeEvt = events.find(eventWithShortcode);
   const shortcode =
     shortCodeEvt?.getContent().shortcode ??
-    getShortcodeFor(getHexcodeForEmoji(reaction)) ??
+    emojiData?.getShortcodeFor(getHexcodeForEmoji(reaction)) ??
     reaction;
   const names = events.map(
     (ev: MatrixEvent) =>

@@ -1,7 +1,10 @@
 import React, {
   ChangeEventHandler,
   MouseEventHandler,
+  ReactNode,
   useCallback,
+  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,6 +28,7 @@ import {
   Tooltip,
   TooltipProvider,
   config,
+  toRem,
 } from 'folds';
 import { MatrixClient, Room, RoomMember } from 'matrix-js-sdk';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -57,8 +61,24 @@ import { MemberSortMenu } from '../../components/MemberSortMenu';
 import { useOpenUserRoomProfile, useUserRoomProfileState } from '../../state/hooks/userRoomProfile';
 import { useSpaceOptionally } from '../../hooks/useSpace';
 import { ContainerColor } from '../../styles/ContainerColor.css';
-import { useFlattenPowerTagMembers, useGetMemberPowerTag } from '../../hooks/useMemberPowerTag';
+import {
+  useAccessiblePowerTagColors,
+  useFlattenPowerTagMembers,
+  useGetMemberPowerTag,
+} from '../../hooks/useMemberPowerTag';
 import { useRoomCreators } from '../../hooks/useRoomCreators';
+import { useUserStatus } from '../../hooks/useUserStatus';
+import { UserBadges } from '../../components/user-profile/UserBadges';
+import { ServerTagBadge } from '../../components/user-profile/ServerTagBadge';
+import { useUserPanelBgUrl } from '../../hooks/useUserBanner';
+import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
+import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
+import { useTheme } from '../../hooks/useTheme';
+import { useActivityStatus } from '../../hooks/useActivityStatus';
+import { AvatarPresence, StatusIcon } from '../../components/presence';
+import colorMXID from '../../../util/colorMXID';
+import { roleNameStyle } from '../../components/power';
+import { MemberContextMenu } from './MemberContextMenu';
 
 type MemberDrawerHeaderProps = {
   room: Room;
@@ -107,8 +127,13 @@ type MemberItemProps = {
   room: Room;
   member: RoomMember;
   onClick: MouseEventHandler<HTMLButtonElement>;
+  onContextMenu: MouseEventHandler<HTMLButtonElement>;
   pressed?: boolean;
   typing?: boolean;
+  large?: boolean;
+  // Role color, like names in the chat; two-colour roles also pass their second colour.
+  nameColor?: string;
+  nameGradient?: string;
 };
 function MemberItem({
   mx,
@@ -116,8 +141,12 @@ function MemberItem({
   room,
   member,
   onClick,
+  onContextMenu,
   pressed,
   typing,
+  large,
+  nameColor,
+  nameGradient,
 }: MemberItemProps) {
   const name =
     getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
@@ -126,23 +155,46 @@ function MemberItem({
     ? mx.mxcUrlToHttp(avatarMxcUrl, 100, 100, 'crop', undefined, false, useAuthentication)
     : undefined;
 
+  // Only fetch statuses for rows that stay on screen, so fast scrolling doesn't flood the server.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+  const status = useUserStatus(member.userId, settled);
+  const panelBg = useUserPanelBgUrl(member.userId, settled);
+  const activity = useActivityStatus(member.userId, settled);
+  const offline = activity === 'offline';
+
   return (
     <MenuItem
-      style={{ padding: `0 ${config.space.S200}` }}
+      className={css.MemberRow}
+      style={{
+        padding: `0 ${large ? config.space.S400 : config.space.S200}`,
+        minHeight: toRem(large ? 60 : 40),
+        opacity: offline && !pressed ? 0.45 : undefined,
+      }}
+      radii={large ? '0' : '400'}
       aria-pressed={pressed}
       data-user-id={member.userId}
-      variant="Background"
-      radii="400"
+      data-has-bg={!!panelBg}
+      variant={large ? 'Surface' : 'Background'}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       before={
-        <Avatar size="200">
-          <UserAvatar
-            userId={member.userId}
-            src={avatarUrl ?? undefined}
-            alt={name}
-            renderFallback={() => <Icon size="50" src={Icons.User} filled />}
-          />
-        </Avatar>
+        <AvatarPresence
+          variant={large ? 'Surface' : 'Background'}
+          badge={activity && <StatusIcon status={activity} size={large ? 12 : 10} />}
+        >
+          <Avatar size={large ? '400' : '300'} radii="Pill">
+            <UserAvatar
+              userId={member.userId}
+              src={avatarUrl ?? undefined}
+              alt={name}
+              renderFallback={() => <Icon size="100" src={Icons.User} filled />}
+            />
+          </Avatar>
+        </AvatarPresence>
       }
       after={
         typing && (
@@ -152,10 +204,37 @@ function MemberItem({
         )
       }
     >
-      <Box grow="Yes">
-        <Text size="T400" truncate>
-          {name}
-        </Text>
+      <Box grow="Yes" direction="Column" style={{ minWidth: 0 }}>
+        {panelBg && (
+          <img
+            className={css.MemberBg}
+            src={panelBg}
+            alt=""
+            onError={(evt) => {
+              // eslint-disable-next-line no-param-reassign
+              evt.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
+        <Box alignItems="Center" gap="100">
+          <Text
+            size={large ? 'T400' : 'T300'}
+            truncate
+            style={{
+              ...roleNameStyle(nameColor, nameGradient),
+              fontWeight: nameColor ? 500 : undefined,
+            }}
+          >
+            {name}
+          </Text>
+          <ServerTagBadge userId={member.userId} enabled={settled} />
+          <UserBadges userId={member.userId} size="small" />
+        </Box>
+        {status && (
+          <Text size="T200" priority="300" truncate>
+            {status}
+          </Text>
+        )}
       </Box>
     </MenuItem>
   );
@@ -168,6 +247,9 @@ const SEARCH_OPTIONS: UseAsyncSearchOptions = {
   },
 };
 
+const isMember = (item: unknown): item is RoomMember =>
+  typeof item === 'object' && item !== null && 'userId' in item;
+
 const mxIdToName = (mxId: string) => getMxIdLocalPart(mxId) ?? mxId;
 const getRoomMemberStr: SearchItemStrGetter<RoomMember> = (m, query) =>
   getMemberSearchStr(m, query, mxIdToName);
@@ -175,8 +257,11 @@ const getRoomMemberStr: SearchItemStrGetter<RoomMember> = (m, query) =>
 type MembersDrawerProps = {
   room: Room;
   members: RoomMember[];
+  // Phone page mode: full width, this header on top, and role groups as rounded cards.
+  pageHeader?: ReactNode;
 };
-export function MembersDrawer({ room, members }: MembersDrawerProps) {
+export function MembersDrawer({ room, members, pageHeader }: MembersDrawerProps) {
+  const page = pageHeader !== undefined;
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -185,6 +270,20 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const powerLevels = usePowerLevelsContext();
   const creators = useRoomCreators(room);
   const getPowerTag = useGetMemberPowerTag(room, creators, powerLevels);
+  const theme = useTheme();
+  const creatorsTag = useRoomCreatorsTag();
+  const powerLevelTags = usePowerLevelTags(room, powerLevels);
+  const tagColors = useAccessiblePowerTagColors(theme.kind, creatorsTag, powerLevelTags);
+  const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
+  const nameColorOf = (userId: string): string | undefined => {
+    if (legacyUsernameColor) return colorMXID(userId);
+    const tagColor = getPowerTag(userId).color;
+    return tagColor ? tagColors.get(tagColor) : undefined;
+  };
+  const nameGradientOf = (userId: string): string | undefined => {
+    const { gradient } = getPowerTag(userId);
+    return !legacyUsernameColor && gradient ? tagColors.get(gradient) : undefined;
+  };
   const getPowerLevel = useGetMemberPowerLevel(powerLevels);
 
   const fetchingMembers = members.length < room.getJoinedMemberCount();
@@ -218,11 +317,39 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
   const processMembers = result ? result.items : filteredMembers;
 
   const PLTagOrRoomMember = useFlattenPowerTagMembers(processMembers, getPowerTag);
+  const groupCounts = useMemo(() => {
+    const counts = new Map<unknown, number>();
+    let tag: unknown;
+    PLTagOrRoomMember.forEach((item) => {
+      if ('userId' in item) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      else tag = item;
+    });
+    return counts;
+  }, [PLTagOrRoomMember]);
+
+  // Where the list starts inside the scroller, below the header and filters.
+  const listRef = useRef<HTMLDivElement>(null);
+  const [listOffset, setListOffset] = useState(0);
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current;
+    const list = listRef.current;
+    if (!scroller || !list) return undefined;
+    const measure = () =>
+      setListOffset(
+        list.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
+      );
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list.parentElement ?? list);
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
 
   const virtualizer = useVirtualizer({
     count: PLTagOrRoomMember.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 40,
+    scrollMargin: listOffset,
+    estimateSize: () => (page ? 60 : 42),
     overscan: 10,
   });
 
@@ -244,17 +371,42 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
     openUserRoomProfile(room.roomId, space?.roomId, userId, btn.getBoundingClientRect(), 'Left');
   };
 
+  const [memberMenu, setMemberMenu] = useState<{ userId: string; anchor: RectCords }>();
+  const handleMemberContextMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
+    const userId = evt.currentTarget.getAttribute('data-user-id');
+    if (!userId) return;
+    evt.preventDefault();
+    setMemberMenu({ userId, anchor: { x: evt.clientX, y: evt.clientY, width: 0, height: 0 } });
+  };
+
   return (
     <Box
-      className={classNames(css.MembersDrawer, ContainerColor({ variant: 'Background' }))}
+      className={classNames(
+        page ? css.MembersPage : css.MembersDrawer,
+        ContainerColor({ variant: 'Background' })
+      )}
       shrink="No"
       direction="Column"
     >
-      <MemberDrawerHeader room={room} />
+      {!page && <MemberDrawerHeader room={room} />}
       <Box className={css.MemberDrawerContentBase} grow="Yes">
-        <Scroll ref={scrollRef} variant="Background" size="300" visibility="Hover" hideTrack>
+        <Scroll
+          ref={scrollRef}
+          variant="Background"
+          size={page ? '0' : '300'}
+          visibility="Hover"
+          hideTrack
+        >
           <Box className={css.MemberDrawerContent} direction="Column" gap="200">
-            <Box ref={scrollTopAnchorRef} className={css.DrawerGroup} direction="Column" gap="200">
+            {/* Phones: the room info scrolls away with the list. */}
+            {page && pageHeader}
+            <Box
+              ref={scrollTopAnchorRef}
+              className={css.DrawerGroup}
+              style={page ? { padding: `0 ${config.space.S400}` } : undefined}
+              direction="Column"
+              gap="200"
+            >
               <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
                 <UseStateProvider initial={undefined}>
                   {(anchor: RectCords | undefined, setAnchor) => (
@@ -376,8 +528,14 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
               </Text>
             )}
 
-            <Box className={css.MembersGroup} direction="Column" gap="100">
+            <Box
+              className={css.MembersGroup}
+              style={page ? { padding: `0 ${config.space.S400}` } : undefined}
+              direction="Column"
+              gap="100"
+            >
               <div
+                ref={listRef}
                 style={{
                   position: 'relative',
                   height: virtualizer.getTotalSize(),
@@ -389,15 +547,21 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                     return (
                       <Text
                         style={{
-                          transform: `translateY(${vItem.start}px)`,
+                          transform: `translateY(${vItem.start - listOffset}px)`,
                         }}
                         data-index={vItem.index}
                         ref={virtualizer.measureElement}
                         key={`${room.roomId}-${vItem.index}`}
-                        className={classNames(css.MembersGroupLabel, css.DrawerVirtualItem)}
+                        className={classNames(
+                          page ? css.PageGroupLabel : css.MembersGroupLabel,
+                          css.DrawerVirtualItem
+                        )}
                         size="L400"
+                        priority={page ? '300' : undefined}
                       >
-                        {tagOrMember.name}
+                        {`${page ? tagOrMember.name : tagOrMember.name.toUpperCase()} — ${
+                          groupCounts.get(tagOrMember) ?? 0
+                        }`}
                       </Text>
                     );
                   }
@@ -405,9 +569,11 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                   return (
                     <div
                       style={{
-                        transform: `translateY(${vItem.start}px)`,
+                        transform: `translateY(${vItem.start - listOffset}px)`,
                       }}
-                      className={css.DrawerVirtualItem}
+                      className={classNames(css.DrawerVirtualItem, page && css.PageRow)}
+                      data-first={page && !isMember(PLTagOrRoomMember[vItem.index - 1])}
+                      data-last={page && !isMember(PLTagOrRoomMember[vItem.index + 1])}
                       data-index={vItem.index}
                       key={`${room.roomId}-${tagOrMember.userId}`}
                       ref={virtualizer.measureElement}
@@ -418,10 +584,14 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
                         room={room}
                         member={tagOrMember}
                         onClick={handleMemberClick}
+                        onContextMenu={handleMemberContextMenu}
                         pressed={openProfileUserId === tagOrMember.userId}
                         typing={typingMembers.some(
                           (receipt) => receipt.userId === tagOrMember.userId
                         )}
+                        large={page}
+                        nameColor={nameColorOf(tagOrMember.userId)}
+                        nameGradient={nameGradientOf(tagOrMember.userId)}
                       />
                     </div>
                   );
@@ -437,6 +607,20 @@ export function MembersDrawer({ room, members }: MembersDrawerProps) {
           </Box>
         </Scroll>
       </Box>
+      {memberMenu && (
+        <MemberContextMenu
+          key={memberMenu.userId}
+          room={room}
+          userId={memberMenu.userId}
+          name={
+            getMemberDisplayName(room, memberMenu.userId) ??
+            getMxIdLocalPart(memberMenu.userId) ??
+            memberMenu.userId
+          }
+          anchor={memberMenu.anchor}
+          onClose={() => setMemberMenu(undefined)}
+        />
+      )}
     </Box>
   );
 }

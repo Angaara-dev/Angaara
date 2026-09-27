@@ -15,7 +15,7 @@ import { isKeyHotkey } from 'is-hotkey';
 import { Room } from 'matrix-js-sdk';
 import { atom, PrimitiveAtom, useAtom, useSetAtom } from 'jotai';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { IEmoji, emojiGroups, emojis } from '../../plugins/emoji';
+import { EmojiGroupId, IEmoji, useEmojiData } from '../../plugins/emoji';
 import { useEmojiGroupLabels } from './useEmojiGroupLabels';
 import { useEmojiGroupIcons } from './useEmojiGroupIcons';
 import { preventScrollWithArrowKey, stopPropagation } from '../../utils/keyboard';
@@ -75,6 +75,7 @@ const useGroups = (
 
   const recentEmojis = useRecentEmoji(mx, 21);
   const labels = useEmojiGroupLabels();
+  const emojiGroups = useEmojiData()?.emojiGroups;
 
   const emojiGroupItems = useMemo(() => {
     const g: EmojiGroupItem[] = [];
@@ -99,7 +100,7 @@ const useGroups = (
       });
     });
 
-    emojiGroups.forEach((group) => {
+    emojiGroups?.forEach((group) => {
       g.push({
         id: group.id,
         name: labels[group.id],
@@ -108,7 +109,7 @@ const useGroups = (
     });
 
     return g;
-  }, [mx, recentEmojis, labels, imagePacks, tab]);
+  }, [mx, recentEmojis, labels, imagePacks, tab, emojiGroups]);
 
   const stickerGroupItems = useMemo(() => {
     const g: StickerGroupItem[] = [];
@@ -225,13 +226,13 @@ function EmojiSidebar({ activeGroupAtom, packs, onScrollToGroup }: EmojiSidebarP
         }}
       >
         <SidebarDivider />
-        {emojiGroups.map((group) => (
+        {Object.values(EmojiGroupId).map((groupId) => (
           <GroupIcon
-            key={group.id}
-            active={activeGroupId === group.id}
-            id={group.id}
-            label={labels[group.id]}
-            icon={icons[group.id]}
+            key={groupId}
+            active={activeGroupId === groupId}
+            id={groupId}
+            label={labels[groupId]}
+            icon={icons[groupId]}
             onClick={handleScrollToGroup}
           />
         ))}
@@ -391,13 +392,14 @@ export function EmojiBoard({
   const [emojiGroupItems, stickerGroupItems] = useGroups(tab, imagePacks);
   const groups = emojiTab ? emojiGroupItems : stickerGroupItems;
   const renderItem = useItemRenderer(tab);
+  const emojis = useEmojiData()?.emojis;
 
   const searchList = useMemo(() => {
     let list: Array<PackImageReader | IEmoji> = [];
     list = list.concat(imagePacks.flatMap((pack) => pack.getImages(usage)));
-    if (emojiTab) list = list.concat(emojis);
+    if (emojiTab) list = list.concat(emojis ?? []);
     return list;
-  }, [emojiTab, usage, imagePacks]);
+  }, [emojiTab, usage, imagePacks, emojis]);
 
   const [result, search, resetSearch] = useAsyncSearch(
     searchList,

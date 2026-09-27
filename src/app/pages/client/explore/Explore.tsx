@@ -37,6 +37,7 @@ import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useNavToActivePathMapper } from '../../../hooks/useNavToActivePathMapper';
 import { PageNav, PageNavContent, PageNavHeader } from '../../../components/page';
 import { stopPropagation } from '../../../utils/keyboard';
+import { UserPanel } from '../UserPanel';
 
 export function AddServer() {
   const mx = useMatrixClient();
@@ -262,6 +263,7 @@ export function Explore() {
           </Box>
         </Box>
       </PageNavContent>
+      <UserPanel />
     </PageNav>
   );
 }

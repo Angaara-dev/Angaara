@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["angaara-bot", "angaara-runner"]
+
+# matrix-sdk is huge; skipping debug info for dependencies keeps dev builds small and fast.
+[profile.dev.package."*"]
+debug = false

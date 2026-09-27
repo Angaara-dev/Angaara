@@ -25,6 +25,7 @@ import {
   PopOut,
   Scroll,
   Text,
+  color,
   config,
   toRem,
 } from 'folds';
@@ -40,6 +41,9 @@ import {
   AutocompleteQuery,
   getAutocompleteQuery,
   getPrevWordRange,
+  getLatexQuery,
+  LatexAutocomplete,
+  LatexQuery,
   resetEditor,
   RoomMentionAutocomplete,
   UserMentionAutocomplete,
@@ -99,9 +103,16 @@ import {
   getImageMsgContent,
   getVideoMsgContent,
 } from './msgContent';
-import { getMemberDisplayName, getMentionContent, trimReplyFromBody } from '../../utils/room';
+import {
+  getMemberDisplayName,
+  getMentionContent,
+  getThreadRelation,
+  trimReplyFromBody,
+} from '../../utils/room';
 import { CommandAutocomplete } from './CommandAutocomplete';
 import { Command, SHRUG, TABLEFLIP, UNFLIP, useCommands } from '../../hooks/useCommands';
+import { sha256Hex, SHA256_MESSAGE_KEY } from '../../utils/sha256';
+import { useDisabledCommands } from '../../hooks/useDisabledCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
 import { ReplyLayout, ThreadIndicator } from '../../components/message';
@@ -117,15 +128,18 @@ import { useTheme } from '../../hooks/useTheme';
 import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
 import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
 import { useComposingCheck } from '../../hooks/useComposingCheck';
+import { findMathsError } from '../../components/math';
 
 interface RoomInputProps {
   editor: Editor;
   fileDropContainerRef: RefObject<HTMLElement>;
   roomId: string;
   room: Room;
+  threadRootId?: string;
+  threadLatestEventId?: string;
 }
 export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
-  ({ editor, fileDropContainerRef, roomId, room }, ref) => {
+  ({ editor, fileDropContainerRef, roomId, room, threadRootId, threadLatestEventId }, ref) => {
     const mx = useMatrixClient();
     const useAuthentication = useMediaAuthentication();
     const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
@@ -134,13 +148,16 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
     const direct = useIsDirectRoom();
     const commands = useCommands(mx, room);
+    const disabledCommands = useDisabledCommands(room);
     const emojiBtnRef = useRef<HTMLButtonElement>(null);
     const roomToParents = useAtomValue(roomToParentsAtom);
     const powerLevels = usePowerLevelsContext();
     const creators = useRoomCreators(room);
 
-    const [msgDraft, setMsgDraft] = useAtom(roomIdToMsgDraftAtomFamily(roomId));
-    const [replyDraft, setReplyDraft] = useAtom(roomIdToReplyDraftAtomFamily(roomId));
+    // Thread composers keep their own drafts, separate from the main room composer.
+    const draftKey = threadRootId ? `${roomId}:thread:${threadRootId}` : roomId;
+    const [msgDraft, setMsgDraft] = useAtom(roomIdToMsgDraftAtomFamily(draftKey));
+    const [replyDraft, setReplyDraft] = useAtom(roomIdToReplyDraftAtomFamily(draftKey));
     const replyUserID = replyDraft?.userId;
 
     const powerLevelTags = usePowerLevelTags(room, powerLevels);
@@ -161,7 +178,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       legacyUsernameColor || direct ? colorMXID(replyUserID ?? '') : replyPowerColor;
 
     const [uploadBoard, setUploadBoard] = useState(true);
-    const [selectedFiles, setSelectedFiles] = useAtom(roomIdToUploadItemsAtomFamily(roomId));
+    const [mathsError, setMathsError] = useState<string>();
+    const [selectedFiles, setSelectedFiles] = useAtom(roomIdToUploadItemsAtomFamily(draftKey));
     const uploadFamilyObserverAtom = createUploadFamilyObserverAtom(
       roomUploadAtomFamily,
       selectedFiles.map((f) => f.file)
@@ -173,6 +191,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const [toolbar, setToolbar] = useSetting(settingsAtom, 'editorToolbar');
     const [autocompleteQuery, setAutocompleteQuery] =
       useState<AutocompleteQuery<AutocompletePrefix>>();
+    const [latexQuery, setLatexQuery] = useState<LatexQuery>();
 
     const sendTypingStatus = useTypingStatusUpdater(mx, roomId);
 
@@ -240,7 +259,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         resetEditor(editor);
         resetEditorHistory(editor);
       },
-      [roomId, editor, setMsgDraft]
+      [draftKey, editor, setMsgDraft]
     );
 
     const handleFileMetadata = useCallback(
@@ -293,13 +312,21 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       });
       handleCancelUpload(uploads);
       const contents = fulfilledPromiseSettledResult(await Promise.allSettled(contentsPromises));
-      contents.forEach((content) => mx.sendMessage(roomId, content as any));
+      contents.forEach((content) => {
+        if (threadRootId) {
+          Object.assign(content, {
+            'm.relates_to': getThreadRelation(threadRootId, threadLatestEventId),
+          });
+        }
+        mx.sendMessage(roomId, content as any);
+      });
     };
 
-    const submit = useCallback(() => {
-      uploadBoardHandlers.current?.handleSend();
-
-      const commandName = getBeginCommand(editor);
+    const submit = useCallback(async () => {
+      // A command the space turned off is sent as plain text instead.
+      const typedCommand = getBeginCommand(editor);
+      const commandName =
+        typedCommand && !disabledCommands.has(typedCommand) ? typedCommand : undefined;
       let plainText = toPlainText(editor.children, isMarkdown).trim();
       let customHtml = trimCustomHtml(
         toMatrixCustomHTML(editor.children, {
@@ -308,6 +335,13 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           allowInlineMarkdown: isMarkdown,
         })
       );
+
+      // Broken LaTeX never leaves the client: keep the draft and show the error only here.
+      const latexError = await findMathsError(customHtml);
+      setMathsError(latexError);
+      if (latexError) return;
+
+      uploadBoardHandlers.current?.handleSend();
       let msgType = MsgType.Text;
 
       if (commandName) {
@@ -327,6 +361,11 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       } else if (commandName === Command.UnFlip) {
         plainText = `${UNFLIP} ${plainText}`;
         customHtml = `${UNFLIP} ${customHtml}`;
+      } else if (commandName === Command.Sha256) {
+        // Only the hash leaves the browser; nobody (sender included) can turn it back into text.
+        if (plainText === '') return;
+        plainText = await sha256Hex(plainText);
+        customHtml = plainText;
       } else if (commandName) {
         const commandContent = commands[commandName as Command];
         if (commandContent) {
@@ -343,6 +382,11 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       const body = plainText;
       const formattedBody = customHtml;
       const mentionData = getMentions(mx, roomId, editor);
+      // Mentions hidden inside a hash shouldn't ping anyone.
+      if (commandName === Command.Sha256) {
+        mentionData.users.clear();
+        mentionData.room = false;
+      }
 
       const content: IContent = {
         msgtype: msgType,
@@ -355,12 +399,20 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
 
       const mMentions = getMentionContent(Array.from(mentionData.users), mentionData.room);
       content['m.mentions'] = mMentions;
+      // Lets Angaara show hashes as a collapsed chip; other clients just see the hash text.
+      if (commandName === Command.Sha256) content[SHA256_MESSAGE_KEY] = true;
 
       if (replyDraft || !customHtmlEqualsPlainText(formattedBody, body)) {
         content.format = 'org.matrix.custom.html';
         content.formatted_body = formattedBody;
       }
-      if (replyDraft) {
+      if (threadRootId) {
+        content['m.relates_to'] = getThreadRelation(
+          threadRootId,
+          threadLatestEventId,
+          replyDraft?.eventId
+        );
+      } else if (replyDraft) {
         content['m.relates_to'] = {
           'm.in_reply_to': {
             event_id: replyDraft.eventId,
@@ -377,7 +429,19 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       resetEditorHistory(editor);
       setReplyDraft(undefined);
       sendTypingStatus(false);
-    }, [mx, roomId, editor, replyDraft, sendTypingStatus, setReplyDraft, isMarkdown, commands]);
+    }, [
+      mx,
+      roomId,
+      editor,
+      replyDraft,
+      sendTypingStatus,
+      setReplyDraft,
+      isMarkdown,
+      commands,
+      disabledCommands,
+      threadRootId,
+      threadLatestEventId,
+    ]);
 
     const handleKeyDown: KeyboardEventHandler = useCallback(
       (evt) => {
@@ -390,14 +454,15 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         }
         if (isKeyHotkey('escape', evt)) {
           evt.preventDefault();
-          if (autocompleteQuery) {
+          if (autocompleteQuery || latexQuery) {
             setAutocompleteQuery(undefined);
+            setLatexQuery(undefined);
             return;
           }
           setReplyDraft(undefined);
         }
       },
-      [submit, setReplyDraft, enterForNewline, autocompleteQuery, isComposing]
+      [submit, setReplyDraft, enterForNewline, autocompleteQuery, latexQuery, isComposing]
     );
 
     const handleKeyUp: KeyboardEventHandler = useCallback(
@@ -416,12 +481,14 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           ? getAutocompleteQuery<AutocompletePrefix>(editor, prevWordRange, AUTOCOMPLETE_PREFIXES)
           : undefined;
         setAutocompleteQuery(query);
+        setLatexQuery(query ? undefined : getLatexQuery(editor));
       },
       [editor, sendTypingStatus, hideActivity]
     );
 
     const handleCloseAutocomplete = useCallback(() => {
       setAutocompleteQuery(undefined);
+      setLatexQuery(undefined);
       ReactEditor.focus(editor);
     }, [editor]);
 
@@ -536,6 +603,13 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             requestClose={handleCloseAutocomplete}
           />
         )}
+        {latexQuery && (
+          <LatexAutocomplete
+            editor={editor}
+            query={latexQuery}
+            requestClose={handleCloseAutocomplete}
+          />
+        )}
         <CustomEditor
           editableName="RoomInput"
           editor={editor}
@@ -544,43 +618,66 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           onKeyUp={handleKeyUp}
           onPaste={handlePaste}
           top={
-            replyDraft && (
-              <div>
+            <>
+              {mathsError && (
                 <Box
                   alignItems="Center"
-                  gap="300"
+                  gap="200"
                   style={{ padding: `${config.space.S200} ${config.space.S300} 0` }}
                 >
+                  <Icon size="100" src={Icons.Warning} style={{ color: color.Critical.Main }} />
+                  <Text size="T200" style={{ color: color.Critical.Main, flexGrow: 1 }}>
+                    LaTeX error (only you can see this): {mathsError}
+                  </Text>
                   <IconButton
-                    onClick={() => setReplyDraft(undefined)}
+                    onClick={() => setMathsError(undefined)}
                     variant="SurfaceVariant"
                     size="300"
                     radii="300"
+                    aria-label="Dismiss LaTeX error"
                   >
                     <Icon src={Icons.Cross} size="50" />
                   </IconButton>
-                  <Box direction="Row" gap="200" alignItems="Center">
-                    {replyDraft.relation?.rel_type === RelationType.Thread && <ThreadIndicator />}
-                    <ReplyLayout
-                      userColor={replyUsernameColor}
-                      username={
-                        <Text size="T300" truncate>
-                          <b>
-                            {getMemberDisplayName(room, replyDraft.userId) ??
-                              getMxIdLocalPart(replyDraft.userId) ??
-                              replyDraft.userId}
-                          </b>
-                        </Text>
-                      }
-                    >
-                      <Text size="T300" truncate>
-                        {trimReplyFromBody(replyDraft.body)}
-                      </Text>
-                    </ReplyLayout>
-                  </Box>
                 </Box>
-              </div>
-            )
+              )}
+              {replyDraft && (
+                <div>
+                  <Box
+                    alignItems="Center"
+                    gap="300"
+                    style={{ padding: `${config.space.S200} ${config.space.S300} 0` }}
+                  >
+                    <IconButton
+                      onClick={() => setReplyDraft(undefined)}
+                      variant="SurfaceVariant"
+                      size="300"
+                      radii="300"
+                    >
+                      <Icon src={Icons.Cross} size="50" />
+                    </IconButton>
+                    <Box direction="Row" gap="200" alignItems="Center">
+                      {replyDraft.relation?.rel_type === RelationType.Thread && <ThreadIndicator />}
+                      <ReplyLayout
+                        userColor={replyUsernameColor}
+                        username={
+                          <Text size="T300" truncate>
+                            <b>
+                              {getMemberDisplayName(room, replyDraft.userId) ??
+                                getMxIdLocalPart(replyDraft.userId) ??
+                                replyDraft.userId}
+                            </b>
+                          </Text>
+                        }
+                      >
+                        <Text size="T300" truncate>
+                          {trimReplyFromBody(replyDraft.body)}
+                        </Text>
+                      </ReplyLayout>
+                    </Box>
+                  </Box>
+                </div>
+              )}
+            </>
           }
           before={
             <IconButton

@@ -7,8 +7,17 @@ type SearchProps = {
   searchInputRef: RefObject<HTMLInputElement>;
   onSearch: (term: string) => void;
   onReset: () => void;
+  // The current term, e.g. when arriving from the header search bar.
+  defaultTerm?: string;
 };
-export function SearchInput({ active, loading, searchInputRef, onSearch, onReset }: SearchProps) {
+export function SearchInput({
+  active,
+  loading,
+  searchInputRef,
+  onSearch,
+  onReset,
+  defaultTerm,
+}: SearchProps) {
   const handleSearchSubmit: FormEventHandler<HTMLFormElement> = (evt) => {
     evt.preventDefault();
     const { searchInput } = evt.target as HTMLFormElement & {
@@ -29,6 +38,7 @@ export function SearchInput({ active, loading, searchInputRef, onSearch, onReset
         ref={searchInputRef}
         style={{ paddingRight: config.space.S300 }}
         name="searchInput"
+        defaultValue={defaultTerm}
         autoFocus
         size="500"
         variant="Background"

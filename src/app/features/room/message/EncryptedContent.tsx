@@ -1,6 +1,7 @@
-import { MatrixEvent, MatrixEventEvent, MatrixEventHandlerMap } from 'matrix-js-sdk';
-import React, { ReactNode, useEffect, useState } from 'react';
+import { EventType, MatrixEvent, MatrixEventEvent, MatrixEventHandlerMap } from 'matrix-js-sdk';
+import React, { ReactElement, ReactNode, useEffect, useState } from 'react';
 import { MessageEvent } from '../../../../types/matrix/room';
+import { HIDDEN_PROFILE_EVENT } from '../../../../client/hiddenProfile';
 
 type EncryptedContentProps = {
   mEvent: MatrixEvent;
@@ -22,4 +23,29 @@ export function EncryptedContent({ mEvent, children }: EncryptedContentProps) {
   }, [mEvent]);
 
   return <>{children()}</>;
+}
+
+// Private reactions and hidden room names only reveal their type once decrypted; drop the row then.
+const isHiddenType = (mEvent: MatrixEvent) =>
+  mEvent.getType() === EventType.Reaction || mEvent.getType() === HIDDEN_PROFILE_EVENT;
+
+export function HideDecryptedMeta({
+  mEvent,
+  children,
+}: {
+  mEvent: MatrixEvent;
+  children: ReactElement;
+}) {
+  const [hidden, setHidden] = useState(isHiddenType(mEvent));
+
+  useEffect(() => {
+    const handleDecrypted = () => setHidden(isHiddenType(mEvent));
+    handleDecrypted();
+    mEvent.on(MatrixEventEvent.Decrypted, handleDecrypted);
+    return () => {
+      mEvent.removeListener(MatrixEventEvent.Decrypted, handleDecrypted);
+    };
+  }, [mEvent]);
+
+  return hidden ? null : children;
 }

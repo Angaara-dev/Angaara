@@ -17,6 +17,9 @@ import { Members } from '../common-settings/members';
 import { DeveloperTools } from '../common-settings/developer-tools';
 import { General } from './general';
 import { Permissions } from './permissions';
+import { MobileSpaceSettingsHome } from './MobileSpaceSettingsHome';
+import { Roles } from './roles';
+import { useSettingsAccess } from '../../hooks/useSettingsAccess';
 
 type SpaceSettingsMenuItem = {
   page: SpaceSettingsPage;
@@ -36,6 +39,11 @@ const useSpaceSettingsMenuItems = (): SpaceSettingsMenuItem[] =>
         page: SpaceSettingsPage.MembersPage,
         name: 'Members',
         icon: Icons.User,
+      },
+      {
+        page: SpaceSettingsPage.RolesPage,
+        name: 'Roles',
+        icon: Icons.Star,
       },
       {
         page: SpaceSettingsPage.PermissionsPage,
@@ -71,7 +79,7 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
   const joinRuleContent = useRoomJoinRule(room);
 
   const avatarUrl = roomAvatar
-    ? mxcUrlToHttp(mx, roomAvatar, useAuthentication, 96, 96, 'crop') ?? undefined
+    ? mxcUrlToHttp(mx, roomAvatar, useAuthentication, 160, 160, 'crop') ?? undefined
     : undefined;
 
   const screenSize = useScreenSizeContext();
@@ -79,7 +87,13 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
     if (initialPage) return initialPage;
     return screenSize === ScreenSize.Mobile ? undefined : SpaceSettingsPage.GeneralPage;
   });
-  const menuItems = useSpaceSettingsMenuItems();
+  const access = useSettingsAccess(room);
+  const menuItems = useSpaceSettingsMenuItems().filter(
+    (item) =>
+      (item.page !== SpaceSettingsPage.RolesPage || access.roles) &&
+      (item.page !== SpaceSettingsPage.PermissionsPage || access.permissions) &&
+      (item.page !== SpaceSettingsPage.EmojisStickersPage || access.emojis)
+  );
 
   const handlePageRequestClose = () => {
     if (screenSize === ScreenSize.Mobile) {
@@ -88,6 +102,33 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
     }
     requestClose();
   };
+
+  if (screenSize === ScreenSize.Mobile && activePage === undefined) {
+    const pick = (...pages: SpaceSettingsPage[]) =>
+      pages.flatMap((page) => menuItems.filter((item) => item.page === page));
+    return (
+      <MobileSpaceSettingsHome
+        room={room}
+        name={roomName}
+        avatarUrl={avatarUrl}
+        groups={[
+          {
+            title: 'Server',
+            items: pick(
+              SpaceSettingsPage.GeneralPage,
+              SpaceSettingsPage.MembersPage,
+              SpaceSettingsPage.RolesPage,
+              SpaceSettingsPage.PermissionsPage
+            ),
+          },
+          { title: 'Customise', items: pick(SpaceSettingsPage.EmojisStickersPage) },
+          { title: 'Advanced', items: pick(SpaceSettingsPage.DeveloperToolsPage) },
+        ]}
+        onSelect={setActivePage}
+        requestClose={requestClose}
+      />
+    );
+  }
 
   return (
     <PageRoot
@@ -158,6 +199,9 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
       )}
       {activePage === SpaceSettingsPage.MembersPage && (
         <Members requestClose={handlePageRequestClose} />
+      )}
+      {activePage === SpaceSettingsPage.RolesPage && (
+        <Roles requestClose={handlePageRequestClose} />
       )}
       {activePage === SpaceSettingsPage.PermissionsPage && (
         <Permissions requestClose={handlePageRequestClose} />

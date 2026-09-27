@@ -3,6 +3,22 @@ import { RoomJoinRulesEventContent } from 'matrix-js-sdk/lib/types';
 import { Room, RoomEvent, RoomEventHandlerMap } from 'matrix-js-sdk';
 import { StateEvent } from '../../types/matrix/room';
 import { useStateEvent } from './useStateEvent';
+import { useMatrixClient } from './useMatrixClient';
+import { getHiddenProfile, onHiddenProfileChange } from '../../client/hiddenProfile';
+
+// Hidden-name state for rooms that keep their name and topic encrypted (undefined otherwise).
+export const useHiddenProfile = (room: Room) => {
+  const mx = useMatrixClient();
+  const [, setVersion] = useState(0);
+  useEffect(
+    () =>
+      onHiddenProfileChange(mx, (roomId) => {
+        if (roomId === room.roomId) setVersion((v) => v + 1);
+      }),
+    [mx, room.roomId]
+  );
+  return getHiddenProfile(mx, room.roomId);
+};
 
 export const useRoomAvatar = (room: Room, dm?: boolean): string | undefined => {
   const avatarEvent = useStateEvent(room, StateEvent.RoomAvatar);
@@ -36,6 +52,8 @@ export const useRoomName = (room: Room): string => {
 
 export const useRoomTopic = (room: Room): string | undefined => {
   const topicEvent = useStateEvent(room, StateEvent.RoomTopic);
+  const hidden = useHiddenProfile(room)?.profile;
+  if (hidden) return hidden.topic || undefined;
 
   const content = topicEvent?.getContent();
   const topic = content && typeof content.topic === 'string' ? content.topic : undefined;

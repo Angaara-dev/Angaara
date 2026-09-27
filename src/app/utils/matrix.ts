@@ -15,9 +15,9 @@ import {
 } from 'matrix-js-sdk';
 import to from 'await-to-js';
 import { IImageInfo, IThumbnailContent, IVideoInfo } from '../../types/matrix/common';
-import { AccountDataEvent } from '../../types/matrix/accountData';
 import { getStateEvent } from './room';
 import { Membership, StateEvent } from '../../types/matrix/room';
+import { setDirectRoom } from '../../client/directs';
 
 const DOMAIN_REGEX = /\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b/;
 
@@ -225,56 +225,15 @@ export const guessDmRoomUserId = (room: Room, myUserId: string): string => {
   return member1?.userId ?? myUserId;
 };
 
+// DM lists go through the encrypted vault when it's open (see client/directs.ts).
 export const addRoomIdToMDirect = async (
   mx: MatrixClient,
   roomId: string,
   userId: string
-): Promise<void> => {
-  const mDirectsEvent = mx.getAccountData(AccountDataEvent.Direct as any);
-  let userIdToRoomIds: Record<string, string[]> = {};
+): Promise<void> => setDirectRoom(mx, roomId, userId);
 
-  if (typeof mDirectsEvent !== 'undefined')
-    userIdToRoomIds = structuredClone(mDirectsEvent.getContent());
-
-  // remove it from the lists of any others users
-  // (it can only be a DM room for one person)
-  Object.keys(userIdToRoomIds).forEach((targetUserId) => {
-    const roomIds = userIdToRoomIds[targetUserId];
-
-    if (targetUserId !== userId) {
-      const indexOfRoomId = roomIds.indexOf(roomId);
-      if (indexOfRoomId > -1) {
-        roomIds.splice(indexOfRoomId, 1);
-      }
-    }
-  });
-
-  const roomIds = userIdToRoomIds[userId] || [];
-  if (roomIds.indexOf(roomId) === -1) {
-    roomIds.push(roomId);
-  }
-  userIdToRoomIds[userId] = roomIds;
-
-  await mx.setAccountData(AccountDataEvent.Direct as any, userIdToRoomIds as any);
-};
-
-export const removeRoomIdFromMDirect = async (mx: MatrixClient, roomId: string): Promise<void> => {
-  const mDirectsEvent = mx.getAccountData(AccountDataEvent.Direct as any);
-  let userIdToRoomIds: Record<string, string[]> = {};
-
-  if (typeof mDirectsEvent !== 'undefined')
-    userIdToRoomIds = structuredClone(mDirectsEvent.getContent());
-
-  Object.keys(userIdToRoomIds).forEach((targetUserId) => {
-    const roomIds = userIdToRoomIds[targetUserId];
-    const indexOfRoomId = roomIds.indexOf(roomId);
-    if (indexOfRoomId > -1) {
-      roomIds.splice(indexOfRoomId, 1);
-    }
-  });
-
-  await mx.setAccountData(AccountDataEvent.Direct as any, userIdToRoomIds as any);
-};
+export const removeRoomIdFromMDirect = async (mx: MatrixClient, roomId: string): Promise<void> =>
+  setDirectRoom(mx, roomId);
 
 export const mxcUrlToHttp = (
   mx: MatrixClient,
