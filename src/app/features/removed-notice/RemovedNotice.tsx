@@ -35,12 +35,12 @@ type Removal = {
   mods: { id: string; name: string }[];
 };
 
-// People who can kick or ban here, so a banned user knows who to ask for an appeal.
+// People with the power to ban and unban here (plus creators), for a banned user to appeal to.
 const getMods = (mx: MatrixClient, room: Room | null): Removal['mods'] => {
   if (!room) return [];
   const myId = mx.getSafeUserId();
   const pl = room.currentState.getStateEvents('m.room.power_levels', '')?.getContent() ?? {};
-  const need = Math.min(pl.kick ?? 50, pl.ban ?? 50);
+  const need = pl.ban ?? 50;
   const ids = new Set(getRoomCreatorsForRoomId(mx, room.roomId));
   Object.entries<number>(pl.users ?? {}).forEach(([id, level]) => {
     if (level >= need) ids.add(id);
@@ -168,7 +168,7 @@ export function RemovedNotice() {
               <Text size="T300">
                 {!current.retry && `${current.by} removed you from this ${place}. `}
                 {current.banned
-                  ? `You can't rejoin unless a moderator unbans you.`
+                  ? `You can't rejoin until you're unbanned.`
                   : `You may rejoin this ${place} if needed.`}
               </Text>
               {current.reason && (
@@ -189,7 +189,7 @@ export function RemovedNotice() {
               )}
               {current.mods.length > 0 && (
                 <Box direction="Column" gap="200">
-                  <Text size="L400">Think this was a mistake? Message a moderator to appeal.</Text>
+                  <Text size="L400">Think this was a mistake? These people can unban you.</Text>
                   {current.mods.map((mod) => (
                     <Box key={mod.id} alignItems="Center" gap="200">
                       <Box grow="Yes" direction="Column" style={{ minWidth: 0 }}>
