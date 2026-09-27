@@ -3,6 +3,8 @@
   "name": "matrix-ui-code",
   "compatibility_date": "2025-09-01",
   "main": "worker/index.js",
+  // Kept in config so a deploy never drops the custom domain set in the dashboard.
+  "routes": [{ "pattern": "angaara.app", "custom_domain": true }],
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
