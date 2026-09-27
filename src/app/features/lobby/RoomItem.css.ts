@@ -11,6 +11,10 @@ export const RoomItemCard = style({
     },
   },
 });
+// Clears room for the drag handle pinned to the card's left edge.
+export const RoomItemCardReorder = style({
+  paddingLeft: `calc(${toRem(20)} + ${config.space.S300})`,
+});
 export const RoomProfileTopic = style({
   cursor: 'pointer',
   ':hover': {

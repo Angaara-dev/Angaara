@@ -43,7 +43,7 @@ import { useRegisterEmail } from '../../../hooks/useRegisterEmail';
 import { ConfirmPasswordMatch } from '../../../components/ConfirmPasswordMatch';
 import { UIAFlowOverlay } from '../../../components/UIAFlowOverlay';
 import { RequestEmailTokenCallback, RequestEmailTokenResponse } from '../../../hooks/types';
-import { DEVICE_DISPLAY_NAME } from '../../../brand';
+import { BRAND_NAME, DEVICE_DISPLAY_NAME, TERMS_URL } from '../../../brand';
 
 export const SUPPORTED_REGISTER_STAGES = [
   AuthType.RegistrationToken,
@@ -377,6 +377,17 @@ export function PasswordRegisterForm({
             </Text>
           </Box>
         )}
+        <Box alignItems="Start" gap="200">
+          <Checkbox name="angaaraTermsInput" size="300" variant="Primary" required />
+          <Text size="T300">
+            I understand my messages are end-to-end encrypted, so nobody can recover my keys or
+            encrypted history if I lose them, and I agree to the{' '}
+            <a href={TERMS_URL} target="_blank" rel="noreferrer">
+              {BRAND_NAME} Terms
+            </a>
+            .
+          </Text>
+        </Box>
         {registerError?.errcode === RegisterError.RateLimited && (
           <FieldError message="Failed to register. Your register request has been rate-limited by server, Please try after some time." />
         )}

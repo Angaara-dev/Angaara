@@ -6,6 +6,7 @@ export const ItemDraggableTarget = style([
   ContainerColor({ variant: 'SurfaceVariant' }),
   {
     height: '100%',
+    width: toRem(20),
     position: 'absolute',
     left: 0,
     top: 0,

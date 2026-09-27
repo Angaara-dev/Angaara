@@ -32,7 +32,7 @@
       },
       {
         "id": "chatting",
-        "label": "Chatting & friends",
+        "label": "Chatting & exploring communities",
         "emoji": "💬",
         "rooms": ["#community:matrix.org", "#space:unredacted.org"]
       },

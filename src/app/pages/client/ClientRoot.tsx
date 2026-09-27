@@ -28,8 +28,8 @@ import { CapabilitiesProvider } from '../../hooks/useCapabilities';
 import { MediaConfigProvider } from '../../hooks/useMediaConfig';
 import { MatrixClientProvider } from '../../hooks/useMatrixClient';
 import { SpecVersions } from './SpecVersions';
-import { TermsGate } from './TermsGate';
 import { Welcome } from '../../features/welcome/Welcome';
+import { RemovedNotice } from '../../features/removed-notice/RemovedNotice';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { useSyncState } from '../../hooks/useSyncState';
 import { stopPropagation } from '../../utils/keyboard';
@@ -229,12 +229,9 @@ export function ClientRoot({ children }: ClientRootProps) {
                 <CapabilitiesProvider value={serverConfigs.capabilities ?? {}}>
                   <MediaConfigProvider value={serverConfigs.mediaConfig ?? {}}>
                     <AuthMetadataProvider value={serverConfigs.authMetadata}>
-                      <TermsGate>
-                        <>
-                          {children}
-                          <Welcome />
-                        </>
-                      </TermsGate>
+                      {children}
+                      <Welcome />
+                      <RemovedNotice />
                     </AuthMetadataProvider>
                   </MediaConfigProvider>
                 </CapabilitiesProvider>

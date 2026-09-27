@@ -7,9 +7,6 @@ import {
   Checkbox,
   color,
   config,
-  Icon,
-  IconButton,
-  Icons,
   Overlay,
   OverlayBackdrop,
   Scroll,
@@ -29,6 +26,7 @@ import { mxcUrlToHttp, getMxIdLocalPart } from '../../utils/matrix';
 import { millify } from '../../plugins/millify';
 import { requestWelcomeDm } from '../../../client/xp';
 import { BRAND_NAME } from '../../brand';
+import { clearNewAccount, isNewAccount } from '../../utils/newAccount';
 
 // Stored in account data so the welcome only shows once per account.
 const WELCOME_KEY = 'io.angaara.welcome';
@@ -139,9 +137,10 @@ export function Welcome() {
   const [joining, setJoining] = useState(false);
   const [failed, setFailed] = useState(0);
   const [dmSent, setDmSent] = useState(false);
-  const open = !seen && !closed;
-
   const userId = mx.getSafeUserId();
+  // Only accounts registered through this app get the panel, not ones signing in.
+  const open = isNewAccount(userId) && !seen && !closed;
+
   const name = mx.getUser(userId)?.displayName || getMxIdLocalPart(userId) || userId;
 
   // The bot's hello lands in their DMs while they go through the panel.
@@ -161,6 +160,7 @@ export function Welcome() {
 
   const finish = () => {
     setClosed(true);
+    clearNewAccount();
     mx.setAccountData(WELCOME_KEY as never, { done: true, interests } as never).catch(
       () => undefined
     );
@@ -218,13 +218,7 @@ export function Welcome() {
               overflow: 'hidden',
             }}
           >
-            <Box justifyContent="End" style={{ padding: config.space.S200 }}>
-              {step !== 'done' && (
-                <IconButton size="300" radii="300" aria-label="Skip" onClick={finish}>
-                  <Icon size="100" src={Icons.Cross} />
-                </IconButton>
-              )}
-            </Box>
+            <Box shrink="No" style={{ height: config.space.S500 }} />
             <Box grow="Yes" direction="Column" style={{ minHeight: 0 }}>
               <Scroll size="300" hideTrack visibility="Hover">
                 <Box

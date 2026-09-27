@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import React, { MouseEventHandler, ReactNode, useCallback, useRef } from 'react';
 import {
   Avatar,
@@ -323,7 +324,7 @@ export const RoomItemCard = as<'div', RoomItemCardProps>(
 
     return (
       <SequenceCard
-        className={css.RoomItemCard}
+        className={classNames(css.RoomItemCard, canReorder && css.RoomItemCardReorder)}
         variant="SurfaceVariant"
         gap="300"
         alignItems="Center"
