@@ -1,13 +1,22 @@
+<p align="center">
+  <img src="public/res/svg/angaara.svg" width="96" height="96" alt="Angaara logo" />
+</p>
+
 # Angaara
 
-Angaara is a Matrix chat client for communities, with end-to-end
-encryption, bots with rich embeds and slash commands, and a built-in developer portal that can
-build and run your bot on a machine you own through `angaara-runner`.
+Your communities, on an open network. Angaara is a Matrix chat app built around servers,
+channels and friends, with end-to-end encryption, server levels, bots with rich embeds and slash
+commands, and a built-in developer portal for building your own.
 
-Angaara is a fork of [Cinny](https://github.com/cinnyapp/cinny) and is licensed under
-AGPL-3.0-only, like Cinny.
+- [Open Angaara](https://angaara.app)
+- [Terms](https://angaara.app/terms.html)
+- [Bot SDK](bot-sdk/)
 
-Use it at [angaara.app](https://angaara.app).
+> [!IMPORTANT]
+> The phone layout is in beta. Some things, like swiping between panels, are still being
+> polished.
+
+![Angaara](docs/screenshot.png)
 
 ## Developing
 
@@ -21,6 +30,10 @@ The default homeservers, featured communities and welcome screen servers are set
 [`config.json`](config.json).
 
 ## License
+
+Angaara is a fork of [Cinny](https://github.com/cinnyapp/cinny) and is licensed under
+AGPL-3.0-only, like Cinny.
+
 Cinny Project  
 Copyright © 2024–present Ajay Bura  
 https://cinny.in  
