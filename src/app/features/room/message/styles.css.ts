@@ -1,4 +1,4 @@
-import { globalStyle, style } from '@vanilla-extract/css';
+import { createVar, globalStyle, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
 import { PHONE, phoneSize } from '../../../styles/phone';
 
@@ -9,9 +9,13 @@ export const MessageBaseBubbleCollapsed = style({
   paddingTop: 0,
 });
 
+// Read on the wrapper, before the bar blanks the surface color for its buttons.
+const optionsBg = createVar();
+
 export const MessageOptionsBase = style([
   DefaultReset,
   {
+    vars: { [optionsBg]: color.SurfaceVariant.Container },
     position: 'absolute',
     top: toRem(-30),
     right: 0,
@@ -27,7 +31,7 @@ export const MessageOptionsBar = style([
     selectors: {
       // Solid on themed servers, so timestamps don't show through.
       '&&': {
-        backgroundColor: `var(--angaara-theme-menu, ${color.SurfaceVariant.Container})`,
+        backgroundColor: `var(--angaara-theme-menu, ${optionsBg})`,
         // Buttons blend into the bar until hovered.
         vars: { [color.SurfaceVariant.Container]: 'transparent' },
       },
