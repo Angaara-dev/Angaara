@@ -25,6 +25,9 @@ import { ActionUIA, ActionUIAFlowsLoader } from '../../../components/ActionUIA';
 import { getMxIdServer } from '../../../utils/matrix';
 import { logoutClient } from '../../../../client/initMatrix';
 import { stopPropagation } from '../../../utils/keyboard';
+import { useAuthMetadata } from '../../../hooks/useAuthMetadata';
+import { useAccountManagementActions } from '../../../hooks/useAccountManagement';
+import { withSearchParam } from '../../../pages/pathUtils';
 
 // Asks twice, then has the homeserver deactivate the account for good.
 function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
@@ -36,6 +39,15 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<AsyncState<void, MatrixError>>({
     status: AsyncStatus.Idle,
   });
+  // Servers with next-gen sign-in (like matrix.org) only delete accounts on their own site.
+  const authMetadata = useAuthMetadata();
+  const actions = useAccountManagementActions();
+  const accountUrl = authMetadata?.account_management_uri ?? authMetadata?.issuer;
+  const openAccountSite = () => {
+    if (!accountUrl) return;
+    window.open(withSearchParam(accountUrl, { action: actions.accountDeactivate }), '_blank');
+    onClose();
+  };
 
   const deactivate = useAsync(
     useCallback(
@@ -101,16 +113,24 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                   Encrypted messages and keys are lost for good.
                 </Text>
               </Box>
-              <Box as="label" gap="300" alignItems="Center" style={{ cursor: 'pointer' }}>
-                <Checkbox
-                  checked={erase}
-                  onClick={() => setErase(!erase)}
-                  variant="Critical"
-                  size="300"
-                  disabled={busy}
-                />
-                <Text size="T300">Also ask the server to erase my messages</Text>
-              </Box>
+              {accountUrl && (
+                <Text size="T300" priority="300">
+                  {server} handles this on its own account page, so you&apos;ll finish there in a
+                  new tab.
+                </Text>
+              )}
+              {!accountUrl && (
+                <Box as="label" gap="300" alignItems="Center" style={{ cursor: 'pointer' }}>
+                  <Checkbox
+                    checked={erase}
+                    onClick={() => setErase(!erase)}
+                    variant="Critical"
+                    size="300"
+                    disabled={busy}
+                  />
+                  <Text size="T300">Also ask the server to erase my messages</Text>
+                </Box>
+              )}
               <Box as="label" gap="300" alignItems="Center" style={{ cursor: 'pointer' }}>
                 <Checkbox
                   checked={understood}
@@ -151,10 +171,12 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                   variant="Critical"
                   radii="400"
                   disabled={!understood || busy}
-                  onClick={() => deactivate()}
+                  onClick={() => (accountUrl ? openAccountSite() : deactivate())}
                   before={busy && <Spinner size="100" variant="Critical" fill="Solid" />}
                 >
-                  <Text size="B400">Delete Account</Text>
+                  <Text size="B400">
+                    {accountUrl ? 'Continue to Account Page' : 'Delete Account'}
+                  </Text>
                 </Button>
                 <Button
                   variant="Secondary"
