@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
+import { SetPresence } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useExtendedProfileSupport } from '../../hooks/useUserBanner';
 import {
@@ -40,6 +41,13 @@ export function ActivityPublisher() {
   if (state === 'online' && inactive) state = 'idle';
 
   useEffect(() => setOwn(state), [state, setOwn]);
+
+  // Servers with presence on would otherwise still show you online while hidden.
+  const hidden = chosen === 'invisible';
+  useEffect(() => {
+    mx.setSyncPresence(hidden ? SetPresence.Offline : undefined).catch(() => undefined);
+    if (hidden) mx.setPresence({ presence: 'offline' }).catch(() => undefined);
+  }, [mx, hidden]);
 
   useEffect(() => {
     if (!supported) return undefined;

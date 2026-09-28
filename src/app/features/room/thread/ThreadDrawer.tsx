@@ -80,6 +80,7 @@ import { ContainerColor } from '../../../styles/ContainerColor.css';
 import { sendReaction } from '../../../../client/privateReactions';
 import { useSwipeToReply } from '../../../hooks/useSwipeToReply';
 import { usePhone } from '../../../hooks/useScreenSize';
+import { useHideActivity } from '../../../hooks/useActivityStatus';
 
 type ThreadDrawerProps = {
   room: Room;
@@ -121,7 +122,7 @@ export function ThreadDrawer({ room, rootId, mobile }: ThreadDrawerProps) {
   const [messageLayout] = useSetting(settingsAtom, 'messageLayout');
   const [messageSpacing] = useSetting(settingsAtom, 'messageSpacing');
   const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const [mediaAutoLoad] = useSetting(settingsAtom, 'mediaAutoLoad');
   const [urlPreview] = useSetting(settingsAtom, 'urlPreview');
   const [encUrlPreview] = useSetting(settingsAtom, 'encUrlPreview');

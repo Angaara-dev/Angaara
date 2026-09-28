@@ -40,8 +40,6 @@ import { getMatrixToRoom } from '../../plugins/matrix-to';
 import { getCanonicalAliasOrRoomId, isRoomAlias } from '../../utils/matrix';
 import { getViaServers } from '../../plugins/via-servers';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import { useSetting } from '../../state/hooks/settings';
-import { settingsAtom } from '../../state/settings';
 import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { useSpaceOptionally } from '../../hooks/useSpace';
 import {
@@ -64,6 +62,7 @@ import { useStateEvent } from '../../hooks/useStateEvent';
 import { webRTCSupported } from '../../utils/rtc';
 import { usePhone } from '../../hooks/useScreenSize';
 import { RenameRoomPrompt } from './RenameRoomPrompt';
+import { useHideActivity } from '../../hooks/useActivityStatus';
 
 type RoomNavItemMenuProps = {
   room: Room;
@@ -73,7 +72,7 @@ type RoomNavItemMenuProps = {
 const RoomNavItemMenu = forwardRef<HTMLDivElement, RoomNavItemMenuProps>(
   ({ room, requestClose, notificationMode }, ref) => {
     const mx = useMatrixClient();
-    const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+    const hideActivity = useHideActivity();
     const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
     const powerLevels = usePowerLevels(room);
     const creators = useRoomCreators(room);

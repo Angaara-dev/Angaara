@@ -3,7 +3,16 @@ import { Box, Button, color, config, Spinner, Text } from 'folds';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useClientConfig } from '../../hooks/useClientConfig';
-import { AppReport, listReports, resolveReport } from './reports';
+import {
+  AppReport,
+  BugReport,
+  bugTypeLabel,
+  listBugReports,
+  listReports,
+  resolveBugReport,
+  resolveReport,
+} from './reports';
+import { MarkdownText } from './MarkdownText';
 
 // Only decides whether to show the page; the Worker checks the badge itself on every request.
 export const useIsAppDeveloper = (): boolean => {
@@ -148,6 +157,119 @@ export function AppReports() {
       </Box>
       {data.map((report) => (
         <ReportItem key={report.id} report={report} onDone={onDone} />
+      ))}
+    </Box>
+  );
+}
+
+function BugItem({ report, onDone }: { report: BugReport; onDone: (id: number) => void }) {
+  const mx = useMatrixClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const done = async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await resolveBugReport(mx, report.id);
+      onDone(report.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't mark it done.");
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Box
+      direction="Column"
+      gap="300"
+      style={{
+        padding: config.space.S400,
+        borderRadius: config.radii.R400,
+        background: color.SurfaceVariant.Container,
+        borderLeft: `${config.borderWidth.B700} solid ${color.Critical.Main}`,
+      }}
+    >
+      <Box alignItems="Start" gap="300">
+        <Box direction="Column" gap="100" grow="Yes" style={{ minWidth: 0 }}>
+          <Text size="L400" style={{ color: color.Critical.Main }}>
+            {bugTypeLabel(report.type)}
+          </Text>
+          <Text size="H5" style={{ overflowWrap: 'anywhere' }}>
+            {report.title}
+          </Text>
+          <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
+            {new Date(report.at).toLocaleString()} · {report.build ?? 'unknown build'}
+          </Text>
+        </Box>
+        <Button size="300" variant="Success" fill="Soft" radii="300" disabled={busy} onClick={done}>
+          <Text size="B300">Done</Text>
+        </Button>
+      </Box>
+      <MarkdownText text={report.body} />
+      {report.ua && (
+        <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
+          {report.ua}
+        </Text>
+      )}
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {error}
+        </Text>
+      )}
+    </Box>
+  );
+}
+
+// Bug reports people sent from the Home sidebar, newest first.
+export function UserBugReports() {
+  const mx = useMatrixClient();
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ['bug-reports'],
+    queryFn: () => listBugReports(mx),
+  });
+
+  const onDone = (id: number) =>
+    queryClient.setQueryData<BugReport[] | undefined>(['bug-reports'], (old) =>
+      old?.filter((r) => r.id !== id)
+    );
+
+  if (isLoading) {
+    return (
+      <Box justifyContent="Center" style={{ padding: config.space.S700 }}>
+        <Spinner variant="Secondary" />
+      </Box>
+    );
+  }
+  if (isError) {
+    return <Text priority="300">Couldn&apos;t load bug reports. The Worker may be down.</Text>;
+  }
+  if (!data) {
+    return <Text priority="300">Only accounts with the developer badge can read bug reports.</Text>;
+  }
+
+  return (
+    <Box direction="Column" gap="400">
+      <Box alignItems="Center" gap="300">
+        <Text size="T300" priority="300" style={{ flexGrow: 1 }}>
+          {data.length === 0
+            ? 'No bug reports right now.'
+            : `${data.length} bug report${data.length === 1 ? '' : 's'}`}
+        </Text>
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          radii="300"
+          disabled={isFetching}
+          onClick={() => refetch()}
+        >
+          <Text size="B300">Refresh</Text>
+        </Button>
+      </Box>
+      {data.map((report) => (
+        <BugItem key={report.id} report={report} onDone={onDone} />
       ))}
     </Box>
   );

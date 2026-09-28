@@ -1,5 +1,5 @@
-// Crash reports from the app's error screen, stored in the XP_DB D1. Readable only by accounts
-// with the "developer" badge in config.json, plus any listed in the optional APP_DEVS secret.
+// Crash reports and user bug reports, stored in the XP_DB D1. Readable only by accounts with
+// the "developer" badge in config.json, plus any listed in the optional APP_DEVS secret.
 import { verifyOpenId } from './perks.js';
 
 const HOUR = 60 * 60 * 1000;
@@ -7,6 +7,17 @@ const HOUR = 60 * 60 * 1000;
 const MAX_PER_HOUR = 10;
 const MAX_STORED = 2000;
 const LIMITS = { message: 500, stack: 4000, path: 200, build: 80, ua: 300, note: 1000 };
+const BUG_LIMITS = { type: 40, title: 120, body: 5000 };
+const BUG_TYPES = new Set([
+  'crash',
+  'chat',
+  'calls',
+  'servers',
+  'profile',
+  'looks',
+  'slow',
+  'other',
+]);
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -23,6 +34,13 @@ const ensureTable = (db) => {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           at INTEGER NOT NULL,
           message TEXT, stack TEXT, path TEXT, build TEXT, ua TEXT, note TEXT
+        )`
+      ),
+      db.prepare(
+        `CREATE TABLE IF NOT EXISTS bug_reports (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          at INTEGER NOT NULL,
+          type TEXT, title TEXT, body TEXT, build TEXT, ua TEXT
         )`
       ),
       db.prepare(
@@ -46,8 +64,8 @@ async function devs(env, url) {
   try {
     const res = await env.ASSETS.fetch(new Request(new URL('/config.json', url.origin)));
     const badges = (await res.json())?.badges ?? {};
-    Object.entries(badges).forEach(([id, list]) => {
-      if (Array.isArray(list) && list.includes('developer')) ids.push(id);
+    Object.entries(badges).forEach(([id, given]) => {
+      if (Array.isArray(given) && given.includes('developer')) ids.push(id);
     });
   } catch {
     // Without the config, only APP_DEVS counts.
@@ -56,35 +74,51 @@ async function devs(env, url) {
 }
 
 // Only a hash of the IP is kept, and only for the rate limit.
-const senderKey = async (request) => {
+const senderKey = async (request, kind) => {
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`report:${ip}`));
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${kind}:${ip}`));
   return btoa(String.fromCharCode(...new Uint8Array(digest))).slice(0, 22);
 };
 
 const clip = (value, max) => (typeof value === 'string' ? value.slice(0, max) : null);
+
+// Counts one more report from this sender, or says no once they've hit the hourly limit.
+async function takeRate(db, sender, now) {
+  const rate = await db
+    .prepare('SELECT window, count FROM app_report_rate WHERE sender = ?')
+    .bind(sender)
+    .first();
+  const fresh = !rate || now - rate.window > HOUR;
+  if (!fresh && rate.count >= MAX_PER_HOUR) return false;
+  await db
+    .prepare(
+      `INSERT INTO app_report_rate (sender, window, count) VALUES (?1, ?2, 1)
+       ON CONFLICT(sender) DO UPDATE SET
+         window = CASE WHEN ?3 THEN ?2 ELSE window END,
+         count = CASE WHEN ?3 THEN 1 ELSE count + 1 END`
+    )
+    .bind(sender, now, fresh ? 1 : 0)
+    .run();
+  return true;
+}
+
+// Oldest reports go once a table is full.
+const trim = (db, table) =>
+  db
+    .prepare(
+      `DELETE FROM ${table} WHERE id NOT IN (SELECT id FROM ${table} ORDER BY id DESC LIMIT ?)`
+    )
+    .bind(MAX_STORED);
 
 async function submit(request, env) {
   const body = await request.json().catch(() => undefined);
   if (!body || typeof body.message !== 'string') return json({ error: 'bad report' }, 400);
   const db = env.XP_DB;
   const now = Date.now();
-  const sender = await senderKey(request);
-  const rate = await db
-    .prepare('SELECT window, count FROM app_report_rate WHERE sender = ?')
-    .bind(sender)
-    .first();
-  const fresh = !rate || now - rate.window > HOUR;
-  if (!fresh && rate.count >= MAX_PER_HOUR) return json({ error: 'too many reports' }, 429);
+  if (!(await takeRate(db, await senderKey(request, 'report'), now))) {
+    return json({ error: 'too many reports' }, 429);
+  }
   await db.batch([
-    db
-      .prepare(
-        `INSERT INTO app_report_rate (sender, window, count) VALUES (?1, ?2, 1)
-         ON CONFLICT(sender) DO UPDATE SET
-           window = CASE WHEN ?3 THEN ?2 ELSE window END,
-           count = CASE WHEN ?3 THEN 1 ELSE count + 1 END`
-      )
-      .bind(sender, now, fresh ? 1 : 0),
     db
       .prepare(
         'INSERT INTO app_reports (at, message, stack, path, build, ua, note) VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -98,17 +132,41 @@ async function submit(request, env) {
         clip(request.headers.get('User-Agent'), LIMITS.ua),
         clip(body.note, LIMITS.note)
       ),
-    // Oldest reports go once the table is full.
-    db
-      .prepare(
-        'DELETE FROM app_reports WHERE id NOT IN (SELECT id FROM app_reports ORDER BY id DESC LIMIT ?)'
-      )
-      .bind(MAX_STORED),
+    trim(db, 'app_reports'),
   ]);
   return json({ sent: true });
 }
 
-// Every read or change needs a signed-in account from APP_DEVS.
+// Bug reports come in without an account, like crash reports.
+async function submitBug(request, env) {
+  const body = await request.json().catch(() => undefined);
+  const title = typeof body?.title === 'string' ? body.title.trim() : '';
+  const text = typeof body?.body === 'string' ? body.body.trim() : '';
+  if (!BUG_TYPES.has(body?.type) || !title || !text) return json({ error: 'bad report' }, 400);
+  const db = env.XP_DB;
+  const now = Date.now();
+  if (!(await takeRate(db, await senderKey(request, 'bug'), now))) {
+    return json({ error: 'too many reports' }, 429);
+  }
+  await db.batch([
+    db
+      .prepare(
+        'INSERT INTO bug_reports (at, type, title, body, build, ua) VALUES (?, ?, ?, ?, ?, ?)'
+      )
+      .bind(
+        now,
+        clip(body.type, BUG_LIMITS.type),
+        clip(title, BUG_LIMITS.title),
+        clip(text, BUG_LIMITS.body),
+        clip(body.build, LIMITS.build),
+        clip(request.headers.get('User-Agent'), LIMITS.ua)
+      ),
+    trim(db, 'bug_reports'),
+  ]);
+  return json({ sent: true });
+}
+
+// Every read or change needs a signed-in developer account.
 async function asDev(request, env, url) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);
@@ -125,11 +183,20 @@ async function list(request, env, url) {
   return json({ dev: true, reports: results ?? [] });
 }
 
-async function resolve(request, env, url) {
+async function listBugs(request, env, url) {
+  const { dev } = await asDev(request, env, url);
+  if (!dev) return json({ dev: false });
+  const { results } = await env.XP_DB.prepare(
+    'SELECT id, at, type, title, body, build, ua FROM bug_reports ORDER BY id DESC LIMIT 200'
+  ).all();
+  return json({ dev: true, reports: results ?? [] });
+}
+
+async function resolve(request, env, url, table) {
   const { body, dev } = await asDev(request, env, url);
   if (!dev) return json({ error: 'not allowed' }, 403);
   if (!Number.isInteger(body?.id)) return json({ error: 'bad id' }, 400);
-  await env.XP_DB.prepare('DELETE FROM app_reports WHERE id = ?').bind(body.id).run();
+  await env.XP_DB.prepare(`DELETE FROM ${table} WHERE id = ?`).bind(body.id).run();
   return json({ deleted: true });
 }
 
@@ -139,6 +206,10 @@ export async function handleReports(request, env, url) {
   if (request.method !== 'POST') return json({ error: 'not found' }, 404);
   if (url.pathname === '/api/reports') return submit(request, env);
   if (url.pathname === '/api/reports/list') return list(request, env, url);
-  if (url.pathname === '/api/reports/resolve') return resolve(request, env, url);
+  if (url.pathname === '/api/reports/resolve') return resolve(request, env, url, 'app_reports');
+  if (url.pathname === '/api/reports/bug') return submitBug(request, env);
+  if (url.pathname === '/api/reports/bugs/list') return listBugs(request, env, url);
+  if (url.pathname === '/api/reports/bugs/resolve')
+    return resolve(request, env, url, 'bug_reports');
   return json({ error: 'not found' }, 404);
 }

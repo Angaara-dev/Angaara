@@ -23,15 +23,14 @@ import { useNavToActivePathAtom } from '../../../state/hooks/navToActivePath';
 import { useDirectRooms } from '../direct/useDirectRooms';
 import { markAsRead } from '../../../utils/notifications';
 import { stopPropagation } from '../../../utils/keyboard';
-import { settingsAtom } from '../../../state/settings';
-import { useSetting } from '../../../state/hooks/settings';
+import { useHideActivity } from '../../../hooks/useActivityStatus';
 
 type DirectMenuProps = {
   requestClose: () => void;
 };
 const DirectMenu = forwardRef<HTMLDivElement, DirectMenuProps>(({ requestClose }, ref) => {
   const orphanRooms = useDirectRooms();
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const unread = useRoomsUnread(orphanRooms, roomToUnreadAtom);
   const mx = useMatrixClient();
 

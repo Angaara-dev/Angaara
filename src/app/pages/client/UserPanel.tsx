@@ -48,8 +48,8 @@ const STATUS_OPTIONS: { value: ChosenStatus; label: string; hint?: string }[] = 
   { value: 'dnd', label: 'Do Not Disturb', hint: 'Mutes desktop notifications and sounds' },
   {
     value: 'invisible',
-    label: 'Invisible',
-    hint: "You'll appear offline",
+    label: 'Hide Online Status',
+    hint: 'No status, read receipts or typing',
   },
 ];
 

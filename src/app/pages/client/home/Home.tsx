@@ -12,6 +12,7 @@ import {
   PopOut,
   RectCords,
   Text,
+  color,
   config,
   toRem,
 } from 'folds';
@@ -79,13 +80,15 @@ import { usePhone } from '../../../hooks/useScreenSize';
 import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
 import { getAppeal, getAppellant } from '../../../features/removed-notice/appeals';
 import { useIsAppDeveloper } from '../../../features/app-reports/AppReports';
+import { BugReportDialog } from '../../../features/app-reports/BugReportDialog';
+import { useHideActivity } from '../../../hooks/useActivityStatus';
 
 type HomeMenuProps = {
   requestClose: () => void;
 };
 const HomeMenu = forwardRef<HTMLDivElement, HomeMenuProps>(({ requestClose }, ref) => {
   const orphanRooms = useHomeRooms();
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const unread = useRoomsUnread(orphanRooms, roomToUnreadAtom);
   const mx = useMatrixClient();
 
@@ -210,14 +213,16 @@ function HomeEmpty() {
 const DEFAULT_CATEGORY_ID = makeNavCategoryId('home', 'room');
 const DEVELOPER_CATEGORY_ID = makeNavCategoryId('home', 'developer');
 const PROJECTS_CATEGORY_ID = makeNavCategoryId('home', 'projects');
+// Pages only accounts with the developer badge see.
+const DEV_ONLY = new Set<DeveloperSection>(['reports', 'bugs']);
 
 function DeveloperNavItem({ section }: { section: DeveloperSection }) {
   const selected = useHomeDeveloperSelected(section);
-  const { title, icon } = DEVELOPER_PAGES[section];
+  const { title, icon, danger } = DEVELOPER_PAGES[section];
   return (
     <NavItem variant="Background" radii="400" aria-selected={selected}>
       <NavLink to={getHomeDeveloperPath(section)}>
-        <NavItemContent>
+        <NavItemContent style={danger ? { color: color.Critical.Main } : undefined}>
           <Box as="span" grow="Yes" alignItems="Center" gap="200">
             <Avatar size="200" radii="400">
               <Icon src={icon} size="100" filled={selected} />
@@ -371,6 +376,29 @@ export function Home() {
                   </NavLink>
                 </NavItem>
               )}
+              <UseStateProvider initial={false}>
+                {(open, setOpen) => (
+                  <>
+                    <NavItem variant="Background" radii="400">
+                      <NavButton onClick={() => setOpen(true)}>
+                        <NavItemContent>
+                          <Box as="span" grow="Yes" alignItems="Center" gap="200">
+                            <Avatar size="200" radii="400">
+                              <Icon src={Icons.Flag} size="100" />
+                            </Avatar>
+                            <Box as="span" grow="Yes">
+                              <Text as="span" size="Inherit" truncate>
+                                Report a Bug
+                              </Text>
+                            </Box>
+                          </Box>
+                        </NavItemContent>
+                      </NavButton>
+                    </NavItem>
+                    {open && <BugReportDialog onClose={() => setOpen(false)} />}
+                  </>
+                )}
+              </UseStateProvider>
             </NavCategory>
             {developerTools && (
               <NavCategory>
@@ -386,7 +414,7 @@ export function Home() {
                 {!closedCategories.has(DEVELOPER_CATEGORY_ID) &&
                   (Object.keys(DEVELOPER_PAGES) as DeveloperSection[])
                     .filter((section) => section !== 'repos' || hasLinkedRepos)
-                    .filter((section) => section !== 'reports' || appDeveloper)
+                    .filter((section) => !DEV_ONLY.has(section) || appDeveloper)
                     .map((section) => <DeveloperNavItem key={section} section={section} />)}
               </NavCategory>
             )}

@@ -129,6 +129,7 @@ import { useRoomCreatorsTag } from '../../hooks/useRoomCreatorsTag';
 import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
 import { useComposingCheck } from '../../hooks/useComposingCheck';
 import { findMathsError } from '../../components/math';
+import { useHideActivity } from '../../hooks/useActivityStatus';
 
 interface RoomInputProps {
   editor: Editor;
@@ -144,7 +145,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const useAuthentication = useMediaAuthentication();
     const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
     const [isMarkdown] = useSetting(settingsAtom, 'isMarkdown');
-    const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+    const hideActivity = useHideActivity();
     const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
     const direct = useIsDirectRoom();
     const commands = useCommands(mx, room);

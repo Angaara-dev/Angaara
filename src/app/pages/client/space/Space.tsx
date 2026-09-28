@@ -95,6 +95,7 @@ import { useRoomBannerUrl } from '../../../hooks/useRoomBanner';
 import { LEVEL_ANIMATED_BANNER, useSpaceLevel } from '../../../hooks/useSpaceLevel';
 import { useStillImage } from '../../../hooks/useStillImage';
 import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
+import { useHideActivity } from '../../../hooks/useActivityStatus';
 
 type SpaceMenuProps = {
   room: Room;
@@ -102,7 +103,7 @@ type SpaceMenuProps = {
 };
 const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(({ room, requestClose }, ref) => {
   const mx = useMatrixClient();
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const [developerTools] = useSetting(settingsAtom, 'developerTools');
   const roomToParents = useAtomValue(roomToParentsAtom);
   const powerLevels = usePowerLevels(room);

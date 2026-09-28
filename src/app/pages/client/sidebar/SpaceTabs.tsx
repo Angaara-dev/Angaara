@@ -88,12 +88,11 @@ import { getViaServers } from '../../../plugins/via-servers';
 import { getRoomAvatarUrl } from '../../../utils/room';
 import { LEVEL_ANIMATED_ICON, useSpaceLevel } from '../../../hooks/useSpaceLevel';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
-import { useSetting } from '../../../state/hooks/settings';
-import { settingsAtom } from '../../../state/settings';
 import { useOpenSpaceSettings } from '../../../state/hooks/spaceSettings';
 import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../../hooks/useRoomPermissions';
 import { InviteUserPrompt } from '../../../components/invite-user-prompt';
+import { useHideActivity } from '../../../hooks/useActivityStatus';
 
 type SpaceMenuProps = {
   room: Room;
@@ -103,7 +102,7 @@ type SpaceMenuProps = {
 const SpaceMenu = forwardRef<HTMLDivElement, SpaceMenuProps>(
   ({ room, requestClose, onUnpin }, ref) => {
     const mx = useMatrixClient();
-    const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+    const hideActivity = useHideActivity();
     const roomToParents = useAtomValue(roomToParentsAtom);
     const powerLevels = usePowerLevels(room);
     const creators = useRoomCreators(room);

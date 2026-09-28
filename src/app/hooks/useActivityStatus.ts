@@ -1,4 +1,6 @@
 import { atom, useAtomValue } from 'jotai';
+import { settingsAtom } from '../state/settings';
+import { useSetting } from '../state/hooks/settings';
 import { useMatrixClient } from './useMatrixClient';
 import { useExtendedProfile } from './useUserBanner';
 import { Presence, useUserPresence } from './useUserPresence';
@@ -72,4 +74,11 @@ export const ACTIVITY_LABELS: Record<ActivityStatus, string> = {
   idle: 'Idle',
   dnd: 'Do Not Disturb',
   offline: 'Offline',
+};
+
+// Hiding your status also hides typing and read receipts, same as the Editor setting.
+export const useHideActivity = (): boolean => {
+  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const chosen = useAtomValue(chosenStatusAtom);
+  return hideActivity || chosen === 'invisible';
 };

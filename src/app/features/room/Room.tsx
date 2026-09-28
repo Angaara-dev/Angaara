@@ -24,6 +24,7 @@ import { openThreadAtom } from '../../state/room/openThread';
 import { ThreadDrawer } from './thread';
 import { markRoomOpen } from '../../utils/timelineTrim';
 import { canDecide, getAppeal, getAppellant } from '../removed-notice/appeals';
+import { useHideActivity } from '../../hooks/useActivityStatus';
 
 export function Room() {
   const { eventId } = useParams();
@@ -35,7 +36,7 @@ export function Room() {
   const callEmbed = useCallEmbed();
 
   const [isDrawer] = useSetting(settingsAtom, 'isPeopleDrawer');
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const screenSize = useScreenSizeContext();
   const powerLevels = usePowerLevels(room);
   const members = useRoomMembers(mx, room.roomId);

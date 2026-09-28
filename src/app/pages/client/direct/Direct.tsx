@@ -43,8 +43,6 @@ import { useClosedNavCategoriesAtom } from '../../../state/hooks/closedNavCatego
 import { useRoomsUnread } from '../../../state/hooks/unread';
 import { markAsRead } from '../../../utils/notifications';
 import { stopPropagation } from '../../../utils/keyboard';
-import { useSetting } from '../../../state/hooks/settings';
-import { settingsAtom } from '../../../state/settings';
 import {
   getRoomNotificationMode,
   useRoomsNotificationPreferencesContext,
@@ -60,13 +58,14 @@ import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRo
 import { useAccountData } from '../../../hooks/useAccountData';
 import { XP_ROOM_KEY } from '../../../../client/xp';
 import { BRAND_NAME } from '../../../brand';
+import { useHideActivity } from '../../../hooks/useActivityStatus';
 
 type DirectMenuProps = {
   requestClose: () => void;
 };
 const DirectMenu = forwardRef<HTMLDivElement, DirectMenuProps>(({ requestClose }, ref) => {
   const mx = useMatrixClient();
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const orphanRooms = useDirectRooms();
   const unread = useRoomsUnread(orphanRooms, roomToUnreadAtom);
 

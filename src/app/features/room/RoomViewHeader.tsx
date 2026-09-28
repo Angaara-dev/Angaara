@@ -75,6 +75,7 @@ import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 import { RoomInfoPanel } from './RoomInfoPanel';
+import { useHideActivity } from '../../hooks/useActivityStatus';
 
 type RoomMenuProps = {
   room: Room;
@@ -82,7 +83,7 @@ type RoomMenuProps = {
 };
 const RoomMenu = forwardRef<HTMLDivElement, RoomMenuProps>(({ room, requestClose }, ref) => {
   const mx = useMatrixClient();
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
   const powerLevels = usePowerLevelsContext();
   const creators = useRoomCreators(room);

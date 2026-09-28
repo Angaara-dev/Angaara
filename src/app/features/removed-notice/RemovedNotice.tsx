@@ -26,7 +26,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { getMxIdServer } from '../../utils/matrix';
 import { Membership } from '../../../types/matrix/room';
-import { getHomePath, getHomeRoomPath } from '../../pages/pathUtils';
+import { getHomePath, getHomeRoomPath, getSpaceLobbyPath } from '../../pages/pathUtils';
 import {
   APPEAL_STATE,
   appealsEnabled,
@@ -60,7 +60,7 @@ type Notice = {
   roomId: string;
   name: string;
   space: boolean;
-  kind: 'kicked' | 'banned' | 'retry' | 'accepted' | 'denied' | 'closed' | 'archived';
+  kind: 'kicked' | 'banned' | 'unbanned' | 'retry' | 'accepted' | 'denied' | 'closed' | 'archived';
   // Whether the server takes appeals; unknown until its settings are found.
   appealsOn?: boolean;
   maxAppeals?: number;
@@ -132,12 +132,18 @@ const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   if (event.getContent().membership !== membership) return undefined;
   if (Date.now() - event.getTs() > MAX_AGE_MS) return undefined;
   const banned = membership === Membership.Ban;
+  // An unban leaves you "removed" too; only a server's is worth a notice, not every room's.
+  const unbanned = !banned && event.getPrevContent().membership === Membership.Ban;
+  if (unbanned && !room.isSpaceRoom()) return undefined;
+  let kind: Notice['kind'] = 'kicked';
+  if (banned) kind = 'banned';
+  else if (unbanned) kind = 'unbanned';
   return {
     key: event.getId() ?? `${room.roomId}${event.getTs()}`,
     roomId: room.roomId,
     name: room.name,
     space: room.isSpaceRoom(),
-    kind: banned ? 'banned' : 'kicked',
+    kind,
     by: room.getMember(by)?.name ?? by,
     byId: by,
     reason: event.getContent().reason,
@@ -186,7 +192,20 @@ export function RemovedNotice() {
     const add = (notice?: Notice) => {
       if (!notice || getSeen(mx).includes(notice.key)) return;
       const pinged = withPing(notice);
-      setQueue((q) => [...q.filter((n) => n.key !== pinged.key), pinged]);
+      // An accepted appeal already says you're unbanned, so one notice is enough.
+      const same = (n: Notice) => n.roomId === pinged.roomId;
+      setQueue((q) => {
+        if (pinged.kind === 'unbanned' && q.some((n) => same(n) && n.kind === 'accepted')) {
+          markSeen(mx, pinged.key);
+          return q;
+        }
+        const rest = q.filter(
+          (n) =>
+            n.key !== pinged.key &&
+            !(pinged.kind === 'accepted' && same(n) && n.kind === 'unbanned')
+        );
+        return [...rest, pinged];
+      });
     };
 
     rememberRooms(mx);
@@ -380,9 +399,16 @@ export function RemovedNotice() {
   };
 
   // The remover's server is sure to be in the room, so it can route the join.
+  // A server only joins itself and opens its home page, where its rooms are listed.
   const rejoin = () => {
     const via = current.byId ? getMxIdServer(current.byId) : undefined;
-    run(() => mx.joinRoom(current.roomId, via ? { viaServers: [via] } : undefined), dismiss);
+    run(
+      () => mx.joinRoom(current.roomId, via ? { viaServers: [via] } : undefined),
+      () => {
+        dismiss();
+        if (current.space) navigate(getSpaceLobbyPath(current.roomId));
+      }
+    );
   };
 
   const appeal = () =>
@@ -417,6 +443,9 @@ export function RemovedNotice() {
   let body = `${current.by} removed you from this ${place}. You may rejoin this ${place} if needed.`;
   if (current.kind === 'banned') {
     body = `${current.by} removed you from this ${place}. You can't rejoin until you're unbanned.`;
+  } else if (current.kind === 'unbanned') {
+    title = `You were unbanned from ${shownName}`;
+    body = `${current.by} unbanned you. You can rejoin now, and pick which rooms to join from its home page.`;
   } else if (current.kind === 'retry') {
     title = `You were banned from this ${place}`;
     body = "You can't rejoin until you're unbanned.";
@@ -597,7 +626,9 @@ export function RemovedNotice() {
                 </Box>
               ) : (
                 <Box direction="Column" gap="200">
-                  {(current.kind === 'kicked' || current.kind === 'accepted') && (
+                  {(current.kind === 'kicked' ||
+                    current.kind === 'accepted' ||
+                    current.kind === 'unbanned') && (
                     <Button
                       variant="Primary"
                       radii="400"
@@ -605,7 +636,7 @@ export function RemovedNotice() {
                       disabled={busy}
                       before={busy && <Spinner size="100" variant="Primary" fill="Solid" />}
                     >
-                      <Text size="B400">Rejoin</Text>
+                      <Text size="B400">{current.space ? 'View Server' : 'Rejoin'}</Text>
                     </Button>
                   )}
                   {ticket && (

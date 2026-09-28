@@ -137,6 +137,7 @@ import colorMXID from '../../../util/colorMXID';
 import { sendReaction } from '../../../client/privateReactions';
 import { useSwipeToReply } from '../../hooks/useSwipeToReply';
 import { usePhone } from '../../hooks/useScreenSize';
+import { useHideActivity } from '../../hooks/useActivityStatus';
 
 const TimelineFloat = as<'div', css.TimelineFloatVariants>(
   ({ position, className, ...props }, ref) => (
@@ -449,7 +450,7 @@ const getRoomUnreadInfo = (room: Room, scrollTo = false) => {
 export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimelineProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
-  const [hideActivity] = useSetting(settingsAtom, 'hideActivity');
+  const hideActivity = useHideActivity();
   const [messageLayout] = useSetting(settingsAtom, 'messageLayout');
   const [messageSpacing] = useSetting(settingsAtom, 'messageSpacing');
   const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');

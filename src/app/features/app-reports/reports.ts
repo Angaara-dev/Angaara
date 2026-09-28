@@ -1,6 +1,6 @@
 import { MatrixClient } from 'matrix-js-sdk';
 
-// Crash reports go to the Worker and are read by accounts with the developer badge.
+// Crash and bug reports go to the Worker and are read by accounts with the developer badge.
 const reportsApi = (path = '') => `${window.location.origin}/api/reports${path}`;
 
 export type AppReport = {
@@ -23,7 +23,7 @@ export const cleanPath = (path: string): string =>
     .replace(/\$[^/?#]+/g, '$event');
 
 // The main script's hashed name says exactly which build crashed.
-const buildId = (): string =>
+export const buildId = (): string =>
   document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.src.split('/').pop() ??
   'dev';
 
@@ -54,6 +54,41 @@ export const sendReport = async (error: unknown, note: string): Promise<void> =>
   if (!res.ok) throw new Error("Couldn't send the report.");
 };
 
+export const BUG_TYPES = [
+  { key: 'crash', label: 'App crashed or froze' },
+  { key: 'chat', label: 'Messages and chat' },
+  { key: 'calls', label: 'Calls and voice' },
+  { key: 'servers', label: 'Servers and rooms' },
+  { key: 'profile', label: 'Profile and settings' },
+  { key: 'looks', label: 'Something looks wrong' },
+  { key: 'slow', label: 'Slow or laggy' },
+  { key: 'other', label: 'Something else' },
+] as const;
+export type BugType = typeof BUG_TYPES[number]['key'];
+export const bugTypeLabel = (key: string): string =>
+  BUG_TYPES.find((t) => t.key === key)?.label ?? key;
+
+export type BugReport = {
+  id: number;
+  at: number;
+  type: string;
+  title: string;
+  body: string;
+  build: string | null;
+  ua: string | null;
+};
+
+// Anonymous, like crash reports: no account, user ID or rooms go with it.
+export const sendBugReport = async (type: BugType, title: string, body: string): Promise<void> => {
+  const res = await fetch(reportsApi('/bug'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, title: title.trim(), body: body.trim(), build: buildId() }),
+  });
+  if (res.status === 429) throw new Error('Too many reports from here right now. Try later.');
+  if (!res.ok) throw new Error("Couldn't send the report.");
+};
+
 const asDev = async (mx: MatrixClient, path: string, extra: Record<string, unknown> = {}) => {
   const res = await fetch(reportsApi(path), {
     method: 'POST',
@@ -70,5 +105,15 @@ export const listReports = async (mx: MatrixClient): Promise<AppReport[] | undef
 
 export const resolveReport = async (mx: MatrixClient, id: number): Promise<void> => {
   const data = await asDev(mx, '/resolve', { id });
+  if (!data?.deleted) throw new Error("Couldn't mark it done.");
+};
+
+export const listBugReports = async (mx: MatrixClient): Promise<BugReport[] | undefined> => {
+  const data = await asDev(mx, '/bugs/list');
+  return data?.dev ? (data.reports as BugReport[]) : undefined;
+};
+
+export const resolveBugReport = async (mx: MatrixClient, id: number): Promise<void> => {
+  const data = await asDev(mx, '/bugs/resolve', { id });
   if (!data?.deleted) throw new Error("Couldn't mark it done.");
 };

@@ -38,7 +38,7 @@ export type _SearchPathSearchParams = {
   has?: string;
 };
 export const _SEARCH_PATH = 'search/';
-export type DeveloperSection = 'bot' | 'build' | 'repos' | 'docs' | 'reports';
+export type DeveloperSection = 'bot' | 'build' | 'repos' | 'docs' | 'reports' | 'bugs';
 export const _DEVELOPER_PATH = 'developer/:section?/';
 
 export type _RoomSearchParams = {
