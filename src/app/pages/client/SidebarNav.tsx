@@ -15,6 +15,7 @@ import {
   ExploreTab,
   UnverifiedTab,
   SearchTab,
+  ScansTab,
 } from './sidebar';
 import { CreateTab } from './sidebar/CreateTab';
 import { useScrollFade } from '../../hooks/useScrollFade';
@@ -58,6 +59,7 @@ export function SidebarNav() {
             <SidebarStackSeparator />
             <SidebarStack>
               <SearchTab />
+              <ScansTab />
               <UnverifiedTab />
               <InboxTab />
             </SidebarStack>

@@ -38,6 +38,7 @@ import {
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { ModalWide } from '../../../styles/Modal.css';
 import { FileCheckDialog } from '../../../features/link-check/FileCheck';
+import { startFileScan } from '../../../features/link-check/fileScans';
 
 const renderErrorButton = (retry: () => void, text: string) => (
   <TooltipProvider
@@ -255,7 +256,7 @@ export type DownloadFileProps = {
 export function DownloadFile({ body, mimeType, url, info, encInfo }: DownloadFileProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
-  const [checking, setChecking] = useState(false);
+  const [scanId, setScanId] = useState<string>();
   // Fetched and decrypted here for the check; the file itself never leaves the device.
   const getFile = useCallback(async () => {
     const mediaUrl = mxcUrlToHttp(mx, url, useAuthentication);
@@ -329,14 +330,18 @@ export function DownloadFile({ body, mimeType, url, info, encInfo }: DownloadFil
             radii="300"
             size="400"
             aria-label="Check File"
-            onClick={() => setChecking(true)}
+            onClick={() => setScanId(startFileScan(mx, { name: body, key: url, getFile }))}
           >
             <Icon size="100" src={Icons.Shield} filled />
           </Button>
         )}
       </TooltipProvider>
-      {checking && (
-        <FileCheckDialog name={body} getFile={getFile} onClose={() => setChecking(false)} />
+      {scanId && (
+        <FileCheckDialog
+          scanId={scanId}
+          onClose={() => setScanId(undefined)}
+          onRescan={() => setScanId(startFileScan(mx, { name: body, key: url, getFile }, true))}
+        />
       )}
     </Box>
   );

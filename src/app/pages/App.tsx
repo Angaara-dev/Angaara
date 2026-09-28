@@ -15,6 +15,7 @@ import { createRouter } from './Router';
 import { ScreenSizeProvider, useScreenSize } from '../hooks/useScreenSize';
 import { useCompositionEndTracking } from '../hooks/useComposingCheck';
 import { CrashScreen } from '../features/app-reports/CrashScreen';
+import { UpdateNotice } from '../features/app-update/UpdateNotice';
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ function App() {
                   }}
                 </ClientConfigLoader>
               </FeatureCheck>
+              <UpdateNotice />
             </ScreenSizeProvider>
           </OverlayContainerProvider>
         </PopOutContainerProvider>

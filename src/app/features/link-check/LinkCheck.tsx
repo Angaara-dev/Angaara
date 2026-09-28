@@ -24,6 +24,7 @@ import {
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { copyToClipboard } from '../../utils/dom';
 import { stopPropagation } from '../../utils/keyboard';
+import { themeBackdrop } from '../../styles/themeBackdrop';
 import { isPrivateMode, PRIVATE_MODE_MESSAGE } from '../../utils/privateMode';
 import { checkLink, LinkReport, quotaText } from './linkCheck';
 
@@ -143,7 +144,12 @@ export function LinkCheckDialog({ url, onClose }: { url: string; onClose: () => 
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Dialog variant="Surface" style={{ width: `min(${toRem(480)}, 100%)` }}>
+          {/* Takes the server theme, buttons included, like the rest of the app. */}
+          <Dialog
+            data-theme-wash
+            variant="Surface"
+            style={{ ...themeBackdrop('surface'), width: `min(${toRem(480)}, 100%)` }}
+          >
             <Header
               style={{
                 padding: `0 ${config.space.S200} 0 ${config.space.S400}`,

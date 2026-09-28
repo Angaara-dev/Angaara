@@ -1,5 +1,6 @@
 import React, { CSSProperties, useState } from 'react';
 import { useRouteError } from 'react-router-dom';
+import { markUpdating } from '../app-update/UpdateNotice';
 import { sendReport } from './reports';
 
 // Plain elements and inline colours, so this still renders when the theme is what broke.
@@ -105,7 +106,14 @@ export function CrashScreen({ error }: { error: unknown }) {
         {status === 'sent' && (
           <p style={{ margin: 0, color: '#4ade80' }}>Thanks, the developers got your report.</p>
         )}
-        <button type="button" style={button(true)} onClick={() => window.location.reload()}>
+        <button
+          type="button"
+          style={button(true)}
+          onClick={() => {
+            if (outdated) markUpdating();
+            window.location.reload();
+          }}
+        >
           Reload the page
         </button>
         {status === 'idle' && !outdated && (

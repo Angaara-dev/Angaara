@@ -1,12 +1,12 @@
 import { ClientEvent, MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import { CryptoEvent } from 'matrix-js-sdk/lib/crypto-api';
 
-// Encrypted account data: private lists (friends, DMs) the homeserver only sees as ciphertext.
+// Encrypted account data: private lists (friends, DMs, scans) the homeserver only sees encrypted.
 // Items use AES-256-GCM with a random vault key; that key is wrapped with a key derived
 // (HKDF-SHA-256) from your key backup key, and also kept in secret storage (AES-256 + HMAC-SHA-256).
 
-export type VaultItem = 'friends' | 'direct' | 'privacy';
-const ITEMS: VaultItem[] = ['friends', 'direct', 'privacy'];
+export type VaultItem = 'friends' | 'direct' | 'privacy' | 'scans';
+const ITEMS: VaultItem[] = ['friends', 'direct', 'privacy', 'scans'];
 const ITEM_PREFIX = 'io.angaara.vault.';
 const KEY_WRAP_TYPE = 'io.angaara.vault_key';
 const SSSS_NAME = 'io.angaara.vault_key';

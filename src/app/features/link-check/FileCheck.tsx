@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import FocusTrap from 'focus-trap-react';
 import {
   Box,
@@ -19,9 +19,17 @@ import {
 } from 'folds';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { stopPropagation } from '../../utils/keyboard';
+import { themeBackdrop } from '../../styles/themeBackdrop';
 import { bytesToSize } from '../../utils/common';
 import { isPrivateMode } from '../../utils/privateMode';
-import { checkFile, FileReport } from './fileCheck';
+import { FileReport } from './fileCheck';
+import {
+  clearFileScans,
+  FileScan,
+  removeFileScan,
+  useFileScans,
+  useScansSynced,
+} from './fileScans';
 import { quotaText } from './linkCheck';
 import { LinkCheckDialog, VERDICTS } from './LinkCheck';
 
@@ -145,9 +153,11 @@ function Report({ report }: { report: FileReport }) {
           </Text>
         )}
         <Text size="T200" priority="300">
-          {report.yara
-            ? "Checked against ReversingLabs' malware rules."
-            : "ReversingLabs' malware rules couldn't run on this file."}
+          {report.yara && "Checked against ReversingLabs' malware rules."}
+          {!report.yara &&
+            (report.size > 64 * 1024 * 1024
+              ? "It's too big for ReversingLabs' malware rules (over 64 MB)."
+              : "ReversingLabs' malware rules couldn't run on this file.")}
         </Text>
         {report.sha256 && (
           <Text size="T200" priority="300" style={monospace}>
@@ -164,28 +174,17 @@ function Report({ report }: { report: FileReport }) {
   );
 }
 
-type FileCheckDialogProps = {
-  name: string;
-  getFile: () => Promise<Blob>;
+const verdictOf = (scan: FileScan) => (scan.report ? VERDICTS[scan.report.verdict] : undefined);
+
+function Frame({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
   onClose: () => void;
-};
-// Scans a file locally, and looks up its fingerprint unless private mode is on.
-export function FileCheckDialog({ name, getFile, onClose }: FileCheckDialogProps) {
-  const mx = useMatrixClient();
-  const [report, setReport] = useState<FileReport>();
-  const [error, setError] = useState<string>();
-
-  useEffect(() => {
-    let live = true;
-    getFile()
-      .then((blob) => checkFile(mx, name, blob, !isPrivateMode()))
-      .then((r) => live && setReport(r))
-      .catch((e) => live && setError(e instanceof Error ? e.message : "Couldn't check this file."));
-    return () => {
-      live = false;
-    };
-  }, [mx, name, getFile]);
-
+  children: React.ReactNode;
+}) {
   return (
     <Overlay open backdrop={<OverlayBackdrop />}>
       <OverlayCenter>
@@ -197,7 +196,12 @@ export function FileCheckDialog({ name, getFile, onClose }: FileCheckDialogProps
             escapeDeactivates: stopPropagation,
           }}
         >
-          <Dialog variant="Surface" style={{ width: `min(${toRem(480)}, 100%)` }}>
+          {/* Takes the server theme, buttons included, like the rest of the app. */}
+          <Dialog
+            data-theme-wash
+            variant="Surface"
+            style={{ ...themeBackdrop('surface'), width: `min(${toRem(480)}, 100%)` }}
+          >
             <Header
               style={{
                 padding: `0 ${config.space.S200} 0 ${config.space.S400}`,
@@ -207,7 +211,7 @@ export function FileCheckDialog({ name, getFile, onClose }: FileCheckDialogProps
               size="500"
             >
               <Box grow="Yes">
-                <Text size="H4">File Check</Text>
+                <Text size="H4">{title}</Text>
               </Box>
               <IconButton size="300" onClick={onClose} radii="300" aria-label="Close">
                 <Icon src={Icons.Cross} />
@@ -218,27 +222,181 @@ export function FileCheckDialog({ name, getFile, onClose }: FileCheckDialogProps
               gap="400"
               style={{ padding: config.space.S400, maxHeight: '75vh', overflowY: 'auto' }}
             >
-              {!report && !error && (
-                <Box direction="Column" alignItems="Center" gap="300" style={{ padding: 24 }}>
-                  <Spinner variant="Secondary" size="400" />
-                  <Text size="T300" priority="300">
-                    Scanning on your device. Big files can take a moment…
-                  </Text>
-                </Box>
-              )}
-              {error && (
-                <Text size="T300" style={{ color: color.Critical.Main }}>
-                  {error}
-                </Text>
-              )}
-              {report && <Report report={report} />}
-              <Button variant="Secondary" fill="Soft" radii="300" size="400" onClick={onClose}>
-                <Text size="B400">Close</Text>
-              </Button>
+              {children}
             </Box>
           </Dialog>
         </FocusTrap>
       </OverlayCenter>
     </Overlay>
+  );
+}
+
+type FileCheckDialogProps = {
+  scanId: string;
+  onClose: () => void;
+  // Only offered where the file itself is at hand, like a message.
+  onRescan?: () => void;
+};
+// Shows one scan; closing it doesn't stop the scan, which carries on in the background.
+export function FileCheckDialog({ scanId, onClose, onRescan }: FileCheckDialogProps) {
+  const mx = useMatrixClient();
+  const scan = useFileScans(mx).find((s) => s.id === scanId);
+
+  return (
+    <Frame title="File Check" onClose={onClose}>
+      {!scan && (
+        <Text size="T300" priority="300">
+          This scan was removed.
+        </Text>
+      )}
+      {scan?.status === 'scanning' && (
+        <Box direction="Column" alignItems="Center" gap="300" style={{ padding: 24 }}>
+          <Spinner variant="Secondary" size="400" />
+          <Text size="T300" align="Center" style={{ overflowWrap: 'anywhere' }}>
+            Scanning {scan.name}
+          </Text>
+          <Text size="T200" priority="300" align="Center">
+            This happens on your device and big files can take a while. You can close this and keep
+            chatting; the result shows up under Scanned Files in the sidebar.
+          </Text>
+        </Box>
+      )}
+      {scan?.status === 'failed' && (
+        <Text size="T300" style={{ color: color.Critical.Main }}>
+          {scan.error}
+        </Text>
+      )}
+      {scan?.report && <Report report={scan.report} />}
+      <Box gap="200">
+        {scan?.status === 'scanning' && (
+          <Button
+            variant="Critical"
+            fill="Soft"
+            radii="300"
+            size="400"
+            onClick={() => {
+              removeFileScan(scan.id);
+              onClose();
+            }}
+            style={{ flexGrow: 1 }}
+          >
+            <Text size="B400">Cancel Scan</Text>
+          </Button>
+        )}
+        {scan && scan.status !== 'scanning' && onRescan && (
+          <Button
+            variant="Secondary"
+            fill="Soft"
+            radii="300"
+            size="400"
+            onClick={onRescan}
+            style={{ flexGrow: 1 }}
+          >
+            <Text size="B400">Scan Again</Text>
+          </Button>
+        )}
+        <Button
+          variant="Secondary"
+          fill="Soft"
+          radii="300"
+          size="400"
+          onClick={onClose}
+          style={{ flexGrow: 1 }}
+        >
+          <Text size="B400">Close</Text>
+        </Button>
+      </Box>
+    </Frame>
+  );
+}
+
+function ScanRow({ scan, onOpen }: { scan: FileScan; onOpen: () => void }) {
+  const verdict = verdictOf(scan);
+  let status = 'Scanning…';
+  if (verdict) status = verdict.title;
+  else if (scan.status === 'failed') status = "Couldn't check it";
+  return (
+    <Box alignItems="Center" gap="200">
+      <Box
+        as="button"
+        type="button"
+        grow="Yes"
+        alignItems="Center"
+        gap="300"
+        onClick={onOpen}
+        style={{
+          minWidth: 0,
+          padding: config.space.S300,
+          borderRadius: config.radii.R400,
+          background: color.SurfaceVariant.Container,
+          border: 'none',
+          color: 'inherit',
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        {scan.status === 'scanning' ? (
+          <Spinner variant="Secondary" size="200" />
+        ) : (
+          <Icon
+            src={verdict?.icon ?? Icons.Warning}
+            size="200"
+            filled
+            style={{ color: verdict?.tone ?? color.Critical.Main, flexShrink: 0 }}
+          />
+        )}
+        <Box direction="Column" style={{ minWidth: 0 }}>
+          <Text size="T300" truncate>
+            <b>{scan.name}</b>
+          </Text>
+          <Text size="T200" priority="300" truncate>
+            {status} · {new Date(scan.at).toLocaleString()}
+          </Text>
+        </Box>
+      </Box>
+      <IconButton
+        size="300"
+        radii="300"
+        aria-label={scan.status === 'scanning' ? 'Cancel scan' : 'Remove'}
+        onClick={() => removeFileScan(scan.id)}
+      >
+        <Icon size="100" src={Icons.Cross} />
+      </IconButton>
+    </Box>
+  );
+}
+
+// Every file checked on this device, including scans still running in the background.
+export function ScannedFilesDialog({ onClose }: { onClose: () => void }) {
+  const mx = useMatrixClient();
+  const scans = useFileScans(mx);
+  const synced = useScansSynced();
+  const [open, setOpen] = useState<string>();
+
+  return (
+    <Frame title="Scanned Files" onClose={onClose}>
+      {scans.length === 0 ? (
+        <Text size="T300" priority="300">
+          Files you check show up here. Use the shield button next to any file in a chat.
+        </Text>
+      ) : (
+        <Box direction="Column" gap="200">
+          {scans.map((scan) => (
+            <ScanRow key={scan.id} scan={scan} onOpen={() => setOpen(scan.id)} />
+          ))}
+        </Box>
+      )}
+      <Text size="T200" priority="300">
+        {synced
+          ? 'Synced to your devices through your Matrix account, encrypted so only you can read it.'
+          : 'Kept on this device until your encrypted storage is set up, then synced to your devices.'}
+      </Text>
+      {scans.some((s) => s.status !== 'scanning') && (
+        <Button variant="Secondary" fill="Soft" radii="300" size="400" onClick={clearFileScans}>
+          <Text size="B400">Clear Finished Scans</Text>
+        </Button>
+      )}
+      {open && <FileCheckDialog scanId={open} onClose={() => setOpen(undefined)} />}
+    </Frame>
   );
 }

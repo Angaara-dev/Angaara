@@ -5,3 +5,4 @@ export * from './InboxTab';
 export * from './ExploreTab';
 export * from './UnverifiedTab';
 export * from './SearchTab';
+export * from './ScansTab';
