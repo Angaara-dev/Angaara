@@ -3,6 +3,7 @@
 // Nothing about what was checked is kept.
 import { verifyOpenId } from './perks.js';
 import { badgeHolders } from './badges.js';
+import { isAngaaraSupporter } from './angaara-id.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 // Checks per account every two months; supporters help pay for them, so they get more.
@@ -319,9 +320,10 @@ async function check(env, input) {
 // Counts one check, or says how long until the next is allowed. Only a hash of the account and
 // a count are kept, never what was checked.
 async function takeCheck(env, url, userId) {
-  const limit = (await badgeHolders(env, url, 'supporter')).has(userId.toLowerCase())
-    ? MAX_CHECKS_SUPPORTER
-    : MAX_CHECKS;
+  const supporter =
+    (await badgeHolders(env, url, 'supporter')).has(userId.toLowerCase()) ||
+    (await isAngaaraSupporter(env, userId));
+  const limit = supporter ? MAX_CHECKS_SUPPORTER : MAX_CHECKS;
   const db = env.XP_DB;
   if (!db) return { ok: true, limit, left: limit };
   await db

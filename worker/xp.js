@@ -1,6 +1,7 @@
 // Experience: the app reports the IDs and times of messages you sent (never their content),
 // and this counts at most 1 XP per minute. Needs a D1 binding named XP_DB; see docs/XP.md.
 import { verifyOpenId } from './perks.js';
+import { isAngaaraSupporter } from './angaara-id.js';
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
@@ -472,6 +473,7 @@ export async function handleXp(request, env, url) {
       minutesToday,
       member: row?.member_no ?? undefined,
       boost: row ? boostFor(row.member_no, row.first_seen, now) : undefined,
+      supporter: (await isAngaaraSupporter(env, user).catch(() => false)) || undefined,
     };
     return json({ ...body, capped: minutesToday >= DAILY_MINUTES }, 200, {
       'Cache-Control': 'public, max-age=60',

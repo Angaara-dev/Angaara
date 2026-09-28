@@ -32,6 +32,8 @@ export type XpStatus = {
   member?: number;
   // A launch XP boost that's running, like 3x until a date.
   boost?: { times: number; until: number };
+  // Supporter through an Angaara account, which works on any homeserver.
+  supporter?: boolean;
 };
 // Matches BOOSTS in worker/xp.js: this many members are Early Embers.
 export const EARLY_EMBER_MEMBERS = 100000;

@@ -15,11 +15,12 @@ export const BADGES: Record<BadgeId, BadgeInfo> = {
 };
 
 // Granted in config.json by whoever deploys the client, so users can't award themselves badges.
-// Early Ember comes from the Worker's member number, so only full profiles look it up.
+// Early Ember and Angaara-account Supporter come from the Worker, so only full profiles ask.
 export const useUserBadges = (userId: string, withXp = false): BadgeInfo[] => {
   const ids = useClientConfig().badges?.[userId] ?? [];
-  const member = useUserXp(userId, withXp)?.member;
+  const xp = useUserXp(userId, withXp);
   const badges = ids.filter((id): id is BadgeId => id in BADGES).map((id) => BADGES[id]);
-  if (withXp && member && member <= EARLY_EMBER_MEMBERS) badges.push(BADGES.earlyEmber);
+  if (withXp && xp?.supporter && !ids.includes('supporter')) badges.push(BADGES.supporter);
+  if (withXp && xp?.member && xp.member <= EARLY_EMBER_MEMBERS) badges.push(BADGES.earlyEmber);
   return badges;
 };
