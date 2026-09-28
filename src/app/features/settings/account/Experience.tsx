@@ -10,6 +10,7 @@ import { settingsAtom } from '../../../state/settings';
 import { userXpQueryKey, useUserXp } from '../../../hooks/useUserXp';
 import {
   deleteXp,
+  EARLY_EMBER_MEMBERS,
   getLastXpReport,
   XP_DAILY_MINUTES,
   XP_LEVEL_REWARDS,
@@ -127,16 +128,29 @@ export function Experience() {
         ) : (
           <>
             <XpProgress xp={status?.xp ?? 0} level={status?.level ?? 0} />
+            {status?.member && status.member <= EARLY_EMBER_MEMBERS && (
+              <Text size="T300">
+                🏅 <b>Early Ember</b> · member #{status.member.toLocaleString()}
+              </Text>
+            )}
+            {status?.boost && (
+              <Text size="T300" style={{ color: color.Primary.Main }}>
+                ⚡ <b>{status.boost.times}x XP boost</b> ·{' '}
+                {Math.max(1, Math.ceil((status.boost.until - Date.now()) / 86400000))} days left
+              </Text>
+            )}
             <Text size="T200" priority="300">
               {status?.capped
                 ? 'Daily limit reached. This is to ensure that you touch grass 🌱'
-                : `Today: ${status?.minutesToday ?? 0} / ${XP_DAILY_MINUTES} XP (daily limit)`}
+                : `Today: ${
+                    status?.minutesToday ?? 0
+                  } / ${XP_DAILY_MINUTES} active minutes (daily limit)`}
             </Text>
           </>
         )}
         <SettingTile
           title="Earn XP"
-          description="Every few minutes, Angaara sends the Angaara server the IDs and times of messages you sent, never what they say. It counts up to 1 XP a minute, at most 300 XP a day, plus a little for each active day. XP unlocks profile perks. It also sends the IDs of the servers you're in, so you count toward their server level. Turning this off stops sending anything, and you won't count toward your servers' levels."
+          description="Every few minutes, Angaara sends the Angaara server the IDs and times of messages you sent, never what they say. It counts up to 1 XP a minute, for at most 300 active minutes a day, plus a little for each active day. XP unlocks profile perks. Turning this off stops sending anything."
           after={<Switch variant="Primary" value={earnXp} onChange={setEarnXp} />}
         />
         {earnXp && (

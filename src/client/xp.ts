@@ -28,7 +28,13 @@ export type XpStatus = {
   // Minutes counted today (UTC), up to the daily limit.
   minutesToday?: number;
   capped?: boolean;
+  // Order they joined in; the first EARLY_EMBER_MEMBERS get the Early Ember badge.
+  member?: number;
+  // A launch XP boost that's running, like 3x until a date.
+  boost?: { times: number; until: number };
 };
+// Matches BOOSTS in worker/xp.js: this many members are Early Embers.
+export const EARLY_EMBER_MEMBERS = 100000;
 // Most XP a day (one per minute with a message, so 5 hours' worth); matches worker/xp.js.
 export const XP_DAILY_MINUTES = 5 * 60;
 

@@ -34,6 +34,9 @@ The default homeservers, featured communities and welcome screen servers are set
 Angaara is a fork of [Cinny](https://github.com/cinnyapp/cinny) and is licensed under
 AGPL-3.0-only, like Cinny.
 
+Building Angaara was possible because of the prior work of the Cinny developers, so show
+support over there ❤️ ([GitHub](https://github.com/cinnyapp/cinny) · [cinny.in](https://cinny.in))
+
 Cinny Project  
 Copyright © 2024–present Ajay Bura  
 https://cinny.in  

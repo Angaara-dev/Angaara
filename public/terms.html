@@ -56,7 +56,7 @@
   <body>
     <main>
       <h1>Angaara Terms</h1>
-      <p class="muted">Last updated 27 September 2026</p>
+      <p class="muted">Last updated 28 September 2026</p>
 
       <p>
         Angaara is a free, open-source app for chatting on Matrix. By using it you agree to these
@@ -109,13 +109,14 @@
       <h2>3. What the Angaara service stores</h2>
       <ul>
         <li>
-          <b>XP:</b> your Matrix user ID, plus the IDs and send times of your own messages, used to
-          count experience. Never the content of your messages. You can turn this off or delete it
-          in Settings, under Account, then Experience.
+          <b>XP:</b> your Matrix user ID, your XP and your member number (the order you joined in,
+          used for the Early Ember badge and launch boosts). To count XP, the app sends the IDs and
+          send times of your own messages, never their content. You can turn this off in Settings,
+          under Account, then Experience.
         </li>
         <li>
-          <b>Server levels:</b> the IDs of the servers you're in and when you were last active, so
-          you count toward their level. Only if XP is on.
+          <b>Crash and bug reports:</b> only what you choose to send, without your account, user ID
+          or rooms.
         </li>
         <li>
           <b>GitHub sign-in:</b> if you link GitHub, the sign-in passes through our server once and
@@ -126,7 +127,25 @@
         </li>
       </ul>
 
-      <h2>4. Using Angaara</h2>
+      <h2>4. Private mode and deleting your data</h2>
+      <ul>
+        <li>
+          <b>Private mode</b> (Settings, under Account) stops the app from contacting Angaara's
+          servers. Features that need them, like XP, turn off while it's on.
+        </li>
+        <li>
+          <b>Delete My Data</b> (in the same place) permanently deletes everything Angaara's servers
+          keep about your account, including your XP, level, member number and Early Ember badge,
+          and turns private mode on. It can't be undone, and anything you earn later starts from
+          zero.
+        </li>
+        <li>
+          If you choose to delete all your data, we are not responsible for your data loss. Your
+          Matrix account and messages live on your homeserver and aren't affected.
+        </li>
+      </ul>
+
+      <h2>5. Using Angaara</h2>
       <ul>
         <li>Follow the law and the rules of your homeserver and the communities you join.</li>
         <li>
@@ -138,27 +157,27 @@
         <li>You're responsible for any bots you build and run with Angaara's developer tools.</li>
       </ul>
 
-      <h2>5. No warranty</h2>
+      <h2>6. No warranty</h2>
       <p>
         Angaara is provided "as is", without warranty of any kind, and parts of it (like the phone
         layout) are still in beta. To the fullest extent the law allows, we aren't liable for lost
         data, lost messages or other damage from using it. Always keep your recovery key safe.
       </p>
 
-      <h2>6. Open source</h2>
+      <h2>7. Open source</h2>
       <p>
         Angaara is based on <a href="https://github.com/cinnyapp/cinny">Cinny</a> and licensed under
         the GNU Affero General Public License v3.0. That license covers the code; these terms cover
         using the hosted app.
       </p>
 
-      <h2>7. Changes</h2>
+      <h2>8. Changes</h2>
       <p>
         If these terms change in a meaningful way, Angaara will ask you to agree again before you
         continue.
       </p>
 
-      <h2>8. Contact</h2>
+      <h2>9. Contact</h2>
       <p>
         Questions? Find us in
         <a href="https://matrix.to/#/#angaara:matrix.org">#angaara:matrix.org</a>.

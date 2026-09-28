@@ -8,7 +8,7 @@ type UserBadgesProps = {
   size?: 'small' | 'normal';
 };
 export function UserBadges({ userId, size = 'normal' }: UserBadgesProps) {
-  const badges = useUserBadges(userId);
+  const badges = useUserBadges(userId, size === 'normal');
   const box = toRem(size === 'small' ? 18 : 24);
   if (badges.length === 0) return null;
 

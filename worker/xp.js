@@ -21,6 +21,15 @@ const SPOT_CHECKS = 3;
 // The bot tries the daily limit DM at most this many times a day.
 const MAX_DM_TRIES = 3;
 
+// Launch offer, by member number (order of joining): the first 1,000 get 3x XP for 90 days,
+// the rest of the first 100,000 get 1.5x for 30. Keep in sync with src/client/xp.ts.
+const BOOSTS = [
+  { upTo: 1000, times: 3, days: 90 },
+  { upTo: 100000, times: 1.5, days: 30 },
+];
+// Boosts count from here at the earliest, so people who joined before the offer still get theirs.
+const BOOST_START = Date.UTC(2026, 8, 28);
+
 // XP needed for each level; keep in sync with XP_LEVELS in src/client/xp.ts.
 const LEVELS = [2000, 10000, 30000, 50000, 80000];
 const levelOf = (xp) => LEVELS.filter((need) => xp >= need).length;
@@ -54,7 +63,36 @@ const ADDED_COLUMNS = [
   'dm_tries INTEGER NOT NULL DEFAULT 0',
   'paused_until INTEGER NOT NULL DEFAULT 0',
   'welcomed INTEGER NOT NULL DEFAULT 0',
+  'member_no INTEGER',
 ];
+
+// Numbers anyone without one, in the order they joined, after the highest number so far.
+const assignMemberNumbers = (db) =>
+  db
+    .prepare(
+      `UPDATE xp SET member_no = numbered.n FROM (
+         SELECT user_id,
+           ROW_NUMBER() OVER (ORDER BY first_seen, user_id)
+             + (SELECT COALESCE(MAX(member_no), 0) FROM xp) AS n
+         FROM xp WHERE member_no IS NULL
+       ) AS numbered
+       WHERE xp.user_id = numbered.user_id`
+    )
+    .run();
+
+// The boost someone has right now, if any.
+const boostFor = (memberNo, firstSeen, now) => {
+  const offer = memberNo ? BOOSTS.find((b) => memberNo <= b.upTo) : undefined;
+  if (!offer) return undefined;
+  const until = Math.max(firstSeen ?? now, BOOST_START) + offer.days * DAY;
+  return until > now ? { times: offer.times, until } : undefined;
+};
+
+// Rounds up or down at random by the fraction, so 1.5x averages out to exactly 1.5x.
+const boosted = (xp, times) => {
+  const exact = xp * times;
+  return Math.floor(exact) + (Math.random() < exact % 1 ? 1 : 0);
+};
 
 let tableReady;
 const ensureTable = (db) => {
@@ -84,6 +122,8 @@ const ensureTable = (db) => {
           .catch(() => undefined)
       )
     );
+    await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS xp_member_no ON xp (member_no)').run();
+    await assignMemberNumbers(db);
   })().catch((err) => {
     tableReady = undefined;
     throw err;
@@ -229,7 +269,12 @@ async function report(request, env) {
         .bind(userId, now)
         .run();
   if (!claim.meta?.changes) return json({ error: 'too soon' }, 429);
-
+  if (!row) await assignMemberNumbers(env.XP_DB);
+  const member =
+    row ??
+    (await env.XP_DB.prepare('SELECT member_no, first_seen FROM xp WHERE user_id = ?')
+      .bind(userId)
+      .first());
   const lastAward = row?.last_award ?? 0;
   const ownRoom =
     typeof body?.dm_room === 'string' && ROOM_RE.test(body.dm_room) ? body.dm_room : undefined;
@@ -274,6 +319,8 @@ async function report(request, env) {
   const counted = Math.min(minutes.length, Math.max(0, DAILY_MINUTES - usedToday));
   let gained = counted;
   if (counted > 0 && today > (row?.last_day ?? 0)) gained += DAILY_BONUS;
+  const boost = boostFor(member?.member_no, member?.first_seen, now);
+  if (boost) gained = boosted(gained, boost.times);
   // Minutes past the cap are still marked seen, so they can't be claimed later.
   const newestMinute = minutes.length > 0 ? minutes[minutes.length - 1] : lastMinute;
   const capMinutes = usedToday + counted;
@@ -318,7 +365,7 @@ async function report(request, env) {
     )
     .first();
   const xp = saved?.xp ?? (row?.xp ?? 0) + gained;
-  return json({ xp, level: levelOf(xp), gained, capped, dm: capped ? dmStatus : undefined });
+  return json({ xp, level: levelOf(xp), gained, capped, boost, dm: capped ? dmStatus : undefined });
 }
 
 // Whether the bot secrets are set and its login still works; never shows the token.
@@ -349,6 +396,7 @@ async function welcome(request, env) {
   )
     .bind(userId, Date.now())
     .run();
+  await assignMemberNumbers(env.XP_DB);
   // Claim it first so two tabs can't both send it.
   const claim = await env.XP_DB.prepare(
     'UPDATE xp SET welcomed = 1 WHERE user_id = ?1 AND welcomed = 0'
@@ -367,11 +415,29 @@ async function welcome(request, env) {
   return json({ status: dm.status });
 }
 
+// Everything the XP counter keeps on someone, plus the bot leaving its DM with them.
+export async function deleteXpData(env, userId) {
+  if (!env.XP_DB) return;
+  await ensureTable(env.XP_DB);
+  const row = await env.XP_DB.prepare('SELECT dm_room FROM xp WHERE user_id = ?')
+    .bind(userId)
+    .first();
+  await env.XP_DB.prepare('DELETE FROM xp WHERE user_id = ?').bind(userId).run();
+  if (!row?.dm_room || !env.XP_BOT_TOKEN || !env.XP_BOT_HOMESERVER) return;
+  const room = `${botBase(env)}/_matrix/client/v3/rooms/${encodeURIComponent(row.dm_room)}`;
+  const headers = {
+    Authorization: `Bearer ${env.XP_BOT_TOKEN}`,
+    'Content-Type': 'application/json',
+  };
+  await fetch(`${room}/leave`, { method: 'POST', headers, body: '{}' }).catch(() => undefined);
+  await fetch(`${room}/forget`, { method: 'POST', headers, body: '{}' }).catch(() => undefined);
+}
+
 async function remove(request, env) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);
   if (!userId) return json({ error: 'not signed in' }, 401);
-  await env.XP_DB.prepare('DELETE FROM xp WHERE user_id = ?').bind(userId).run();
+  await deleteXpData(env, userId);
   return json({ deleted: true });
 }
 
@@ -391,14 +457,22 @@ export async function handleXp(request, env, url) {
   if (user !== undefined && request.method === 'GET') {
     if (!MXID_RE.test(user)) return json({ error: 'bad user' }, 400);
     const row = await env.XP_DB.prepare(
-      'SELECT xp, first_seen, cap_day, cap_minutes FROM xp WHERE user_id = ?'
+      'SELECT xp, first_seen, cap_day, cap_minutes, member_no FROM xp WHERE user_id = ?'
     )
       .bind(user)
       .first();
     const xp = row?.xp ?? 0;
-    const today = Math.floor(Date.now() / DAY);
+    const now = Date.now();
+    const today = Math.floor(now / DAY);
     const minutesToday = row?.cap_day === today ? row.cap_minutes : 0;
-    const body = { xp, level: levelOf(xp), since: row?.first_seen, minutesToday };
+    const body = {
+      xp,
+      level: levelOf(xp),
+      since: row?.first_seen,
+      minutesToday,
+      member: row?.member_no ?? undefined,
+      boost: row ? boostFor(row.member_no, row.first_seen, now) : undefined,
+    };
     return json({ ...body, capped: minutesToday >= DAILY_MINUTES }, 200, {
       'Cache-Control': 'public, max-age=60',
     });
