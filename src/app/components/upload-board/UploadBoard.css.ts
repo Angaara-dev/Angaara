@@ -25,7 +25,8 @@ export const UploadBoard = style({
   width: '100%',
   maxHeight: toRem(450),
   height: '100%',
-  backgroundColor: color.Surface.Container,
+  // Solid on themed servers, tinted with the server colour, so messages don't show through.
+  backgroundColor: `var(--angaara-theme-menu, ${color.Surface.Container})`,
   color: color.Surface.OnContainer,
   borderRadius: config.radii.R400,
   boxShadow: config.shadow.E200,

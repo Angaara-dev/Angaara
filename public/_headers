@@ -1,0 +1,9 @@
+# Security headers for every static file Cloudflare serves (the Worker's /api/* sets its own).
+# Only this site may frame the app (Element Call runs in a same-origin iframe).
+# Referrers keep just the origin, which YouTube embeds need to play.
+/*
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

@@ -39,6 +39,11 @@ const copyFiles = {
       dest: '',
     },
     {
+      // Cloudflare reads this for security headers; it's never served itself.
+      src: 'public/_headers',
+      dest: '',
+    },
+    {
       src: 'public/res/android',
       dest: 'public/',
     },
