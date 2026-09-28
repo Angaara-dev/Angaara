@@ -117,6 +117,10 @@ const ensureTable = (db) => {
   return tableReady;
 };
 
+// Servers cache identical syncs for a couple of minutes, which would hide a fresh invite; the
+// timeout is part of that cache key, and a first sync returns at once whatever it is.
+const uncached = () => Date.now() % 1000000;
+
 const botBase = (env) => env.XP_BOT_HOMESERVER.replace(/\/+$/, '');
 
 // DMs the user from the bot account; needs the XP_BOT_* secrets. Prefers the room their app made
@@ -153,7 +157,7 @@ async function dmUser(env, userId, room, ownRoom, message = CAP_MESSAGE) {
       },
     };
     const res = await api(
-      `/sync?timeout=0&filter=${encodeURIComponent(JSON.stringify(filter))}`,
+      `/sync?timeout=${uncached()}&filter=${encodeURIComponent(JSON.stringify(filter))}`,
       'GET'
     );
     if (!res.ok) return false;

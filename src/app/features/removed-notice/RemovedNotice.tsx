@@ -34,6 +34,7 @@ import {
   BAN_NOTICE_EVENT,
   BanNoticeDetail,
   fetchBannedRoom,
+  fetchLiveSettings,
   getAppeal,
   getAppellant,
   getMods,
@@ -71,6 +72,8 @@ type Notice = {
   appealsLeft?: number;
   // Opened from a server's Appeal button, so go straight to writing the appeal.
   direct?: boolean;
+  // Settings read live from the server by the bot, which beat anything remembered.
+  live?: boolean;
 };
 
 const SEEN_KEY = 'angaara_seen_removals';
@@ -99,7 +102,7 @@ const knownAppealsOn = (room: Room | null): boolean | undefined =>
 // Settings a mod's app sent since the ban beat whatever the app saw at the time.
 const withPing = (notice: Notice): Notice => {
   const ping = pingedSettings(notice.roomId);
-  if (!ping || (notice.kind !== 'banned' && notice.kind !== 'retry')) return notice;
+  if (!ping || notice.live || (notice.kind !== 'banned' && notice.kind !== 'retry')) return notice;
   return { ...notice, appealsOn: ping.enabled, maxAppeals: ping.max };
 };
 
@@ -279,6 +282,26 @@ export function RemovedNotice() {
       .finally(() => setLookingUp((k) => (k === currentKey ? undefined : k)));
   }, [mx, currentKey, currentRoomId, needsInfo]);
 
+  // Asks the bot for the server's current settings, since the app's copy may predate the ban.
+  const currentBanned = current?.kind === 'banned' || current?.kind === 'retry';
+  const [checkingLive, setCheckingLive] = useState<string>();
+  useEffect(() => {
+    if (!currentKey || !currentBanned || !currentRoomId.startsWith('!')) return;
+    setCheckingLive(currentKey);
+    fetchLiveSettings(currentRoomId)
+      .then((live) => {
+        if (!live) return;
+        setQueue((q) =>
+          q.map((n) =>
+            n.key === currentKey
+              ? { ...n, appealsOn: live.enabled, maxAppeals: live.max, live: true }
+              : n
+          )
+        );
+      })
+      .finally(() => setCheckingLive((k) => (k === currentKey ? undefined : k)));
+  }, [currentKey, currentBanned, currentRoomId]);
+
   // The Appeal button on a server card skips straight to writing the appeal.
   const currentDirect = !!current?.direct;
   useEffect(() => setAppealing(currentDirect), [currentKey, currentDirect]);
@@ -295,7 +318,7 @@ export function RemovedNotice() {
   const ticket = sentRoomId ?? (pending ? openAppealFor(mx, current.roomId)?.roomId : undefined);
   // Straight to the appeal, unless there's none to make.
   const showAppeal = appealing && canAppeal && !appealSent;
-  const looking = banned && lookingUp === current.key;
+  const looking = banned && (lookingUp === current.key || checkingLive === current.key);
 
   const dismiss = () => {
     markSeen(current.key);

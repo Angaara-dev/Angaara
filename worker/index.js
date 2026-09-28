@@ -1,9 +1,10 @@
-// Serves the app, plus the GitHub sign-in endpoints and the XP counter in xp.js.
+// Serves the app, plus the GitHub sign-in endpoints, the XP counter in xp.js and appeal settings.
 // Secrets: GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET (set with `wrangler secret put`).
 
 // Perks are parked until launch; uncomment these lines and the ones in fetch() to turn them on.
 // import { devGate, handlePerks } from './perks.js';
 import { handleXp } from './xp.js';
+import { handleAppeals } from './appeals.js';
 
 const STATE_COOKIE = 'gh_oauth_state';
 const SCOPE = 'repo';
@@ -134,7 +135,7 @@ async function handleGitHub(request, env, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     // if (env.DEV_GATE === '1') {
     //   const blocked = await devGate(request, env, url);
@@ -143,6 +144,7 @@ export default {
     // if (url.pathname.startsWith('/api/perks/')) return handlePerks(request, env, url);
     if (url.pathname.startsWith('/api/github/')) return handleGitHub(request, env, url);
     if (url.pathname.startsWith('/api/xp/')) return handleXp(request, env, url);
+    if (url.pathname.startsWith('/api/appeals/')) return handleAppeals(request, env, url, ctx);
     return env.ASSETS.fetch(request);
   },
 };

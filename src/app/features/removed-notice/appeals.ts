@@ -394,3 +394,49 @@ export const receivePing = (mx: MatrixClient, event: MatrixEvent): string | unde
   }
   return space;
 };
+
+// The Angaara bot joins servers with appeals on, so the Worker can read their real settings
+// for banned members; see worker/appeals.js.
+const appealsApi = (path: string) => `${window.location.origin}/api/appeals/${path}`;
+
+let botIdTask: Promise<string | undefined> | undefined;
+export const getAppealsBotId = (): Promise<string | undefined> => {
+  botIdTask ??= fetch(appealsApi('bot'))
+    .then((res) => res.json())
+    .then((bot) => (bot?.bot && typeof bot.userId === 'string' ? bot.userId : undefined))
+    .catch(() => undefined)
+    .then((id) => {
+      if (!id) botIdTask = undefined;
+      return id;
+    });
+  return botIdTask;
+};
+
+// Undefined when the bot isn't in that server or the Worker can't be reached.
+export const fetchLiveSettings = async (roomId: string): Promise<AppealSettings | undefined> => {
+  const res = await fetch(appealsApi(`settings/${encodeURIComponent(roomId)}`)).catch(
+    () => undefined
+  );
+  const data = await res?.json().catch(() => undefined);
+  if (!data?.bot) return undefined;
+  return { enabled: data.enabled === true, max: clampAppeals(data.max) };
+};
+
+export const botInSpace = (space: Room, botId: string | undefined): boolean =>
+  !!botId && space.getMember(botId)?.membership === Membership.Join;
+
+// Invites the bot and has it join; the Worker checks the invite came from you.
+export const addAppealsBot = async (mx: MatrixClient, space: Room): Promise<void> => {
+  const botId = await getAppealsBotId();
+  if (!botId) throw new Error("The Angaara bot isn't available right now.");
+  if (botInSpace(space, botId)) return;
+  if (space.getMember(botId)?.membership !== Membership.Invite) {
+    await mx.invite(space.roomId, botId);
+  }
+  const res = await fetch(appealsApi('join'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ openid: await mx.getOpenIdToken(), room: space.roomId }),
+  });
+  if (!res.ok) throw new Error("The Angaara bot couldn't join this server.");
+};
