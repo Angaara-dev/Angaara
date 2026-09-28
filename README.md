@@ -2,7 +2,7 @@
   <img src="public/res/svg/angaara.svg" width="96" height="96" alt="Angaara logo" />
 </p>
 
-# Angaara
+# Angaara™
 
 Your communities, on an open network. Angaara is a Matrix chat app built around servers,
 channels and friends, with end-to-end encryption, server levels, bots with rich embeds and slash

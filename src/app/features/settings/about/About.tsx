@@ -7,7 +7,14 @@ import { SettingTile } from '../../../components/setting-tile';
 import AngaaraSVG from '../../../../../public/res/svg/angaara.svg';
 import { clearCacheAndReload } from '../../../../client/initMatrix';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { BRAND_NAME, SECURITY_URL, SOURCE_URL, SUPPORT_URL, TERMS_URL } from '../../../brand';
+import {
+  BRAND_MARK,
+  BRAND_NAME,
+  SECURITY_URL,
+  SOURCE_URL,
+  SUPPORT_URL,
+  TERMS_URL,
+} from '../../../brand';
 import { SettingsPageHeader } from '../SettingsPageHeader';
 
 type AboutProps = {
@@ -34,7 +41,7 @@ export function About({ requestClose }: AboutProps) {
                 <Box direction="Column" gap="300">
                   <Box direction="Column" gap="100">
                     <Box gap="100" alignItems="End">
-                      <Text size="H3">{BRAND_NAME}</Text>
+                      <Text size="H3">{BRAND_MARK}</Text>
                       <Text size="T200">based on Cinny v4.12.7</Text>
                     </Box>
                     <Text>Your communities, on an open network.</Text>

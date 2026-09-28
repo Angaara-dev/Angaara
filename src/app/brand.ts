@@ -1,5 +1,7 @@
 // The app's name in one place; index.html and public/manifest.json repeat it statically.
 export const BRAND_NAME = 'Angaara';
+// With ™, for the few places the name is shown as the brand itself (logo, title, About).
+export const BRAND_MARK = `${BRAND_NAME}™`;
 export const DEVICE_DISPLAY_NAME = `${BRAND_NAME} Web`;
 // Where "Support Angaara" sends people. Empty keeps the button inactive until a link is set.
 export const SUPPORT_URL = '';

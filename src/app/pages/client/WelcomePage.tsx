@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Button, Icon, Icons, Text, config, toRem } from 'folds';
 import { Page, PageHero, PageHeroSection } from '../../components/page';
 import AngaaraSVG from '../../../../public/res/svg/angaara.svg';
-import { BRAND_NAME } from '../../brand';
+import { BRAND_MARK, BRAND_NAME } from '../../brand';
 
 export function WelcomePage() {
   return (
@@ -16,7 +16,7 @@ export function WelcomePage() {
         <PageHeroSection>
           <PageHero
             icon={<img width="70" height="70" src={AngaaraSVG} alt={`${BRAND_NAME} logo`} />}
-            title={`Welcome to ${BRAND_NAME}`}
+            title={`Welcome to ${BRAND_MARK}`}
             subTitle={<span>Your communities, on an open network.</span>}
           >
             <Box justifyContent="Center">
