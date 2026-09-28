@@ -1227,11 +1227,11 @@ export function General({ requestClose }: GeneralProps) {
         <Scroll hideTrack visibility="Hover">
           <PageContent>
             <Box direction="Column" gap="700">
+              <Supporters />
               <Appearance />
               <DateAndTime />
               <Editor />
               <Messages />
-              <Supporters />
               <DeleteAccount />
             </Box>
           </PageContent>
