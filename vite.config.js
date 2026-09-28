@@ -44,6 +44,11 @@ const copyFiles = {
       dest: '',
     },
     {
+      // Malware rules for File Check, loaded only when a file is checked.
+      src: 'public/yara',
+      dest: '',
+    },
+    {
       src: 'public/res/android',
       dest: 'public/',
     },

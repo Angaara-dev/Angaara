@@ -71,6 +71,7 @@
     "is-hotkey": "0.2.0",
     "jotai": "2.6.0",
     "katex": "0.16.47",
+    "libyara-wasm": "1.2.1",
     "linkify-react": "4.3.2",
     "linkifyjs": "4.3.2",
     "matrix-js-sdk": "41.7.0",

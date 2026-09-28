@@ -1,6 +1,6 @@
-// Link and file checks. Links: follows redirects and reads a little of the page in the Worker
-// (no page code runs), then looks for scam signs. Files: only a fingerprint is looked up.
-// Nothing about what was checked is kept.
+// Link and file checks. Links: follows redirects and reads a little of the page (no page code
+// runs), then looks for scam signs. Files: only a fingerprint is looked up, on MalwareBazaar and
+// CIRCL's list of known software. Nothing about what was checked is kept.
 import { verifyOpenId } from './perks.js';
 import { badgeHolders } from './badges.js';
 import { isAngaaraSupporter } from './angaara-id.js';
@@ -389,6 +389,26 @@ async function checkFile(env, sha256) {
   }
 }
 
+// CIRCL hashlookup: known, published files (like official installers). Free, no key.
+async function knownFile(sha256) {
+  try {
+    const res = await fetch(`https://hashlookup.circl.lu/lookup/sha256/${sha256}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(TIMEOUT),
+    });
+    const data = res.ok ? await res.json() : undefined;
+    if (!data || data.KnownMalicious) return undefined;
+    const name =
+      data.ProductName ||
+      String(data.FileName ?? '')
+        .split(/[\\/]/)
+        .pop();
+    return name ? String(name).slice(0, 120) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function handleLinks(request, env, url) {
   const isLink = url.pathname === '/api/links/check';
   const isFile = url.pathname === '/api/links/file';
@@ -402,7 +422,8 @@ export async function handleLinks(request, env, url) {
     if (!/^[0-9a-f]{64}$/.test(sha256)) return json({ error: 'bad fingerprint' }, 400);
     const quota = await takeCheck(env, url, userId);
     if (!quota.ok) return outOfChecks(quota);
-    return json({ ...(await checkFile(env, sha256)), quota });
+    const [malware, known] = await Promise.all([checkFile(env, sha256), knownFile(sha256)]);
+    return json({ ...malware, known, quota });
   }
 
   let target;

@@ -112,7 +112,7 @@ function Report({ report }: { report: LinkReport }) {
   );
 }
 
-function LinkCheckDialog({ url, onClose }: { url: string; onClose: () => void }) {
+export function LinkCheckDialog({ url, onClose }: { url: string; onClose: () => void }) {
   const mx = useMatrixClient();
   const [report, setReport] = useState<LinkReport>();
   const [error, setError] = useState<string>();
