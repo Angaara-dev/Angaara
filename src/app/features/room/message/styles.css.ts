@@ -44,32 +44,34 @@ export const BubbleAvatarBase = style({
   paddingTop: 0,
 });
 
-// A round glow on hover, in the server's accent inside a server and yours elsewhere.
+// Space above the avatar, so the ring lines up with it in both layouts.
+const avatarTop = createVar();
+
+// A tight round ring on hover like your own panel avatar, in the server's accent inside a server.
 export const MessageAvatarGlow = style({
+  vars: { [avatarTop]: toRem(4) },
   position: 'relative',
-  isolation: 'isolate',
   selectors: {
-    '&::before': {
+    '&::after': {
       content: '""',
       position: 'absolute',
-      left: '50%',
-      top: `calc(50% + ${toRem(2)})`,
-      width: toRem(84),
-      height: toRem(84),
-      transform: 'translate(-50%, -50%) scale(0.6)',
+      top: avatarTop,
+      left: 0,
+      right: 0,
+      aspectRatio: '1 / 1',
       borderRadius: '50%',
-      background: `radial-gradient(circle closest-side, color-mix(in srgb, ${serverAccent} 55%, transparent), color-mix(in srgb, ${serverAccent} 20%, transparent) 55%, transparent)`,
+      boxShadow: `0 0 0 ${toRem(2)} ${serverAccent}, 0 0 ${toRem(
+        12
+      )} color-mix(in srgb, ${serverAccent} 50%, transparent)`,
       opacity: 0,
-      zIndex: -1,
       pointerEvents: 'none',
-      transition: 'opacity 180ms ease, transform 220ms ease',
+      transition: 'opacity 160ms ease',
     },
-    '&:hover::before, &:focus-within::before': {
-      opacity: 1,
-      transform: 'translate(-50%, -50%) scale(1)',
-    },
+    '&:hover::after, &:focus-within::after': { opacity: 1 },
   },
 });
+
+globalStyle(`${MessageAvatarGlow}${BubbleAvatarBase}`, { vars: { [avatarTop]: '0px' } });
 
 export const MessageAvatar = style({
   cursor: 'pointer',
