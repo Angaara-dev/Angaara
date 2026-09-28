@@ -39,13 +39,22 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<AsyncState<void, MatrixError>>({
     status: AsyncStatus.Idle,
   });
-  // Servers with next-gen sign-in (like matrix.org) only delete accounts on their own site.
+  // matrix.org only deletes accounts on its own site; other servers get our own flow first.
   const authMetadata = useAuthMetadata();
   const actions = useAccountManagementActions();
   const accountUrl = authMetadata?.account_management_uri ?? authMetadata?.issuer;
+  // Some, matrix.org included, don't offer deleting from there either; then it's just their page.
+  const canDeactivate = !!authMetadata?.account_management_actions_supported?.includes(
+    actions.accountDeactivate
+  );
   const openAccountSite = () => {
     if (!accountUrl) return;
-    window.open(withSearchParam(accountUrl, { action: actions.accountDeactivate }), '_blank');
+    window.open(
+      canDeactivate
+        ? withSearchParam(accountUrl, { action: actions.accountDeactivate })
+        : accountUrl,
+      '_blank'
+    );
     onClose();
   };
 
@@ -68,6 +77,9 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const [authData, error] = useUIAMatrixError(
     state.status === AsyncStatus.Error ? state.error : undefined
   );
+  // Other next-gen sign-in servers may refuse it too, and then their account page is the way.
+  const refused = error?.httpStatus === 404 || error?.errcode === 'M_UNRECOGNIZED';
+  const external = !!accountUrl && (server === 'matrix.org' || refused);
   const busy =
     state.status === AsyncStatus.Loading ||
     state.status === AsyncStatus.Success ||
@@ -113,13 +125,14 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                   Encrypted messages and keys are lost for good.
                 </Text>
               </Box>
-              {accountUrl && (
+              {external && (
                 <Text size="T300" priority="300">
-                  {server} handles this on its own account page, so you&apos;ll finish there in a
-                  new tab.
+                  {canDeactivate
+                    ? `${server} handles this on its own account page, so you'll finish there in a new tab.`
+                    : `${server} doesn't let apps delete accounts. Look for the option on its account page, and if it isn't there, ask ${server}'s support to delete it.`}
                 </Text>
               )}
-              {!accountUrl && (
+              {!external && (
                 <Box as="label" gap="300" alignItems="Center" style={{ cursor: 'pointer' }}>
                   <Checkbox
                     checked={erase}
@@ -141,7 +154,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                 />
                 <Text size="T300">I understand this is permanent</Text>
               </Box>
-              {error && (
+              {error && !external && (
                 <Text size="T200" style={{ color: color.Critical.Main }}>
                   <b>{error.message || "Couldn't delete your account."}</b>
                 </Text>
@@ -171,11 +184,11 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                   variant="Critical"
                   radii="400"
                   disabled={!understood || busy}
-                  onClick={() => (accountUrl ? openAccountSite() : deactivate())}
+                  onClick={() => (external ? openAccountSite() : deactivate())}
                   before={busy && <Spinner size="100" variant="Critical" fill="Solid" />}
                 >
                   <Text size="B400">
-                    {accountUrl ? 'Continue to Account Page' : 'Delete Account'}
+                    {external ? 'Continue to Account Page' : 'Delete Account'}
                   </Text>
                 </Button>
                 <Button
