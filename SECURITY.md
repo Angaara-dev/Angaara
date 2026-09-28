@@ -32,9 +32,9 @@ Please include:
 - The bot SDK (`bot-sdk/`)
 
 **Out of scope, please report these to the right place**
-- Matrix homeservers such as matrix.org → the homeserver's operator ([matrix.org security disclosure](https://matrix.org/security-disclosure-policy/))
-- Bugs that also exist in upstream Cinny → [cinnyapp/cinny](https://github.com/cinnyapp/cinny)
-- matrix-js-sdk, Element Call and other dependencies → their own projects
+- Matrix homeservers such as matrix.org -> the homeserver's operator ([matrix.org security disclosure](https://matrix.org/security-disclosure-policy/))
+- Bugs that also exist in upstream Cinny -> [cinnyapp/cinny](https://github.com/cinnyapp/cinny)
+- matrix-js-sdk, Element Call and other dependencies -> their own projects
 - Spam, social engineering, or denial of service by flooding
 
 ## Safe harbor
