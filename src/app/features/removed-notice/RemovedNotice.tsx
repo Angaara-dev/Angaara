@@ -55,6 +55,8 @@ type Notice = {
   // For appeal outcomes: the appeal room, left once the outcome is seen.
   appealRoomId?: string;
   appealsLeft?: number;
+  // Opened from a server's Appeal button, so go straight to writing the appeal.
+  direct?: boolean;
 };
 
 const SEEN_KEY = 'angaara_seen_removals';
@@ -155,7 +157,7 @@ export function RemovedNotice() {
     mx.on(RoomEvent.MyMembership, onMembership);
     mx.on(RoomStateEvent.Events, onState);
 
-    const addRetry = (roomIdOrAlias: string, name?: string) => {
+    const addRetry = (roomIdOrAlias: string, name?: string, direct?: boolean) => {
       const room = mx.getRoom(roomIdOrAlias);
       const roomId = room?.roomId ?? roomIdOrAlias;
       setQueue((q) => [
@@ -167,13 +169,14 @@ export function RemovedNotice() {
           // Unknown rooms are usually servers picked from Explore.
           space: room ? room.isSpaceRoom() : true,
           kind: 'retry',
+          direct,
           mods: getMods(mx, room),
         },
       ]);
     };
     const onBanNotice = (evt: Event) => {
       const { roomIdOrAlias, name } = (evt as CustomEvent<BanNoticeDetail>).detail;
-      addRetry(roomIdOrAlias, name);
+      addRetry(roomIdOrAlias, name, true);
     };
     window.addEventListener(BAN_NOTICE_EVENT, onBanNotice);
 
@@ -223,11 +226,27 @@ export function RemovedNotice() {
       .catch(() => undefined);
   }, [mx, currentKey, currentRoomId, needsInfo]);
 
+  // The Appeal button on a server card skips straight to writing the appeal.
+  const currentDirect = !!current?.direct;
+  useEffect(() => setAppealing(currentDirect), [currentKey, currentDirect]);
+
   if (!current) return null;
+
+  const place = current.space ? 'server' : 'room';
+  const banned = current.kind === 'banned' || current.kind === 'retry';
+  const used = banned ? appealsUsed(mx, current.roomId) : 0;
+  const pending = banned && !appealSent && !!openAppealFor(mx, current.roomId);
+  const canAppeal = banned && current.mods.length > 0 && used < MAX_APPEALS && !pending;
+  // Straight to the appeal, unless there's none to make.
+  const showAppeal = appealing && canAppeal && !appealSent;
 
   const dismiss = () => {
     markSeen(current.key);
     if (current.appealRoomId) mx.leave(current.appealRoomId).catch(() => undefined);
+    // Once appeals are over, the server is dropped from the app entirely.
+    if (current.kind === 'closed' || (banned && used >= MAX_APPEALS && !pending)) {
+      mx.forget(current.roomId).catch(() => undefined);
+    }
     setError(undefined);
     setAppealText('');
     setAppealSent(false);
@@ -274,12 +293,6 @@ export function RemovedNotice() {
     navigate(withSearchParam(getDirectCreatePath(), params));
   };
 
-  const place = current.space ? 'server' : 'room';
-  const banned = current.kind === 'banned' || current.kind === 'retry';
-  const used = banned ? appealsUsed(mx, current.roomId) : 0;
-  const pending = banned && !appealSent && !!openAppealFor(mx, current.roomId);
-  const canAppeal = banned && current.mods.length > 0 && used < MAX_APPEALS && !pending;
-
   let title = `You were ${current.kind} from ${current.name}`;
   let body = `${current.by} removed you from this ${place}. You may rejoin this ${place} if needed.`;
   if (current.kind === 'banned') {
@@ -300,7 +313,7 @@ export function RemovedNotice() {
     body = `The mods of ${current.name} turned down your last appeal, so appeals for this server are now closed.`;
   }
 
-  if (appealing) {
+  if (showAppeal) {
     title = `Appeal your ban from ${current.name}`;
     body = `Tell the mods why you should be unbanned. This is appeal ${
       used + 1
@@ -323,7 +336,7 @@ export function RemovedNotice() {
             <Box direction="Column" gap="400" style={{ padding: config.space.S500 }}>
               <Text size="H4">{title}</Text>
               <Text size="T300">{body}</Text>
-              {!appealing && current.reason && (
+              {!showAppeal && current.reason && (
                 <Box
                   direction="Column"
                   gap="100"
@@ -339,7 +352,7 @@ export function RemovedNotice() {
                   </Text>
                 </Box>
               )}
-              {appealing && (
+              {showAppeal && (
                 <TextArea
                   value={appealText}
                   onChange={(evt: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -353,7 +366,7 @@ export function RemovedNotice() {
                   disabled={busy}
                 />
               )}
-              {appealing && current.mods.length > 0 && (
+              {showAppeal && current.mods.length > 0 && (
                 <Box direction="Column" gap="200">
                   <Text size="L400">Your appeal goes to</Text>
                   {current.mods.map((mod) => (
@@ -399,7 +412,7 @@ export function RemovedNotice() {
                   <b>{error}</b>
                 </Text>
               )}
-              {appealing ? (
+              {showAppeal ? (
                 <Box direction="Column" gap="200">
                   <Button
                     variant="Primary"

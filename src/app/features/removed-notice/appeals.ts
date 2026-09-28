@@ -28,6 +28,11 @@ export const getMods = (mx: MatrixClient, room: Room | null): Mod[] => {
   Object.entries<number>(pl.users ?? {}).forEach(([id, level]) => {
     if (level >= need) ids.add(id);
   });
+  // Whoever banned you can unban you, and their ban is often all the app still has.
+  const mine = room.getMember(myId)?.events.member;
+  if (mine?.getContent().membership === Membership.Ban && mine.getSender()) {
+    ids.add(mine.getSender() as string);
+  }
   ids.delete(myId);
   return [...ids].slice(0, 8).map((id) => ({ id, name: room.getMember(id)?.name ?? id }));
 };
