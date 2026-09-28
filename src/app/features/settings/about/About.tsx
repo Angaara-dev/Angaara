@@ -7,7 +7,7 @@ import { SettingTile } from '../../../components/setting-tile';
 import AngaaraSVG from '../../../../../public/res/svg/angaara.svg';
 import { clearCacheAndReload } from '../../../../client/initMatrix';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { BRAND_NAME, SUPPORT_URL, TERMS_URL } from '../../../brand';
+import { BRAND_NAME, SECURITY_URL, SUPPORT_URL, TERMS_URL } from '../../../brand';
 import { SettingsPageHeader } from '../SettingsPageHeader';
 
 type AboutProps = {
@@ -98,6 +98,35 @@ export function About({ requestClose }: AboutProps) {
                         before={<Icon src={Icons.Heart} size="100" filled />}
                       >
                         <Text size="B300">Support</Text>
+                      </Button>
+                    }
+                  />
+                </SequenceCard>
+              </Box>
+              <Box direction="Column" gap="100">
+                <Text size="L400">Privacy &amp; Security</Text>
+                <SequenceCard
+                  className={SequenceCardStyle}
+                  variant="SurfaceVariant"
+                  direction="Column"
+                  gap="400"
+                >
+                  <SettingTile
+                    title="Security Center"
+                    description="See how we handle your privacy and security."
+                    after={
+                      <Button
+                        as="a"
+                        href={SECURITY_URL}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        variant="Secondary"
+                        fill="Soft"
+                        size="300"
+                        radii="300"
+                        before={<Icon src={Icons.Shield} size="100" filled />}
+                      >
+                        <Text size="B300">Open</Text>
                       </Button>
                     }
                   />

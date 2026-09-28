@@ -87,12 +87,13 @@ function PhoneScrollFeature() {
 function XpReporter() {
   const mx = useMatrixClient();
   const [earnXp] = useSetting(settingsAtom, 'earnXp');
+  const [privateMode] = useSetting(settingsAtom, 'privateMode');
   const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
-    if (!earnXp || unavailable) return undefined;
+    if (!earnXp || privateMode || unavailable) return undefined;
     return startXpReporter(mx, () => setUnavailable(true));
-  }, [mx, earnXp, unavailable]);
+  }, [mx, earnXp, privateMode, unavailable]);
 
   return null;
 }

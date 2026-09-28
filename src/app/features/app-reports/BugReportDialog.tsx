@@ -27,6 +27,7 @@ import {
 import { stopPropagation } from '../../utils/keyboard';
 import { BUG_TYPES, BugType, bugTypeLabel, sendBugReport } from './reports';
 import { MarkdownText } from './MarkdownText';
+import { isPrivateMode, PRIVATE_MODE_MESSAGE } from '../../utils/privateMode';
 
 const MAX_TITLE = 120;
 const MAX_BODY = 5000;
@@ -161,6 +162,11 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
                 direction="Column"
                 gap="400"
               >
+                {isPrivateMode() && (
+                  <Text size="T200" style={{ color: color.Warning.Main }}>
+                    {PRIVATE_MODE_MESSAGE}
+                  </Text>
+                )}
                 <Text size="T200" priority="300">
                   Anonymous: your account, user ID and rooms aren&apos;t sent. Only what you write
                   here, the app version and your browser.
@@ -250,7 +256,7 @@ export function BugReportDialog({ onClose }: { onClose: () => void }) {
                 <Button
                   type="submit"
                   variant="Primary"
-                  disabled={!ready || sending}
+                  disabled={!ready || sending || isPrivateMode()}
                   before={sending && <Spinner size="100" variant="Primary" fill="Solid" />}
                 >
                   <Text size="B400">Send Report</Text>

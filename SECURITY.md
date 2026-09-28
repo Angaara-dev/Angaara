@@ -1,5 +1,7 @@
 # Security Policy
 
+How Angaara handles encryption and your data: **https://security.angaara.app**
+
 ## Supported versions
 
 Only the latest version gets security fixes. That's the `angaara` branch, which is what runs on https://angaara.app. Older builds and self-hosted copies should update to the latest `angaara`.

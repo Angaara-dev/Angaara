@@ -32,6 +32,7 @@ export interface Settings {
   // Phones only: fling speed limit from 1 (calmest) to 10 (native scrolling).
   phoneScrollSpeed: number;
   hideActivity: boolean;
+  privateMode: boolean;
 
   isPeopleDrawer: boolean;
   memberSortFilterIndex: number;
@@ -72,6 +73,7 @@ const defaultSettings: Settings = {
   phoneMessageScale: 100,
   phoneScrollSpeed: 5,
   hideActivity: false,
+  privateMode: false,
 
   isPeopleDrawer: true,
   memberSortFilterIndex: 0,

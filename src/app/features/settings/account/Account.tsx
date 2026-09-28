@@ -7,6 +7,7 @@ import { ContactInformation } from './ContactInfo';
 import { IgnoredUserList } from './IgnoredUserList';
 import { SettingsPageHeader } from '../SettingsPageHeader';
 import { Experience } from './Experience';
+import { PrivateMode } from './PrivateMode';
 
 type AccountProps = {
   requestClose: () => void;
@@ -24,6 +25,7 @@ export function Account({ requestClose }: AccountProps) {
               <MatrixId />
               <ContactInformation />
               <IgnoredUserList />
+              <PrivateMode />
             </Box>
           </PageContent>
         </Scroll>

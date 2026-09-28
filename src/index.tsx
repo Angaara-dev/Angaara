@@ -19,6 +19,7 @@ import { pushSessionToSW } from './sw-session';
 import { getFallbackSession } from './app/state/sessions';
 import { installBackClosesPanels } from './app/utils/backClosesPanels';
 import { installPageShiftGuard } from './app/utils/pageShiftGuard';
+import { installPrivateModeGuard } from './app/utils/privateMode';
 
 document.body.classList.add(configClass, varsClass);
 
@@ -68,6 +69,7 @@ window.addEventListener('vite:preloadError', (evt) => {
   window.location.reload();
 });
 
+installPrivateModeGuard();
 installPageShiftGuard();
 installBackClosesPanels();
 
