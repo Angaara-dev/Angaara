@@ -6,4 +6,6 @@ export const SUPPORT_URL = '';
 export const TERMS_URL = `${import.meta.env.BASE_URL}terms.html`;
 // Separate site (Angaara-dev/security-docs), so it keeps its own address if the app moves.
 export const SECURITY_URL = 'https://security.angaara.app';
+// Supporter site; signing in there needs an Angaara account passkey.
+export const SUPPORTERS_URL = 'https://supporters.angaara.app';
 export const SOURCE_URL = 'https://github.com/Angaara-dev/Angaara';

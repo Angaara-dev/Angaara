@@ -70,6 +70,12 @@ const ensureTables = (db) => {
           linked INTEGER NOT NULL
         )`
       ),
+      // Set by the supporters Worker; an "until" in the past means Supporter has ended.
+      db.prepare(
+        `CREATE TABLE IF NOT EXISTS supporter_terms (
+          account_id TEXT PRIMARY KEY, since INTEGER NOT NULL, until INTEGER
+        )`
+      ),
       db.prepare(
         `CREATE TABLE IF NOT EXISTS angaara_challenges (
           user_id TEXT PRIMARY KEY,
@@ -90,10 +96,13 @@ const ensureTables = (db) => {
 const accountOf = (db, userId) =>
   db
     .prepare(
-      `SELECT a.* FROM angaara_links l JOIN angaara_accounts a ON a.id = l.account_id
-       WHERE l.user_id = ?`
+      `SELECT a.id, a.username, a.created,
+         a.supporter = 1 AND (t.until IS NULL OR t.until > ?2) AS supporter
+       FROM angaara_links l JOIN angaara_accounts a ON a.id = l.account_id
+       LEFT JOIN supporter_terms t ON t.account_id = a.id
+       WHERE l.user_id = ?1`
     )
-    .bind(userId)
+    .bind(userId, Date.now())
     .first();
 
 // Public: only whether someone is a supporter, never their username or other accounts.
@@ -107,6 +116,7 @@ const removeAccount = (db, accountId) =>
   db.batch([
     db.prepare('DELETE FROM angaara_links WHERE account_id = ?').bind(accountId),
     db.prepare('DELETE FROM angaara_passkeys WHERE account_id = ?').bind(accountId),
+    db.prepare('DELETE FROM supporter_terms WHERE account_id = ?').bind(accountId),
     db.prepare('DELETE FROM angaara_accounts WHERE id = ?').bind(accountId),
   ]);
 

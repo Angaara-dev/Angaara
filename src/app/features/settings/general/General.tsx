@@ -56,6 +56,7 @@ import { PHONE_SCROLL_NATIVE } from '../../../utils/touchScroll';
 import { SettingsPageHeader } from '../SettingsPageHeader';
 import { usePhone } from '../../../hooks/useScreenSize';
 import { DeleteAccount } from './DeleteAccount';
+import { SUPPORTERS_URL } from '../../../brand';
 
 type ThemeSelectorProps = {
   themeNames: Record<string, string>;
@@ -1163,6 +1164,35 @@ function Messages() {
   );
 }
 
+function Supporters() {
+  return (
+    <Box direction="Column" gap="100">
+      <Text size="L400">For Supporters ❤️</Text>
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Supporter Page"
+          description="Sign in with your Angaara account passkey. Without an Angaara account, the page won't let you in."
+          after={
+            <Button
+              as="a"
+              href={SUPPORTERS_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              variant="Secondary"
+              fill="Soft"
+              size="300"
+              radii="300"
+              before={<Icon src={Icons.Heart} size="100" filled />}
+            >
+              <Text size="B300">Open</Text>
+            </Button>
+          }
+        />
+      </SequenceCard>
+    </Box>
+  );
+}
+
 type GeneralProps = {
   requestClose: () => void;
 };
@@ -1178,6 +1208,7 @@ export function General({ requestClose }: GeneralProps) {
               <DateAndTime />
               <Editor />
               <Messages />
+              <Supporters />
               <DeleteAccount />
             </Box>
           </PageContent>
