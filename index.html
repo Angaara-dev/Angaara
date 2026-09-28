@@ -24,10 +24,16 @@
     <meta name="theme-color" content="#0E0E10" />
     <!-- Angaara has its own themes; stops Dark Reader from inverting them. -->
     <meta name="darkreader-lock" />
-    <!-- Orange while the app loads, instead of the browser's blank white; the theme clears it. -->
+    <!-- Dark with an ember glow at the bottom while the app loads; the theme clears it. -->
     <style>
+      html:has(body[data-loading]) {
+        background-color: #0e0e10;
+      }
       body[data-loading] {
-        background-color: #ff6b3d;
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(120% 45% at 50% 100%, rgba(255, 107, 61, 0.22), transparent 70%)
+          #0e0e10;
       }
     </style>
 

@@ -43,8 +43,19 @@ export const BubbleAvatarBase = style({
   paddingTop: 0,
 });
 
+// A soft ring and glow in the accent colour, which inside a server is that server's accent.
+const avatarGlow = (ring: number, glow: number) =>
+  `0 0 0 ${toRem(2)} color-mix(in srgb, ${color.Primary.Main} ${ring}%, transparent), 0 0 ${toRem(
+    12
+  )} color-mix(in srgb, ${color.Primary.Main} ${glow}%, transparent)`;
+
 export const MessageAvatar = style({
   cursor: 'pointer',
+  boxShadow: avatarGlow(45, 25),
+  transition: 'box-shadow 160ms ease',
+  selectors: {
+    '&:hover, &:focus-visible': { boxShadow: avatarGlow(80, 45) },
+  },
   '@media': {
     [PHONE]: { selectors: { '&&': { width: phoneSize(44), height: phoneSize(44) } } },
   },
