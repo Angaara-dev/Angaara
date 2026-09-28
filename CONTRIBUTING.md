@@ -1,6 +1,6 @@
 # Contributing to Angaara
 
-Thanks for wanting to help build Angaara! Here's how to get involved.
+❤️ Thank you for considering contributing to Angaara!
 
 ## Reporting bugs and requesting features
 

@@ -1,0 +1,27 @@
+name: Bot SDK
+
+on:
+  pull_request:
+    paths:
+      - 'bot-sdk/**'
+      - '.github/workflows/bot-sdk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and clippy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bot-sdk
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Rust
+        run: rustup toolchain install stable --profile minimal --component clippy && rustup default stable
+      - name: Test
+        run: cargo test --locked
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings

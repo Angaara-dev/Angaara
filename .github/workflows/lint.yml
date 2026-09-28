@@ -1,0 +1,36 @@
+name: Lint
+
+on:
+  pull_request:
+    types: ['opened', 'synchronize', 'reopened']
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint changed files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit plus its base parent, to diff against.
+          fetch-depth: 2
+      - name: Setup node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.node-version'
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
+      # Only files this PR touches, since older code isn't all lint-clean yet.
+      - name: List changed files
+        run: git diff --name-only -z --diff-filter=ACMR HEAD^1 HEAD > changed.txt
+      - name: ESLint
+        run: |
+          grep -zE '^src/.*\.(ts|tsx|js|jsx)$' changed.txt > eslint.txt || true
+          if [ -s eslint.txt ]; then xargs -0 npx eslint < eslint.txt; fi
+      - name: Prettier
+        run: |
+          if [ -s changed.txt ]; then xargs -0 npx prettier --check --ignore-unknown < changed.txt; fi
