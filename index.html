@@ -24,9 +24,9 @@
     <meta name="theme-color" content="#0E0E10" />
     <!-- Angaara has its own themes; stops Dark Reader from inverting them. -->
     <meta name="darkreader-lock" />
-    <!-- Orange while the app loads, instead of the browser's blank white; themes take over after. -->
+    <!-- Orange while the app loads, instead of the browser's blank white; the theme clears it. -->
     <style>
-      body:not([class]) {
+      body[data-loading] {
         background-color: #ff6b3d;
       }
     </style>
@@ -91,7 +91,7 @@
       href="./public/res/apple/apple-touch-icon-180x180.png"
     />
   </head>
-  <body id="appBody">
+  <body id="appBody" data-loading>
     <script>
       window.global ||= window;
     </script>

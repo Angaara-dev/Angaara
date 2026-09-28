@@ -78,6 +78,7 @@ import { UserPanel } from '../UserPanel';
 import { usePhone } from '../../../hooks/useScreenSize';
 import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
 import { getAppeal, getAppellant } from '../../../features/removed-notice/appeals';
+import { useIsAppDeveloper } from '../../../features/app-reports/AppReports';
 
 type HomeMenuProps = {
   requestClose: () => void;
@@ -242,6 +243,7 @@ export function Home() {
   const githubAccount = useAtomValue(githubAccountAtom);
   const linkedRepos = useAtomValue(linkedReposAtom);
   const hasLinkedRepos = !!githubAccount && linkedRepos.length > 0;
+  const appDeveloper = useIsAppDeveloper();
   const navigate = useNavigate();
 
   const createRoomSelected = useHomeCreateSelected();
@@ -384,6 +386,7 @@ export function Home() {
                 {!closedCategories.has(DEVELOPER_CATEGORY_ID) &&
                   (Object.keys(DEVELOPER_PAGES) as DeveloperSection[])
                     .filter((section) => section !== 'repos' || hasLinkedRepos)
+                    .filter((section) => section !== 'reports' || appDeveloper)
                     .map((section) => <DeveloperNavItem key={section} section={section} />)}
               </NavCategory>
             )}

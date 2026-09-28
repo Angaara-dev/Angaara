@@ -22,11 +22,11 @@ import {
   RoomEvent,
   RoomStateEvent,
 } from 'matrix-js-sdk';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { getMxIdServer } from '../../utils/matrix';
 import { Membership } from '../../../types/matrix/room';
-import { getHomeRoomPath } from '../../pages/pathUtils';
+import { getHomePath, getHomeRoomPath } from '../../pages/pathUtils';
 import {
   APPEAL_STATE,
   appealsEnabled,
@@ -44,6 +44,7 @@ import {
   DEFAULT_APPEALS,
   Mod,
   openAppealFor,
+  parentServer,
   pingedSettings,
   receivePing,
   rememberRooms,
@@ -77,21 +78,34 @@ type Notice = {
 };
 
 const SEEN_KEY = 'angaara_seen_removals';
+// Also kept in account data, so each notice shows once across all your devices.
+const SEEN_ACCOUNT_KEY = 'io.angaara.seen_removals';
 // Anything older was either seen elsewhere or is too stale to bring up.
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
-const getSeen = (): string[] => {
+const getSeen = (mx: MatrixClient): string[] => {
+  let local: string[] = [];
   try {
-    return JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]');
+    local = JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]');
   } catch {
-    return [];
+    // Storage blocked; account data still knows.
   }
+  const synced = mx.getAccountData(SEEN_ACCOUNT_KEY as never)?.getContent()?.keys;
+  return Array.isArray(synced) ? [...local, ...synced] : local;
 };
-const markSeen = (key: string) => {
+const markSeen = (mx: MatrixClient, key: string) => {
+  const seen = [...new Set([...getSeen(mx), key])].slice(-200);
   try {
-    localStorage.setItem(SEEN_KEY, JSON.stringify([...getSeen(), key].slice(-200)));
+    localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
   } catch {
-    // Storage blocked; it may show again next time.
+    // Storage blocked; account data still remembers.
+  }
+  // Retries are one-off prompts, not events other devices would show.
+  if (!key.startsWith('retry')) {
+    mx.setAccountData(
+      SEEN_ACCOUNT_KEY as never,
+      { keys: seen.filter((k) => !k.startsWith('retry')) } as never
+    ).catch(() => undefined);
   }
 };
 
@@ -143,9 +157,9 @@ const outcomeNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   const decider = event?.getSender();
   return {
     key: event?.getId() ?? `${room.roomId}${appeal.status}`,
-    roomId: appeal.space,
-    name: appeal.space_name,
-    space: true,
+    roomId: appeal.room ?? appeal.space,
+    name: appeal.room ? appeal.room_name ?? 'the room' : appeal.space_name,
+    space: !appeal.room,
     kind: appeal.status === 'open' ? 'archived' : appeal.status,
     byId: decider,
     mods: [],
@@ -158,6 +172,7 @@ const outcomeNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
 export function RemovedNotice() {
   const mx = useMatrixClient();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [queue, setQueue] = useState<Notice[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -169,7 +184,7 @@ export function RemovedNotice() {
 
   useEffect(() => {
     const add = (notice?: Notice) => {
-      if (!notice || getSeen().includes(notice.key)) return;
+      if (!notice || getSeen(mx).includes(notice.key)) return;
       const pinged = withPing(notice);
       setQueue((q) => [...q.filter((n) => n.key !== pinged.key), pinged]);
     };
@@ -255,8 +270,9 @@ export function RemovedNotice() {
   const currentRoomId = current?.roomId ?? '';
   const needsInfo =
     !!current &&
-    (current.kind === 'banned' || current.kind === 'retry') &&
-    (unnamed(current.name) || current.mods.length === 0 || current.appealsOn === undefined);
+    (((current.kind === 'banned' || current.kind === 'retry') &&
+      (unnamed(current.name) || current.mods.length === 0 || current.appealsOn === undefined)) ||
+      (current.kind === 'kicked' && unnamed(current.name)));
   const [lookingUp, setLookingUp] = useState<string>();
   useEffect(() => {
     if (!currentKey || !needsInfo) return;
@@ -270,6 +286,7 @@ export function RemovedNotice() {
                   ...n,
                   roomId: info.roomId,
                   name: unnamed(n.name) && info.name ? info.name : n.name,
+                  space: info.space ?? n.space,
                   mods: n.mods.length > 0 ? n.mods : info.mods,
                   appealsOn: n.appealsOn ?? info.enabled,
                   maxAppeals: n.maxAppeals ?? info.max,
@@ -283,7 +300,8 @@ export function RemovedNotice() {
   }, [mx, currentKey, currentRoomId, needsInfo]);
 
   // Asks the bot for the server's current settings, since the app's copy may predate the ban.
-  const currentBanned = current?.kind === 'banned' || current?.kind === 'retry';
+  const currentBanned =
+    (current?.kind === 'banned' || current?.kind === 'retry') && current?.space === true;
   const [checkingLive, setCheckingLive] = useState<string>();
   useEffect(() => {
     if (!currentKey || !currentBanned || !currentRoomId.startsWith('!')) return;
@@ -310,18 +328,23 @@ export function RemovedNotice() {
 
   const place = current.space ? 'server' : 'room';
   const banned = current.kind === 'banned' || current.kind === 'retry';
-  const used = banned ? appealsUsed(mx, current.roomId) : 0;
-  const limit = current.maxAppeals ?? DEFAULT_APPEALS;
-  const pending = banned && !appealSent && !!openAppealFor(mx, current.roomId);
-  const canAppeal =
-    banned && current.appealsOn === true && current.mods.length > 0 && used < limit && !pending;
+  // A room ban is appealed to the mods of the server it's in, under that server's settings.
+  const server = current.space ? undefined : parentServer(mx, current.roomId);
+  const appealable = banned && (current.space || !!server);
+  const mods = server ? getMods(mx, server) : current.mods;
+  const appealsOn = server ? appealsEnabled(server) : current.appealsOn;
+  const used = appealable ? appealsUsed(mx, current.roomId) : 0;
+  const limit = (server ? appealLimit(server) : current.maxAppeals) ?? DEFAULT_APPEALS;
+  const pending = appealable && !appealSent && !!openAppealFor(mx, current.roomId);
+  const canAppeal = appealable && appealsOn === true && mods.length > 0 && used < limit && !pending;
   const ticket = sentRoomId ?? (pending ? openAppealFor(mx, current.roomId)?.roomId : undefined);
   // Straight to the appeal, unless there's none to make.
   const showAppeal = appealing && canAppeal && !appealSent;
   const looking = banned && (lookingUp === current.key || checkingLive === current.key);
+  const lookingForMods = appealable && looking;
 
   const dismiss = () => {
-    markSeen(current.key);
+    markSeen(mx, current.key);
     if (current.appealRoomId) mx.leave(current.appealRoomId).catch(() => undefined);
     // Once appeals are over, the server is dropped from the app entirely.
     if (current.kind === 'closed' || (banned && used >= limit && !pending)) {
@@ -334,6 +357,15 @@ export function RemovedNotice() {
     setPickedMod(undefined);
     setAppealing(false);
     setQueue((q) => q.slice(1));
+  };
+
+  // Still looking at the place you were removed from would leave you on its join page.
+  const okay = () => {
+    dismiss();
+    const room = mx.getRoom(current.roomId);
+    const addresses = [current.roomId, room?.getCanonicalAlias()].filter(Boolean) as string[];
+    const decoded = decodeURIComponent(pathname);
+    if (addresses.some((a) => decoded.includes(a))) navigate(getHomePath());
   };
 
   const run = async (task: () => Promise<unknown>, after: (result: unknown) => void) => {
@@ -358,10 +390,13 @@ export function RemovedNotice() {
       () =>
         submitAppeal(
           mx,
-          { roomId: current.roomId, name: current.name },
-          current.mods.filter((m) => m.id === pickedMod),
+          server
+            ? { roomId: server.roomId, name: server.name }
+            : { roomId: current.roomId, name: current.name },
+          mods.filter((m) => m.id === pickedMod),
           appealText.trim(),
-          limit
+          limit,
+          server ? { roomId: current.roomId, name: current.name } : undefined
         ),
       (roomId) => {
         setAppealSent(true);
@@ -376,7 +411,9 @@ export function RemovedNotice() {
     navigate(getHomeRoomPath(roomId));
   };
 
-  let title = `You were ${current.kind} from ${current.name}`;
+  // Never show a raw room ID; until a name turns up, say what kind of place it was.
+  const shownName = unnamed(current.name) ? `this ${place}` : current.name;
+  let title = `You were ${current.kind} from ${shownName}`;
   let body = `${current.by} removed you from this ${place}. You may rejoin this ${place} if needed.`;
   if (current.kind === 'banned') {
     body = `${current.by} removed you from this ${place}. You can't rejoin until you're unbanned.`;
@@ -385,23 +422,25 @@ export function RemovedNotice() {
     body = "You can't rejoin until you're unbanned.";
   } else if (current.kind === 'accepted') {
     title = 'Your appeal was accepted';
-    body = `You've been unbanned from ${current.name}. You can rejoin now.`;
+    body = `You've been unbanned from ${shownName}. You can rejoin now.`;
   } else if (current.kind === 'denied') {
     title = 'Your appeal was denied';
-    body = `The mods of ${current.name} turned down your appeal. You have ${
+    body = `The mods of ${shownName} turned down your appeal. You have ${
       current.appealsLeft
     } appeal${current.appealsLeft === 1 ? '' : 's'} left.`;
   } else if (current.kind === 'closed') {
     title = 'Appeals closed';
-    body = `The mods of ${current.name} turned down your last appeal, so appeals for this server are now closed.`;
+    body = `The mods of ${shownName} turned down your last appeal, so appeals for this server are now closed.`;
   } else if (current.kind === 'archived') {
     title = 'Your appeal was closed';
-    body = `The mods of ${current.name} closed your appeal without a decision.`;
+    body = `The mods of ${shownName} closed your appeal without a decision.`;
   }
 
   if (showAppeal) {
-    title = `Appeal your ban from ${current.name}`;
-    body = `Tell the mods why you should be unbanned. This is appeal ${used + 1} of ${limit}.`;
+    title = `Appeal your ban from ${shownName}`;
+    body = `Tell the mods${
+      server ? ` of ${server.name}` : ''
+    } why you should be unbanned. This is appeal ${used + 1} of ${limit}.`;
   }
 
   return (
@@ -450,10 +489,10 @@ export function RemovedNotice() {
                   disabled={busy}
                 />
               )}
-              {showAppeal && current.mods.length > 0 && (
+              {showAppeal && mods.length > 0 && (
                 <Box direction="Column" gap="200">
                   <Text size="L400">Pick a mod to send it to</Text>
-                  {current.mods.map((mod) => {
+                  {mods.map((mod) => {
                     const picked = pickedMod === mod.id;
                     return (
                       <Box
@@ -505,26 +544,26 @@ export function RemovedNotice() {
                   <b>Your appeal is waiting on the mods.</b>
                 </Text>
               )}
-              {banned && !appealSent && !pending && used >= limit && (
+              {appealable && !appealSent && !pending && used >= limit && (
                 <Text size="T300" priority="300">
                   You&apos;ve used all {limit} of your appeals for this {place}.
                 </Text>
               )}
-              {looking && (
+              {lookingForMods && (
                 <Box alignItems="Center" gap="200">
                   <Spinner size="100" variant="Secondary" />
                   <Text size="T300">Finding who can unban you…</Text>
                 </Box>
               )}
-              {banned && !looking && current.appealsOn === false && (
+              {appealable && !looking && appealsOn === false && (
                 <Text size="T300" priority="300">
-                  This {place} doesn&apos;t take ban appeals.
+                  This {server ? 'server' : place} doesn&apos;t take ban appeals.
                 </Text>
               )}
-              {banned &&
+              {appealable &&
                 !looking &&
-                current.appealsOn === true &&
-                current.mods.length === 0 &&
+                appealsOn === true &&
+                mods.length === 0 &&
                 used < limit && (
                   <Text size="T300" priority="300">
                     Couldn&apos;t find who can unban you, so you can&apos;t appeal from here.
@@ -578,7 +617,7 @@ export function RemovedNotice() {
                     variant="Secondary"
                     fill="Soft"
                     radii="400"
-                    onClick={dismiss}
+                    onClick={okay}
                     disabled={busy}
                   >
                     <Text size="B400">Okay</Text>

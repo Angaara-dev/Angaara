@@ -13,6 +13,7 @@ import {
   getAppeal,
   getAppellant,
   appealMax,
+  appealLabel,
 } from './appeals';
 
 // Sits above the message box in an appeal ticket: the mods decide or close it, the
@@ -52,10 +53,13 @@ export function AppealBar({ room }: { room: Room }) {
     setBusy(undefined);
   };
 
-  let text = `${name} is appealing their ban from ${appeal.space_name} (appeal ${
-    appeal.attempt
-  } of ${appealMax(appeal)}).`;
-  if (mine) text = `Your appeal for ${appeal.space_name}. The mods will reply here.`;
+  const from = appeal.room
+    ? `${mx.getRoom(appeal.room)?.name ?? appeal.room_name ?? 'a room'} in ${appeal.space_name}`
+    : appeal.space_name;
+  let text = `${name} is appealing their ban from ${from} (appeal ${appeal.attempt} of ${appealMax(
+    appeal
+  )}).`;
+  if (mine) text = `Your appeal for ${from}. The mods will reply here.`;
   if (appeal.status === 'accepted') text = `Appeal accepted. ${name} has been unbanned.`;
   if (appeal.status === 'denied') text = 'Appeal denied.';
   if (appeal.status === 'closed') text = 'Appeal denied. Appeals for this server are now closed.';
@@ -73,9 +77,12 @@ export function AppealBar({ room }: { room: Room }) {
       }}
     >
       <Box alignItems="Center" gap="200">
-        <Text size="T300" style={{ flexGrow: 1 }}>
-          {text}
-        </Text>
+        <Box direction="Column" gap="100" grow="Yes">
+          <Text size="L400" priority="300">
+            {appealLabel(mx, appeal)}
+          </Text>
+          <Text size="T300">{text}</Text>
+        </Box>
         {appeal.archived && (
           <Text size="L400" priority="300">
             Archived

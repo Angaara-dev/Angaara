@@ -8,6 +8,7 @@ import { DeveloperBot, DeveloperBuild } from '../../../features/developer-portal
 import { DeveloperDocs } from '../../../features/developer-portal/DeveloperDocs';
 import { DeveloperRepos } from '../../../features/developer-portal/github/GitHubPanels';
 import { DeveloperSection } from '../../paths';
+import { AppReports } from '../../../features/app-reports/AppReports';
 import { getHomeDeveloperPath } from '../../pathUtils';
 import { DEVELOPER_PAGES } from './developerPages';
 import { useDevProjectLoader } from '../../../features/developer-portal/useDevProjects';
@@ -63,6 +64,7 @@ export function HomeDeveloperTools() {
                 </ProjectGate>
               )}
               {current === 'docs' && <DeveloperDocs />}
+              {current === 'reports' && <AppReports />}
             </PageContentCenter>
           </PageContent>
         </Scroll>

@@ -8,4 +8,6 @@ export const DEVELOPER_PAGES: Record<DeveloperSection, { title: string; icon: Ic
   // Only listed in the sidebar once a GitHub repo is connected.
   repos: { title: 'Linked Developer Repos', icon: Icons.Link },
   docs: { title: 'Docs', icon: Icons.File },
+  // Only listed for accounts with the developer badge.
+  reports: { title: 'App Reports', icon: Icons.Warning },
 };

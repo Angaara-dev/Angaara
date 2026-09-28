@@ -74,6 +74,7 @@ import { SearchModalRenderer } from '../features/search';
 import { getFallbackSession } from '../state/sessions';
 import { CallStatusRenderer } from './CallStatusRenderer';
 import { CallEmbedProvider } from '../components/CallEmbedProvider';
+import { RouteCrashScreen } from '../features/app-reports/CrashScreen';
 
 // Only developers open this page, so it and the embedded SDK source load on demand.
 const HomeDeveloperTools = lazy(() =>
@@ -85,7 +86,8 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
   const mobile = screenSize === ScreenSize.Mobile;
 
   const routes = createRoutesFromElements(
-    <Route>
+    // Any page that throws lands on the friendly crash screen instead of a raw error.
+    <Route errorElement={<RouteCrashScreen />}>
       <Route
         index
         loader={() => {

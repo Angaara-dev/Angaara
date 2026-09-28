@@ -27,7 +27,31 @@ export type AppealContent = {
   max?: number;
   // Set once every mod has been invited to read the archived ticket.
   shared?: boolean;
+  // A ban from one room in the server, which the server's mods handle.
+  room?: string;
+  room_name?: string;
 };
+
+// What a ticket is about, for labels: "Room: #general" or "Server: Angaara".
+export const appealLabel = (mx: MatrixClient, appeal: AppealContent): string =>
+  appeal.room
+    ? `Room: ${mx.getRoom(appeal.room)?.name ?? appeal.room_name ?? 'a room'}`
+    : `Server: ${appeal.space_name}`;
+
+// What a ticket is about: the room it names, or the whole server.
+export const appealTarget = (appeal: AppealContent): string => appeal.room ?? appeal.space;
+
+const isChildOf = (space: Room | null | undefined, roomId: string): boolean =>
+  !!space?.currentState.getStateEvents('m.space.child', roomId)?.getContent()?.via;
+
+// The joined server a room belongs to, whose mods handle appeals for it.
+export const parentServer = (mx: MatrixClient, roomId: string): Room | undefined =>
+  mx
+    .getRooms()
+    .find(
+      (r: Room) =>
+        r.isSpaceRoom() && r.getMyMembership() === Membership.Join && isChildOf(r, roomId)
+    );
 
 export type Mod = { id: string; name: string };
 
@@ -81,7 +105,10 @@ export const isBanError = (e: unknown) =>
 
 // Servers forget banned members fast, so each joined room's name and mods are kept here.
 const REMEMBERED_KEY = 'angaara_room_mods';
-type Remembered = Record<string, { name: string; mods: Mod[]; enabled?: boolean; max?: number }>;
+type Remembered = Record<
+  string,
+  { name: string; mods: Mod[]; enabled?: boolean; max?: number; space?: boolean }
+>;
 const recallAll = (): Remembered => {
   try {
     return JSON.parse(localStorage.getItem(REMEMBERED_KEY) ?? '{}');
@@ -100,6 +127,7 @@ export const rememberRooms = (mx: MatrixClient) => {
         mods,
         enabled: appealsEnabled(room),
         max: appealLimit(room),
+        space: room.isSpaceRoom(),
       };
   });
   try {
@@ -147,7 +175,14 @@ const leftRoomState = async (mx: MatrixClient, roomId: string): Promise<RawEvent
 export const fetchBannedRoom = async (
   mx: MatrixClient,
   roomIdOrAlias: string
-): Promise<{ roomId: string; name?: string; mods: Mod[]; enabled: boolean; max: number }> => {
+): Promise<{
+  roomId: string;
+  name?: string;
+  mods: Mod[];
+  enabled: boolean;
+  max: number;
+  space?: boolean;
+}> => {
   const roomId = roomIdOrAlias.startsWith('#')
     ? (await mx.getRoomIdForAlias(roomIdOrAlias)).room_id
     : roomIdOrAlias;
@@ -157,7 +192,8 @@ export const fetchBannedRoom = async (
   let mods = remembered?.mods ?? getMods(mx, local);
   let enabled = remembered?.enabled ?? (local ? appealsEnabled(local) : undefined);
   let max = remembered?.max ?? (local ? appealLimit(local) : undefined);
-  if (!name || mods.length === 0 || enabled === undefined) {
+  let space = remembered?.space ?? local?.isSpaceRoom();
+  if (!name || mods.length === 0 || enabled === undefined || space === undefined) {
     const events = await leftRoomState(mx, roomId).catch(() => [] as RawEvent[]);
     const find = (type: string, key = '') =>
       events.filter((e) => e.type === type && e.state_key === key).pop();
@@ -165,6 +201,8 @@ export const fetchBannedRoom = async (
       name || find('m.room.name')?.content.name || find('m.room.canonical_alias')?.content.alias;
     enabled = enabled ?? find(StateEvent.AngaaraBanAppeals)?.content.enabled === true;
     max = max ?? clampAppeals(find(StateEvent.AngaaraBanAppeals)?.content.max);
+    const createType = find('m.room.create')?.content.type;
+    if (space === undefined && events.length > 0) space = createType === 'm.space';
     if (mods.length === 0) {
       const myId = mx.getSafeUserId();
       const pl = find('m.room.power_levels')?.content ?? {};
@@ -181,26 +219,26 @@ export const fetchBannedRoom = async (
         .map((id) => ({ id, name: find('m.room.member', id)?.content.displayname || id }));
     }
   }
-  if (!name) {
-    name = await mx.getRoomSummary(roomId).then(
-      (r: { name?: string }) => r.name,
-      () => undefined
-    );
+  if (!name || space === undefined) {
+    const summary = await mx.getRoomSummary(roomId).catch(() => undefined);
+    name = name || summary?.name;
+    if (space === undefined && summary) space = summary.room_type === 'm.space';
   }
-  return { roomId, name, mods, enabled: enabled === true, max: max ?? DEFAULT_APPEALS };
+  return { roomId, name, mods, enabled: enabled === true, max: max ?? DEFAULT_APPEALS, space };
 };
 
 export const appealsUsed = (mx: MatrixClient, spaceId: string): number =>
   mx.getAccountData(APPEALS_USED_KEY as never)?.getContent()?.[spaceId] ?? 0;
 
-// An appeal for this server that's still waiting on the mods.
-export const openAppealFor = (mx: MatrixClient, spaceId: string): Room | undefined =>
+// An appeal for this server or room that's still waiting on the mods.
+export const openAppealFor = (mx: MatrixClient, targetId: string): Room | undefined =>
   mx
     .getRooms()
     .find(
       (r: Room) =>
         r.getMyMembership() === Membership.Join &&
-        getAppeal(r)?.space === spaceId &&
+        !!getAppeal(r) &&
+        appealTarget(getAppeal(r) as AppealContent) === targetId &&
         getAppeal(r)?.status === 'open' &&
         !getAppeal(r)?.archived
     );
@@ -210,16 +248,21 @@ export const submitAppeal = async (
   space: { roomId: string; name: string },
   mods: Mod[],
   text: string,
-  max: number
+  max: number,
+  room?: { roomId: string; name: string }
 ) => {
-  const used = appealsUsed(mx, space.roomId);
-  if (used >= max) throw new Error("You've used all your appeals for this server.");
+  // Room bans are counted apart from the server's own.
+  const target = room?.roomId ?? space.roomId;
+  const used = appealsUsed(mx, target);
+  if (used >= max)
+    throw new Error(`You've used all your appeals for this ${room ? 'room' : 'server'}.`);
   const content: AppealContent = {
     space: space.roomId,
     space_name: space.name,
     attempt: used + 1,
     status: 'open',
     max,
+    ...(room ? { room: room.roomId, room_name: room.name } : {}),
   };
   // Newer room versions give the creator top power already and reject them in the list.
   const caps = await mx.getCapabilities().catch(() => undefined);
@@ -237,7 +280,7 @@ export const submitAppeal = async (
   });
   await mx.sendMessage(roomId, { msgtype: 'm.text', body: text } as never);
   const all = mx.getAccountData(APPEALS_USED_KEY as never)?.getContent() ?? {};
-  await mx.setAccountData(APPEALS_USED_KEY as never, { ...all, [space.roomId]: used + 1 } as never);
+  await mx.setAccountData(APPEALS_USED_KEY as never, { ...all, [target]: used + 1 } as never);
   return roomId;
 };
 
@@ -278,14 +321,17 @@ export const shareArchive = async (
   );
 };
 
-// Earlier appeals by this user for this server, in case the attempt number was tampered with.
-const pastAppeals = (mx: MatrixClient, user: string, spaceId: string, except: string) =>
-  mx
-    .getRooms()
-    .filter(
-      (r: Room) =>
-        r.roomId !== except && getAppellant(r) === user && getAppeal(r)?.space === spaceId
-    ).length;
+// Earlier appeals by this user for the same ban, in case the attempt number was tampered with.
+const pastAppeals = (mx: MatrixClient, user: string, appeal: AppealContent, except: string) =>
+  mx.getRooms().filter((r: Room) => {
+    const other = getAppeal(r);
+    return (
+      r.roomId !== except &&
+      getAppellant(r) === user &&
+      other?.space === appeal.space &&
+      appealTarget(other) === appealTarget(appeal)
+    );
+  }).length;
 
 export const APPEAL_NOTICES: Record<Exclude<AppealStatus, 'open'>, string> = {
   accepted: 'Appeal accepted, you have been unbanned.',
@@ -298,7 +344,7 @@ export const decideAppeal = async (mx: MatrixClient, room: Room, accept: boolean
   const appeal = getAppeal(room);
   const user = getAppellant(room);
   if (!appeal || !user) throw new Error('This is not an appeal.');
-  const attempt = Math.max(appeal.attempt, pastAppeals(mx, user, appeal.space, room.roomId) + 1);
+  const attempt = Math.max(appeal.attempt, pastAppeals(mx, user, appeal, room.roomId) + 1);
   // The server's current limit wins, so raising it gives pending appellants more tries.
   const space = mx.getRoom(appeal.space);
   const max = space ? appealLimit(space) : appealMax(appeal);
@@ -306,7 +352,11 @@ export const decideAppeal = async (mx: MatrixClient, room: Room, accept: boolean
   if (accept) status = 'accepted';
   else if (attempt >= max) status = 'closed';
 
-  if (accept) await mx.unban(appeal.space, user);
+  // The appellant wrote the ticket, so only unban a room that really is in this server.
+  if (accept && appeal.room && !isChildOf(space, appeal.room)) {
+    throw new Error("That room isn't part of this server anymore, so it can't be unbanned here.");
+  }
+  if (accept) await mx.unban(appeal.room ?? appeal.space, user);
   const decided: AppealContent = { ...appeal, attempt, status, max, archived: true };
   await mx.sendStateEvent(room.roomId, APPEAL_STATE as never, decided as never, '');
   await mx.sendMessage(room.roomId, { msgtype: 'm.notice', body: APPEAL_NOTICES[status] } as never);

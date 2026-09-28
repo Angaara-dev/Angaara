@@ -27,6 +27,7 @@ import {
   getAppeal,
   getAppellant,
   appealMax,
+  appealLabel,
   spaceAppeals,
 } from './appeals';
 
@@ -97,6 +98,11 @@ function Ticket({ room, onOpen }: TicketProps) {
         </Text>
         {opening && <Spinner size="50" variant="Secondary" />}
       </Box>
+      {appeal && (
+        <Text size="L400" priority="300">
+          {appealLabel(mx, appeal)}
+        </Text>
+      )}
       <Text size="T200" priority="300">
         {status}
         {appeal && ` · appeal ${appeal.attempt} of ${appealMax(appeal)}`}

@@ -24,7 +24,7 @@ import {
   toRem,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
-import { Room } from 'matrix-js-sdk';
+import { MatrixClient, Room } from 'matrix-js-sdk';
 import { isKeyHotkey } from 'is-hotkey';
 import { useNavigate } from 'react-router-dom';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
@@ -32,7 +32,8 @@ import { useSpaceOptionally } from '../../hooks/useSpace';
 import { useOpenUserRoomProfile } from '../../state/hooks/userRoomProfile';
 import { useGetMemberPowerLevel, usePowerLevelsContext } from '../../hooks/usePowerLevels';
 import { getPowers, usePowerLevelTags } from '../../hooks/usePowerLevelTags';
-import { useRoomCreators } from '../../hooks/useRoomCreators';
+import { getRoomCreatorsForRoomId, useRoomCreators } from '../../hooks/useRoomCreators';
+import { parentServer } from '../removed-notice/appeals';
 import { useRoomPermissions } from '../../hooks/useRoomPermissions';
 import { useMemberPowerCompare } from '../../hooks/useMemberPowerCompare';
 import { useIgnoredUsers } from '../../hooks/useIgnoredUsers';
@@ -81,14 +82,16 @@ function Section({ children }: { children: ReactNode }) {
   );
 }
 
-type ModAction = 'kick' | 'ban';
+type ModAction = 'kick' | 'ban' | 'serverBan';
 type ModDialogProps = {
   action: ModAction;
   name: string;
+  // Where the ban applies, when the menu offers both room and server bans.
+  where?: string;
   onClose: () => void;
   onConfirm: (reason?: string) => Promise<unknown>;
 };
-function ModDialog({ action, name, onClose, onConfirm }: ModDialogProps) {
+function ModDialog({ action, name, where, onClose, onConfirm }: ModDialogProps) {
   const reasonRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -122,6 +125,7 @@ function ModDialog({ action, name, onClose, onConfirm }: ModDialogProps) {
               <Box grow="Yes">
                 <Text size="H4" truncate>
                   {verb} {name}
+                  {where && ` from ${where}`}
                 </Text>
               </Box>
               <IconButton size="300" radii="300" onClick={onClose}>
@@ -177,6 +181,15 @@ type MemberContextMenuProps = {
   anchor: RectCords;
   onClose: () => void;
 };
+// Power in a server, which the room's own power levels don't decide.
+const serverPower = (mx: MatrixClient, server: Room, userId: string): number => {
+  if (getRoomCreatorsForRoomId(mx, server.roomId).has(userId)) return Infinity;
+  const pl = server.currentState.getStateEvents('m.room.power_levels', '')?.getContent() ?? {};
+  return pl.users?.[userId] ?? pl.users_default ?? 0;
+};
+const serverBanLevel = (server: Room): number =>
+  server.currentState.getStateEvents('m.room.power_levels', '')?.getContent()?.ban ?? 50;
+
 export function MemberContextMenu({ room, userId, name, anchor, onClose }: MemberContextMenuProps) {
   const mx = useMatrixClient();
   const space = useSpaceOptionally();
@@ -212,6 +225,19 @@ export function MemberContextMenu({ room, userId, name, anchor, onClose }: Membe
   const banned = room.getMember(userId)?.membership === 'ban';
   const canBan = outranks && !banned && permissions.action('ban', myUserId);
   const canUnban = !self && banned && permissions.action('ban', myUserId);
+
+  // Rooms in a server get a separate server ban, checked against the server's power levels.
+  const server = room.isSpaceRoom() ? undefined : space ?? parentServer(mx, room.roomId);
+  const serverMembership = server?.getMember(userId)?.membership;
+  const canBanInServer =
+    !!server &&
+    !self &&
+    server.getMyMembership() === 'join' &&
+    serverPower(mx, server, myUserId) >= serverBanLevel(server) &&
+    serverPower(mx, server, myUserId) > serverPower(mx, server, userId);
+  const canServerBan = canBanInServer && serverMembership !== 'ban';
+  const canServerUnban = canBanInServer && serverMembership === 'ban';
+  const fromRoom = server ? ' from room' : '';
   const myPower = getMemberPowerLevel(myUserId);
   const theirPower = getMemberPowerLevel(userId);
 
@@ -282,7 +308,7 @@ export function MemberContextMenu({ room, userId, name, anchor, onClose }: Membe
           </Section>
         </>
       )}
-      {(canChangeRoles || canKick || canBan || canUnban) && (
+      {(canChangeRoles || canKick || canBan || canUnban || canServerBan || canServerUnban) && (
         <>
           <Line size="300" />
           <Section>
@@ -305,16 +331,31 @@ export function MemberContextMenu({ room, userId, name, anchor, onClose }: Membe
             {canBan && (
               <Item
                 icon={Icons.Prohibited}
-                label={`Ban ${name}`}
+                label={server ? 'Ban from room' : `Ban ${name}`}
                 critical
                 onClick={() => openModDialog('ban')}
+              />
+            )}
+            {canServerBan && (
+              <Item
+                icon={Icons.Prohibited}
+                label="Ban from server"
+                critical
+                onClick={() => openModDialog('serverBan')}
               />
             )}
             {canUnban && (
               <Item
                 icon={Icons.Check}
-                label={`Unban ${name}`}
+                label={`Unban${fromRoom || ` ${name}`}`}
                 onClick={() => run(() => mx.unban(room.roomId, userId))}
+              />
+            )}
+            {canServerUnban && server && (
+              <Item
+                icon={Icons.Check}
+                label="Unban from server"
+                onClick={() => run(() => mx.unban(server.roomId, userId))}
               />
             )}
           </Section>
@@ -374,16 +415,20 @@ export function MemberContextMenu({ room, userId, name, anchor, onClose }: Membe
   );
 
   if (modAction) {
+    let where: string | undefined;
+    if (server && modAction === 'serverBan') where = server.name;
+    else if (server && modAction === 'ban') where = room.name;
     return (
       <ModDialog
         action={modAction}
         name={name}
+        where={where}
         onClose={onClose}
-        onConfirm={(reason) =>
-          modAction === 'kick'
-            ? mx.kick(room.roomId, userId, reason)
-            : mx.ban(room.roomId, userId, reason)
-        }
+        onConfirm={(reason) => {
+          if (modAction === 'kick') return mx.kick(room.roomId, userId, reason);
+          if (modAction === 'serverBan' && server) return mx.ban(server.roomId, userId, reason);
+          return mx.ban(room.roomId, userId, reason);
+        }}
       />
     );
   }

@@ -100,6 +100,7 @@ export function UserHero({
                     src={viewAvatar}
                     alt={userId}
                     requestClose={() => setViewAvatar(undefined)}
+                    noDownload
                   />
                 </Modal>
               </FocusTrap>

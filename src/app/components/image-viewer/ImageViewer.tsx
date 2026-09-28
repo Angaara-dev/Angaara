@@ -12,10 +12,12 @@ export type ImageViewerProps = {
   alt: string;
   src: string;
   requestClose: () => void;
+  // Profile pictures are for viewing, not saving.
+  noDownload?: boolean;
 };
 
 export const ImageViewer = as<'div', ImageViewerProps>(
-  ({ className, alt, src, requestClose, ...props }, ref) => {
+  ({ className, alt, src, requestClose, noDownload, ...props }, ref) => {
     const { zoom, zoomIn, zoomOut, setZoom } = useZoom(0.2);
     const { pan, cursor, onMouseDown } = usePan(zoom !== 1);
 
@@ -64,14 +66,16 @@ export const ImageViewer = as<'div', ImageViewerProps>(
             >
               <Icon size="50" src={Icons.Plus} />
             </IconButton>
-            <Chip
-              variant="Primary"
-              onClick={handleDownload}
-              radii="300"
-              before={<Icon size="50" src={Icons.Download} />}
-            >
-              <Text size="B300">Download</Text>
-            </Chip>
+            {!noDownload && (
+              <Chip
+                variant="Primary"
+                onClick={handleDownload}
+                radii="300"
+                before={<Icon size="50" src={Icons.Download} />}
+              >
+                <Text size="B300">Download</Text>
+              </Chip>
+            )}
           </Box>
         </Header>
         <Box

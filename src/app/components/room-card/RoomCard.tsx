@@ -33,7 +33,8 @@ import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
 import { getRoomAvatarUrl, getStateEvent } from '../../utils/room';
 import { useStateEventCallback } from '../../hooks/useStateEventCallback';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
-import { isBanError, openBanNotice } from '../../features/removed-notice/appeals';
+import { useSpaceOptionally } from '../../hooks/useSpace';
+import { isBanError, openBanNotice, parentServer } from '../../features/removed-notice/appeals';
 
 type GridColumnCount = '1' | '2' | '3';
 const getGridColumnCount = (gridWidth: number): GridColumnCount => {
@@ -207,7 +208,21 @@ export const RoomCard = as<'div', RoomCardProps>(
     const banned =
       mx.getRoom(roomIdOrAlias)?.getMyMembership() === Membership.Ban ||
       (joinState.status === AsyncStatus.Error && isBanError(joinState.error));
-    const appeal = () => openBanNotice({ roomIdOrAlias, name: roomName });
+    // Appeals go through servers: a banned server appeals itself, and a room in a server you're
+    // still in is appealed to that server's mods. Rooms outside any server can't be appealed.
+    const parentSpace = useSpaceOptionally();
+    const isSpace = roomType === RoomType.Space || !!mx.getRoom(roomIdOrAlias)?.isSpaceRoom();
+    let appealTarget: { roomIdOrAlias: string; name: string } | undefined;
+    if (isSpace) appealTarget = { roomIdOrAlias, name: roomName };
+    else if (parentSpace?.getMyMembership() === Membership.Ban) {
+      appealTarget = { roomIdOrAlias: parentSpace.roomId, name: parentSpace.name };
+    } else if (
+      parentSpace?.getMyMembership() === Membership.Join ||
+      parentServer(mx, mx.getRoom(roomIdOrAlias)?.roomId ?? roomIdOrAlias)
+    ) {
+      appealTarget = { roomIdOrAlias, name: roomName };
+    }
+    const appeal = () => appealTarget && openBanNotice(appealTarget);
 
     const [viewTopic, setViewTopic] = useState(false);
     const closeTopic = () => setViewTopic(false);
@@ -274,9 +289,15 @@ export const RoomCard = as<'div', RoomCardProps>(
           </Button>
         )}
         {typeof joinedRoomId !== 'string' && banned && (
-          <Button onClick={appeal} variant="Critical" fill="Soft" size="300">
+          <Button
+            onClick={appeal}
+            variant="Critical"
+            fill="Soft"
+            size="300"
+            disabled={!appealTarget}
+          >
             <Text size="B300" truncate>
-              Appeal
+              {appealTarget ? 'Appeal' : 'Banned'}
             </Text>
           </Button>
         )}

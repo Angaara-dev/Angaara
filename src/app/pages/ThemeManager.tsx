@@ -12,6 +12,8 @@ export function UnAuthRouteThemeManager() {
     document.body.className = '';
     document.body.classList.add(configClass, varsClass, ...EmberTheme.classNames);
     document.documentElement.style.colorScheme = 'dark';
+    // Ends the orange loading screen from index.html.
+    document.body.removeAttribute('data-loading');
   }, []);
 
   return null;
@@ -29,6 +31,7 @@ export function AuthRouteThemeManager({ children }: { children: ReactNode }) {
     document.body.classList.add(configClass, varsClass);
 
     document.body.classList.add(...activeTheme.classNames);
+    document.body.removeAttribute('data-loading');
     // Native scrollbars and form controls follow the theme.
     document.documentElement.style.colorScheme =
       activeTheme.kind === ThemeKind.Dark ? 'dark' : 'light';
