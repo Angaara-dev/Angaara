@@ -16,6 +16,15 @@ export const AuthLayout = style({
   position: 'relative',
   overflow: 'hidden',
   isolation: 'isolate',
+  // Squarer corners on sign-in screens read as sturdier and more trustworthy.
+  vars: {
+    [config.radii.R300]: toRem(4),
+    [config.radii.R400]: toRem(6),
+    [config.radii.R500]: toRem(8),
+  },
+  '@media': {
+    'screen and (max-width: 600px)': { padding: config.space.S200, paddingBottom: 0 },
+  },
 });
 
 const rise = keyframes({
@@ -69,7 +78,7 @@ export const AuthCard = style({
   backgroundColor: 'rgba(21, 21, 23, 0.82)',
   backdropFilter: 'blur(12px)',
   color: color.Surface.OnContainer,
-  borderRadius: config.radii.R500,
+  borderRadius: config.radii.R400,
   boxShadow: '0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.04)',
   border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
   overflow: 'hidden',
