@@ -38,10 +38,17 @@ const button = (primary: boolean): CSSProperties => ({
 
 type Status = 'idle' | 'writing' | 'sending' | 'sent';
 
+// A tab left open across a deploy asks for files the new version no longer has.
+const OUTDATED =
+  /dynamically imported module|importing a module script failed|unable to preload css|mime type|error loading dynamically imported/i;
+const isOutdated = (error: unknown): boolean =>
+  OUTDATED.test(error instanceof Error ? error.message : String(error ?? ''));
+
 export function CrashScreen({ error }: { error: unknown }) {
   const [status, setStatus] = useState<Status>('idle');
   const [note, setNote] = useState('');
   const [failed, setFailed] = useState<string>();
+  const outdated = isOutdated(error);
 
   const send = async () => {
     setStatus('sending');
@@ -61,9 +68,13 @@ export function CrashScreen({ error }: { error: unknown }) {
         <div style={{ fontSize: 32 }} aria-hidden>
           🔥
         </div>
-        <h1 style={{ margin: 0, fontSize: 20 }}>Uh oh, there seems to be a problem</h1>
+        <h1 style={{ margin: 0, fontSize: 20 }}>
+          {outdated ? 'Angaara just got updated' : 'Uh oh, there seems to be a problem'}
+        </h1>
         <p style={{ margin: 0, color: '#a1a1aa', lineHeight: 1.5 }}>
-          Something broke on our side. Reloading usually fixes it.
+          {outdated
+            ? 'This tab is still on the old version. Reload to get the new one.'
+            : 'Something broke on our side. Reloading usually fixes it.'}
         </p>
         {status === 'writing' || status === 'sending' ? (
           <>
@@ -97,7 +108,7 @@ export function CrashScreen({ error }: { error: unknown }) {
         <button type="button" style={button(true)} onClick={() => window.location.reload()}>
           Reload the page
         </button>
-        {status === 'idle' && (
+        {status === 'idle' && !outdated && (
           <button type="button" style={button(false)} onClick={() => setStatus('writing')}>
             Report
           </button>
