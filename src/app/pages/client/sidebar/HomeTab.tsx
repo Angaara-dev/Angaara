@@ -19,6 +19,7 @@ import {
 } from '../../../components/sidebar';
 import { useHomeSelected } from '../../../hooks/router/useHomeSelected';
 import { UnreadBadge } from '../../../components/unread-badge';
+import { useNewBugReports } from '../../../features/app-reports/bugPing';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { useNavToActivePathAtom } from '../../../state/hooks/navToActivePath';
 import { useHomeRooms } from '../home/useHomeRooms';
@@ -70,6 +71,9 @@ export function HomeTab() {
   const roomToParents = useAtomValue(roomToParentsAtom);
   const orphanRooms = useOrphanRooms(mx, allRoomsAtom, mDirects, roomToParents);
   const homeUnread = useRoomsUnread(orphanRooms, roomToUnreadAtom);
+  // New bug reports ping developers here too, in red like a mention.
+  const newBugs = useNewBugReports();
+  const badgeCount = (homeUnread?.total ?? 0) + newBugs;
   const homeSelected = useHomeSelected();
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
 
@@ -107,9 +111,12 @@ export function HomeTab() {
           </SidebarAvatar>
         )}
       </SidebarItemTooltip>
-      {homeUnread && (
-        <SidebarItemBadge hasCount={homeUnread.total > 0}>
-          <UnreadBadge highlight={homeUnread.highlight > 0} count={homeUnread.total} />
+      {(homeUnread || newBugs > 0) && (
+        <SidebarItemBadge hasCount={badgeCount > 0}>
+          <UnreadBadge
+            highlight={(homeUnread?.highlight ?? 0) > 0 || newBugs > 0}
+            count={badgeCount}
+          />
         </SidebarItemBadge>
       )}
       {menuAnchor && (

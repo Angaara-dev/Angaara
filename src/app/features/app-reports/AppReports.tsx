@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
-import { Box, Button, color, config, Spinner, Text } from 'folds';
+import {
+  Badge,
+  Box,
+  Button,
+  color,
+  config,
+  Header,
+  Icon,
+  IconButton,
+  Icons,
+  Scroll,
+  Spinner,
+  Text,
+} from 'folds';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { useClientConfig } from '../../hooks/useClientConfig';
 import {
   AppReport,
   BugReport,
@@ -13,13 +25,8 @@ import {
   resolveReport,
 } from './reports';
 import { MarkdownText } from './MarkdownText';
-
-// Only decides whether to show the page; the Worker checks the badge itself on every request.
-export const useIsAppDeveloper = (): boolean => {
-  const mx = useMatrixClient();
-  const { badges } = useClientConfig();
-  return !!badges?.[mx.getSafeUserId()]?.includes('developer');
-};
+import { Modal500 } from '../../components/Modal500';
+import { BUG_REPORTS_KEY, useMarkBugsSeen } from './bugPing';
 
 function ReportItem({ report, onDone }: { report: AppReport; onDone: (id: number) => void }) {
   const mx = useMatrixClient();
@@ -162,7 +169,15 @@ export function AppReports() {
   );
 }
 
-function BugItem({ report, onDone }: { report: BugReport; onDone: (id: number) => void }) {
+function BugDetail({
+  report,
+  onDone,
+  requestClose,
+}: {
+  report: BugReport;
+  onDone: (id: number) => void;
+  requestClose: () => void;
+}) {
   const mx = useMatrixClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -173,6 +188,7 @@ function BugItem({ report, onDone }: { report: BugReport; onDone: (id: number) =
     try {
       await resolveBugReport(mx, report.id);
       onDone(report.id);
+      requestClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't mark it done.");
       setBusy(false);
@@ -180,44 +196,111 @@ function BugItem({ report, onDone }: { report: BugReport; onDone: (id: number) =
   };
 
   return (
-    <Box
-      direction="Column"
-      gap="300"
-      style={{
-        padding: config.space.S400,
-        borderRadius: config.radii.R400,
-        background: color.SurfaceVariant.Container,
-        borderLeft: `${config.borderWidth.B700} solid ${color.Critical.Main}`,
-      }}
-    >
-      <Box alignItems="Start" gap="300">
-        <Box direction="Column" gap="100" grow="Yes" style={{ minWidth: 0 }}>
-          <Text size="L400" style={{ color: color.Critical.Main }}>
-            {bugTypeLabel(report.type)}
-          </Text>
-          <Text size="H5" style={{ overflowWrap: 'anywhere' }}>
-            {report.title}
-          </Text>
-          <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
-            {new Date(report.at).toLocaleString()} · {report.build ?? 'unknown build'}
-          </Text>
+    <Modal500 requestClose={requestClose}>
+      <Box direction="Column" style={{ height: '100%', minHeight: 0 }}>
+        <Header
+          size="500"
+          style={{ padding: `0 ${config.space.S200} 0 ${config.space.S400}`, flexShrink: 0 }}
+        >
+          <Box grow="Yes">
+            <Text size="L400" style={{ color: color.Critical.Main }}>
+              {bugTypeLabel(report.type)}
+            </Text>
+          </Box>
+          <IconButton size="300" radii="300" onClick={requestClose} aria-label="Close">
+            <Icon src={Icons.Cross} />
+          </IconButton>
+        </Header>
+        <Box grow="Yes" style={{ minHeight: 0 }}>
+          <Scroll hideTrack visibility="Hover">
+            <Box direction="Column" gap="400" style={{ padding: config.space.S400 }}>
+              <Box direction="Column" gap="100">
+                <Text size="H4" style={{ overflowWrap: 'anywhere' }}>
+                  {report.title}
+                </Text>
+                <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
+                  {new Date(report.at).toLocaleString()} · {report.build ?? 'unknown build'}
+                </Text>
+              </Box>
+              <MarkdownText text={report.body} />
+              {report.ua && (
+                <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
+                  {report.ua}
+                </Text>
+              )}
+              {error && (
+                <Text size="T200" style={{ color: color.Critical.Main }}>
+                  {error}
+                </Text>
+              )}
+              <Box>
+                <Button
+                  size="300"
+                  variant="Success"
+                  fill="Soft"
+                  radii="300"
+                  disabled={busy}
+                  onClick={done}
+                >
+                  <Text size="B300">Done</Text>
+                </Button>
+              </Box>
+            </Box>
+          </Scroll>
         </Box>
-        <Button size="300" variant="Success" fill="Soft" radii="300" disabled={busy} onClick={done}>
-          <Text size="B300">Done</Text>
-        </Button>
       </Box>
-      <MarkdownText text={report.body} />
-      {report.ua && (
-        <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
-          {report.ua}
+    </Modal500>
+  );
+}
+
+// One line per report, like appeal tickets; the full report opens on click.
+function BugTicket({
+  report,
+  isNew,
+  onDone,
+}: {
+  report: BugReport;
+  isNew: boolean;
+  onDone: (id: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Box
+        as="button"
+        type="button"
+        direction="Column"
+        gap="100"
+        onClick={() => setOpen(true)}
+        style={{
+          padding: config.space.S300,
+          borderRadius: config.radii.R400,
+          background: color.SurfaceVariant.Container,
+          borderLeft: `${config.borderWidth.B700} solid ${color.Critical.Main}`,
+          color: 'inherit',
+          textAlign: 'left',
+          cursor: 'pointer',
+          border: 'none',
+        }}
+      >
+        <Box alignItems="Center" gap="200">
+          <Text size="T300" style={{ flexGrow: 1 }} truncate>
+            <b>{report.title}</b>
+          </Text>
+          {isNew && (
+            <Badge variant="Critical" fill="Solid" radii="Pill" size="400">
+              <Text as="span" size="L400">
+                New
+              </Text>
+            </Badge>
+          )}
+        </Box>
+        <Text size="T200" priority="300" truncate>
+          {bugTypeLabel(report.type)} · {new Date(report.at).toLocaleDateString()}
         </Text>
-      )}
-      {error && (
-        <Text size="T200" style={{ color: color.Critical.Main }}>
-          {error}
-        </Text>
-      )}
-    </Box>
+      </Box>
+      {open && <BugDetail report={report} onDone={onDone} requestClose={() => setOpen(false)} />}
+    </>
   );
 }
 
@@ -226,12 +309,13 @@ export function UserBugReports() {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['bug-reports'],
+    queryKey: BUG_REPORTS_KEY,
     queryFn: () => listBugReports(mx),
   });
+  const seenBefore = useMarkBugsSeen(data);
 
   const onDone = (id: number) =>
-    queryClient.setQueryData<BugReport[] | undefined>(['bug-reports'], (old) =>
+    queryClient.setQueryData<BugReport[] | undefined>(BUG_REPORTS_KEY, (old) =>
       old?.filter((r) => r.id !== id)
     );
 
@@ -249,8 +333,20 @@ export function UserBugReports() {
     return <Text priority="300">Only accounts with the developer badge can read bug reports.</Text>;
   }
 
+  const fresh = data.filter((r) => r.id > seenBefore);
+  const earlier = data.filter((r) => r.id <= seenBefore);
+  const section = (title: string, reports: BugReport[], isNew: boolean) =>
+    reports.length > 0 && (
+      <Box direction="Column" gap="200">
+        <Text size="L400">{title}</Text>
+        {reports.map((report) => (
+          <BugTicket key={report.id} report={report} isNew={isNew} onDone={onDone} />
+        ))}
+      </Box>
+    );
+
   return (
-    <Box direction="Column" gap="400">
+    <Box direction="Column" gap="500">
       <Box alignItems="Center" gap="300">
         <Text size="T300" priority="300" style={{ flexGrow: 1 }}>
           {data.length === 0
@@ -268,9 +364,8 @@ export function UserBugReports() {
           <Text size="B300">Refresh</Text>
         </Button>
       </Box>
-      {data.map((report) => (
-        <BugItem key={report.id} report={report} onDone={onDone} />
-      ))}
+      {section('New', fresh, true)}
+      {section('Earlier', earlier, false)}
     </Box>
   );
 }

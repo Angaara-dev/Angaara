@@ -130,9 +130,12 @@
           Files are scanned on your device, and only their fingerprint is looked up.
         </li>
         <li>
-          <b>Crash and bug reports:</b> only what you choose to send, plus the app version and your
-          browser type, without your account, user ID or rooms. A hash of your IP address is kept to
-          limit how many reports can be sent per hour.
+          <b>Crash and bug reports:</b> only what you choose to send. A bug report has its type,
+          title and description. A crash report has the error, where in the app it happened (with
+          room, user and message IDs removed) and your note, if you add one. Both also include the
+          time, the app build, and your browser's user agent (your browser, its version and your
+          operating system), but never your account, user ID or rooms. Only Angaara's developers can
+          read them, and a hash of your IP address is kept to limit how many can be sent per hour.
         </li>
         <li>
           <b>GitHub sign-in:</b> if you link GitHub, the sign-in passes through our server once and

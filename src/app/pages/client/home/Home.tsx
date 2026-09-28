@@ -79,7 +79,8 @@ import { UserPanel } from '../UserPanel';
 import { usePhone } from '../../../hooks/useScreenSize';
 import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
 import { getAppeal, getAppellant } from '../../../features/removed-notice/appeals';
-import { useIsAppDeveloper } from '../../../features/app-reports/AppReports';
+import { useIsAppDeveloper, useNewBugReports } from '../../../features/app-reports/bugPing';
+import { UnreadBadge, UnreadBadgeCenter } from '../../../components/unread-badge';
 import { BugReportDialog } from '../../../features/app-reports/BugReportDialog';
 import { useHideActivity } from '../../../hooks/useActivityStatus';
 
@@ -216,7 +217,7 @@ const PROJECTS_CATEGORY_ID = makeNavCategoryId('home', 'projects');
 // Pages only accounts with the developer badge see.
 const DEV_ONLY = new Set<DeveloperSection>(['reports', 'bugs']);
 
-function DeveloperNavItem({ section }: { section: DeveloperSection }) {
+function DeveloperNavItem({ section, badge = 0 }: { section: DeveloperSection; badge?: number }) {
   const selected = useHomeDeveloperSelected(section);
   const { title, icon, danger } = DEVELOPER_PAGES[section];
   return (
@@ -232,6 +233,11 @@ function DeveloperNavItem({ section }: { section: DeveloperSection }) {
                 {title}
               </Text>
             </Box>
+            {badge > 0 && (
+              <UnreadBadgeCenter>
+                <UnreadBadge highlight count={badge} />
+              </UnreadBadgeCenter>
+            )}
           </Box>
         </NavItemContent>
       </NavLink>
@@ -249,6 +255,7 @@ export function Home() {
   const linkedRepos = useAtomValue(linkedReposAtom);
   const hasLinkedRepos = !!githubAccount && linkedRepos.length > 0;
   const appDeveloper = useIsAppDeveloper();
+  const newBugs = useNewBugReports();
   const navigate = useNavigate();
 
   const createRoomSelected = useHomeCreateSelected();
@@ -410,12 +417,21 @@ export function Home() {
                   >
                     Developer Tools
                   </RoomNavCategoryButton>
+                  {closedCategories.has(DEVELOPER_CATEGORY_ID) && newBugs > 0 && (
+                    <UnreadBadge highlight count={newBugs} />
+                  )}
                 </NavCategoryHeader>
                 {!closedCategories.has(DEVELOPER_CATEGORY_ID) &&
                   (Object.keys(DEVELOPER_PAGES) as DeveloperSection[])
                     .filter((section) => section !== 'repos' || hasLinkedRepos)
                     .filter((section) => !DEV_ONLY.has(section) || appDeveloper)
-                    .map((section) => <DeveloperNavItem key={section} section={section} />)}
+                    .map((section) => (
+                      <DeveloperNavItem
+                        key={section}
+                        section={section}
+                        badge={section === 'bugs' ? newBugs : 0}
+                      />
+                    ))}
               </NavCategory>
             )}
             {developerTools && (
