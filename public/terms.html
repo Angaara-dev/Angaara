@@ -115,8 +115,24 @@
           under Account, then Experience.
         </li>
         <li>
-          <b>Crash and bug reports:</b> only what you choose to send, without your account, user ID
-          or rooms.
+          <b>Angaara account (optional):</b> your Angaara username, the public keys of your
+          passkeys, which Matrix accounts you linked (up to 3), and whether you're a Supporter, with
+          its start and end dates. Passkeys never leave your device, and we never have a password.
+          Others can only see that you're a Supporter, not your username or your other accounts.
+        </li>
+        <li>
+          <b>Supporter page:</b> opening it from the app creates a one-use ticket, kept only as a
+          hash for 60 seconds.
+        </li>
+        <li>
+          <b>Link and File Checks:</b> a hash of your Matrix user ID and how many checks you've
+          used, for the limit (20 every two months, 300 for Supporters). Never the links you check.
+          Files are scanned on your device, and only their fingerprint is looked up.
+        </li>
+        <li>
+          <b>Crash and bug reports:</b> only what you choose to send, plus the app version and your
+          browser type, without your account, user ID or rooms. A hash of your IP address is kept to
+          limit how many reports can be sent per hour.
         </li>
         <li>
           <b>GitHub sign-in:</b> if you link GitHub, the sign-in passes through our server once and
