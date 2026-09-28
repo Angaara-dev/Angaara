@@ -1,6 +1,6 @@
-import { MatrixClient, Room } from 'matrix-js-sdk';
+import { MatrixClient, MatrixEvent, Room } from 'matrix-js-sdk';
 import { Membership } from '../../../types/matrix/room';
-import { getRoomCreatorsForRoomId } from '../../hooks/useRoomCreators';
+import { getRoomCreators, getRoomCreatorsForRoomId } from '../../hooks/useRoomCreators';
 
 // State in an appeal room, which a banned user opens with the people who can unban them.
 export const APPEAL_STATE = 'io.angaara.appeal';
@@ -35,6 +35,85 @@ export const getMods = (mx: MatrixClient, room: Room | null): Mod[] => {
 export const getAppeal = (room: Room): AppealContent | undefined => {
   const content = room.currentState.getStateEvents(APPEAL_STATE, '')?.getContent();
   return content?.space ? (content as AppealContent) : undefined;
+};
+
+// Opens the ban notice from elsewhere, e.g. an Appeal button on a server card.
+export const BAN_NOTICE_EVENT = 'angaara:ban-notice';
+export type BanNoticeDetail = { roomIdOrAlias: string; name?: string };
+export const openBanNotice = (detail: BanNoticeDetail) =>
+  window.dispatchEvent(new CustomEvent(BAN_NOTICE_EVENT, { detail }));
+
+export const isBanError = (e: unknown) =>
+  !!e && typeof e === 'object' && /banned/i.test(String((e as { message?: string }).message));
+
+// Servers forget banned members fast, so each joined room's name and mods are kept here.
+const REMEMBERED_KEY = 'angaara_room_mods';
+type Remembered = Record<string, { name: string; mods: Mod[] }>;
+const recallAll = (): Remembered => {
+  try {
+    return JSON.parse(localStorage.getItem(REMEMBERED_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+};
+export const rememberRooms = (mx: MatrixClient) => {
+  const all: Remembered = {};
+  mx.getRooms().forEach((room: Room) => {
+    if (room.getMyMembership() !== Membership.Join || getAppeal(room)) return;
+    const mods = getMods(mx, room);
+    if (mods.length > 0) all[room.roomId] = { name: room.name, mods };
+  });
+  try {
+    // Keep what we knew about rooms we've since left or been banned from.
+    localStorage.setItem(REMEMBERED_KEY, JSON.stringify({ ...recallAll(), ...all }));
+  } catch {
+    // Storage full or blocked; the ban notice just shows less.
+  }
+};
+
+// When the app no longer has a server loaded, use what it remembered, then whatever the
+// server still shares with former members (state on some servers, the public summary).
+export const fetchBannedRoom = async (
+  mx: MatrixClient,
+  roomIdOrAlias: string
+): Promise<{ roomId: string; name?: string; mods: Mod[] }> => {
+  const roomId = roomIdOrAlias.startsWith('#')
+    ? (await mx.getRoomIdForAlias(roomIdOrAlias)).room_id
+    : roomIdOrAlias;
+  const remembered = recallAll()[roomId];
+  let name = remembered?.name;
+  let mods = remembered?.mods ?? [];
+  try {
+    const events = (await mx.roomState(roomId)) as unknown as {
+      type: string;
+      state_key?: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      content: Record<string, any>;
+    }[];
+    const find = (type: string, key = '') =>
+      events.find((e) => e.type === type && e.state_key === key)?.content;
+    name = name || find('m.room.name')?.name || find('m.room.canonical_alias')?.alias;
+    const pl = find('m.room.power_levels') ?? {};
+    const create = events.find((e) => e.type === 'm.room.create');
+    const ids = new Set(create ? getRoomCreators(new MatrixEvent(create as never)) : []);
+    Object.entries<number>(pl.users ?? {}).forEach(([id, level]) => {
+      if (level >= (pl.ban ?? 50)) ids.add(id);
+    });
+    ids.delete(mx.getSafeUserId());
+    if (mods.length === 0) {
+      mods = [...ids]
+        .slice(0, 8)
+        .map((id) => ({ id, name: find('m.room.member', id)?.displayname || id }));
+    }
+  } catch {
+    // Most servers hide state from banned members.
+  }
+  if (!name)
+    name = await mx.getRoomSummary(roomId).then(
+      (r: { name?: string }) => r.name,
+      () => undefined
+    );
+  return { roomId, name, mods };
 };
 
 export const appealsUsed = (mx: MatrixClient, spaceId: string): number =>

@@ -27,12 +27,13 @@ import { millify } from '../../plugins/millify';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { onEnterOrSpace, stopPropagation } from '../../utils/keyboard';
-import { RoomType, StateEvent } from '../../../types/matrix/room';
+import { Membership, RoomType, StateEvent } from '../../../types/matrix/room';
 import { useJoinedRoomId } from '../../hooks/useJoinedRoomId';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
 import { getRoomAvatarUrl, getStateEvent } from '../../utils/room';
 import { useStateEventCallback } from '../../hooks/useStateEventCallback';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
+import { isBanError, openBanNotice } from '../../features/removed-notice/appeals';
 
 type GridColumnCount = '1' | '2' | '3';
 const getGridColumnCount = (gridWidth: number): GridColumnCount => {
@@ -202,6 +203,11 @@ export const RoomCard = as<'div', RoomCardProps>(
     );
     const joining =
       joinState.status === AsyncStatus.Loading || joinState.status === AsyncStatus.Success;
+    // Banned people get an Appeal button instead of Join.
+    const banned =
+      mx.getRoom(roomIdOrAlias)?.getMyMembership() === Membership.Ban ||
+      (joinState.status === AsyncStatus.Error && isBanError(joinState.error));
+    const appeal = () => openBanNotice({ roomIdOrAlias, name: roomName });
 
     const [viewTopic, setViewTopic] = useState(false);
     const closeTopic = () => setViewTopic(false);
@@ -267,7 +273,14 @@ export const RoomCard = as<'div', RoomCardProps>(
             </Text>
           </Button>
         )}
-        {typeof joinedRoomId !== 'string' && joinState.status !== AsyncStatus.Error && (
+        {typeof joinedRoomId !== 'string' && banned && (
+          <Button onClick={appeal} variant="Critical" fill="Soft" size="300">
+            <Text size="B300" truncate>
+              Appeal
+            </Text>
+          </Button>
+        )}
+        {typeof joinedRoomId !== 'string' && !banned && joinState.status !== AsyncStatus.Error && (
           <Button
             onClick={join}
             variant="Secondary"
@@ -280,7 +293,7 @@ export const RoomCard = as<'div', RoomCardProps>(
             </Text>
           </Button>
         )}
-        {typeof joinedRoomId !== 'string' && joinState.status === AsyncStatus.Error && (
+        {typeof joinedRoomId !== 'string' && !banned && joinState.status === AsyncStatus.Error && (
           <Box gap="200">
             <Button
               onClick={join}

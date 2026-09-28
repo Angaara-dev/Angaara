@@ -24,14 +24,22 @@ import { DirectCreateSearchParams } from '../../pages/paths';
 import {
   APPEAL_STATE,
   appealsUsed,
+  BAN_NOTICE_EVENT,
+  BanNoticeDetail,
+  fetchBannedRoom,
   getAppeal,
   getAppellant,
   getMods,
+  isBanError,
   MAX_APPEALS,
   Mod,
   openAppealFor,
+  rememberRooms,
   submitAppeal,
 } from './appeals';
+
+// Rooms the app has no state for fall back to their ID or a placeholder for a name.
+const unnamed = (name: string) => /^[!#]/.test(name) || /^Empty room/i.test(name);
 
 type Notice = {
   // The event behind it, remembered once seen so it only shows once.
@@ -67,9 +75,6 @@ const markSeen = (key: string) => {
     // Storage blocked; it may show again next time.
   }
 };
-
-const isBanError = (e: unknown) =>
-  !!e && typeof e === 'object' && /banned/i.test(String((e as { message?: string }).message));
 
 // A kick or ban by someone else, if that's how you left this room.
 const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
@@ -126,6 +131,7 @@ export function RemovedNotice() {
   const [error, setError] = useState<string>();
   const [appealText, setAppealText] = useState('');
   const [appealSent, setAppealSent] = useState(false);
+  const [appealing, setAppealing] = useState(false);
 
   useEffect(() => {
     const add = (notice?: Notice) => {
@@ -133,10 +139,14 @@ export function RemovedNotice() {
       setQueue((q) => [...q.filter((n) => n.key !== notice.key), notice]);
     };
 
+    rememberRooms(mx);
     // Catch up on anything that happened while you were away.
     mx.getRooms().forEach((room: Room) => add(removalNotice(mx, room) ?? outcomeNotice(mx, room)));
 
-    const onMembership = (room: Room) => add(removalNotice(mx, room));
+    const onMembership = (room: Room) => {
+      if (room.getMyMembership() === Membership.Join) rememberRooms(mx);
+      add(removalNotice(mx, room));
+    };
     const onState = (event: MatrixEvent) => {
       if (event.getType() !== APPEAL_STATE) return;
       const room = mx.getRoom(event.getRoomId());
@@ -145,39 +155,74 @@ export function RemovedNotice() {
     mx.on(RoomEvent.MyMembership, onMembership);
     mx.on(RoomStateEvent.Events, onState);
 
+    const addRetry = (roomIdOrAlias: string, name?: string) => {
+      const room = mx.getRoom(roomIdOrAlias);
+      const roomId = room?.roomId ?? roomIdOrAlias;
+      setQueue((q) => [
+        ...q.filter((n) => n.roomId !== roomId),
+        {
+          key: `retry${roomId}${Date.now()}`,
+          roomId,
+          name: name || room?.name || roomIdOrAlias,
+          // Unknown rooms are usually servers picked from Explore.
+          space: room ? room.isSpaceRoom() : true,
+          kind: 'retry',
+          mods: getMods(mx, room),
+        },
+      ]);
+    };
+    const onBanNotice = (evt: Event) => {
+      const { roomIdOrAlias, name } = (evt as CustomEvent<BanNoticeDetail>).detail;
+      addRetry(roomIdOrAlias, name);
+    };
+    window.addEventListener(BAN_NOTICE_EVENT, onBanNotice);
+
     // Every join in the app goes through mx.joinRoom, so catch bans there in one place.
     const { joinRoom } = mx;
     mx.joinRoom = async (...args: Parameters<MatrixClient['joinRoom']>) => {
       try {
         return await joinRoom.apply(mx, args);
       } catch (e) {
-        if (isBanError(e)) {
-          const room = mx.getRoom(args[0]);
-          const roomId = room?.roomId ?? args[0];
-          setQueue((q) => [
-            ...q.filter((n) => n.roomId !== roomId),
-            {
-              key: `retry${roomId}${Date.now()}`,
-              roomId,
-              name: room?.name ?? args[0],
-              // Unknown rooms are usually servers picked from Explore.
-              space: room ? room.isSpaceRoom() : true,
-              kind: 'retry',
-              mods: getMods(mx, room),
-            },
-          ]);
-        }
+        if (isBanError(e)) addRetry(args[0] as string);
         throw e;
       }
     };
     return () => {
       mx.removeListener(RoomEvent.MyMembership, onMembership);
       mx.removeListener(RoomStateEvent.Events, onState);
+      window.removeEventListener(BAN_NOTICE_EVENT, onBanNotice);
       mx.joinRoom = joinRoom;
     };
   }, [mx]);
 
+  // Fill in the server's name and who can unban when the app doesn't have it loaded.
   const current = queue[0];
+  const currentKey = current?.key;
+  const currentRoomId = current?.roomId ?? '';
+  const needsInfo =
+    !!current &&
+    (current.kind === 'banned' || current.kind === 'retry') &&
+    (unnamed(current.name) || current.mods.length === 0);
+  useEffect(() => {
+    if (!currentKey || !needsInfo) return;
+    fetchBannedRoom(mx, currentRoomId)
+      .then((info) =>
+        setQueue((q) =>
+          q.map((n) =>
+            n.key === currentKey
+              ? {
+                  ...n,
+                  roomId: info.roomId,
+                  name: unnamed(n.name) && info.name ? info.name : n.name,
+                  mods: n.mods.length > 0 ? n.mods : info.mods,
+                }
+              : n
+          )
+        )
+      )
+      .catch(() => undefined);
+  }, [mx, currentKey, currentRoomId, needsInfo]);
+
   if (!current) return null;
 
   const dismiss = () => {
@@ -186,6 +231,7 @@ export function RemovedNotice() {
     setError(undefined);
     setAppealText('');
     setAppealSent(false);
+    setAppealing(false);
     setQueue((q) => q.slice(1));
   };
 
@@ -216,7 +262,10 @@ export function RemovedNotice() {
           current.mods,
           appealText.trim()
         ),
-      () => setAppealSent(true)
+      () => {
+        setAppealSent(true);
+        setAppealing(false);
+      }
     );
 
   const message = (userId: string) => {
@@ -251,6 +300,13 @@ export function RemovedNotice() {
     body = `The mods of ${current.name} turned down your last appeal, so appeals for this server are now closed.`;
   }
 
+  if (appealing) {
+    title = `Appeal your ban from ${current.name}`;
+    body = `Tell the mods why you should be unbanned. This is appeal ${
+      used + 1
+    } of ${MAX_APPEALS}.`;
+  }
+
   return (
     <Overlay open backdrop={<OverlayBackdrop />}>
       <OverlayCenter>
@@ -267,7 +323,7 @@ export function RemovedNotice() {
             <Box direction="Column" gap="400" style={{ padding: config.space.S500 }}>
               <Text size="H4">{title}</Text>
               <Text size="T300">{body}</Text>
-              {current.reason && (
+              {!appealing && current.reason && (
                 <Box
                   direction="Column"
                   gap="100"
@@ -283,52 +339,23 @@ export function RemovedNotice() {
                   </Text>
                 </Box>
               )}
-              {banned && appealSent && (
-                <Text size="T300" style={{ color: color.Success.Main }}>
-                  <b>Appeal sent.</b> You&apos;ll hear back here when the mods decide.
-                </Text>
+              {appealing && (
+                <TextArea
+                  value={appealText}
+                  onChange={(evt: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setAppealText(evt.target.value)
+                  }
+                  placeholder="Why should you be unbanned?"
+                  variant="Background"
+                  radii="300"
+                  rows={4}
+                  maxLength={1000}
+                  disabled={busy}
+                />
               )}
-              {pending && (
-                <Text size="T300">
-                  <b>Your appeal is waiting on the mods.</b>
-                </Text>
-              )}
-              {banned && !appealSent && !pending && used >= MAX_APPEALS && (
-                <Text size="T300" priority="300">
-                  You&apos;ve used both appeals for this {place}.
-                </Text>
-              )}
-              {canAppeal && !appealSent && (
+              {appealing && current.mods.length > 0 && (
                 <Box direction="Column" gap="200">
-                  <Text size="L400">
-                    Think this was a mistake? Appeal ({MAX_APPEALS - used} of {MAX_APPEALS} left)
-                  </Text>
-                  <TextArea
-                    value={appealText}
-                    onChange={(evt: React.ChangeEvent<HTMLTextAreaElement>) =>
-                      setAppealText(evt.target.value)
-                    }
-                    placeholder="Tell the mods why you should be unbanned"
-                    variant="Background"
-                    radii="300"
-                    rows={3}
-                    maxLength={1000}
-                    disabled={busy}
-                  />
-                  <Button
-                    variant="Primary"
-                    radii="400"
-                    onClick={appeal}
-                    disabled={busy || !appealText.trim()}
-                    before={busy && <Spinner size="100" variant="Primary" fill="Solid" />}
-                  >
-                    <Text size="B400">Send Appeal</Text>
-                  </Button>
-                </Box>
-              )}
-              {banned && current.mods.length > 0 && (
-                <Box direction="Column" gap="200">
-                  <Text size="L400">These people can unban you</Text>
+                  <Text size="L400">Your appeal goes to</Text>
                   {current.mods.map((mod) => (
                     <Box key={mod.id} alignItems="Center" gap="200">
                       <Box grow="Yes" direction="Column" style={{ minWidth: 0 }}>
@@ -352,33 +379,83 @@ export function RemovedNotice() {
                   ))}
                 </Box>
               )}
+              {banned && appealSent && (
+                <Text size="T300" style={{ color: color.Success.Main }}>
+                  <b>Appeal sent.</b> You&apos;ll hear back here when the mods decide.
+                </Text>
+              )}
+              {pending && (
+                <Text size="T300">
+                  <b>Your appeal is waiting on the mods.</b>
+                </Text>
+              )}
+              {banned && !appealSent && !pending && used >= MAX_APPEALS && (
+                <Text size="T300" priority="300">
+                  You&apos;ve used both appeals for this {place}.
+                </Text>
+              )}
               {error && (
                 <Text size="T200" style={{ color: color.Critical.Main }}>
                   <b>{error}</b>
                 </Text>
               )}
-              <Box direction="Column" gap="200">
-                {(current.kind === 'kicked' || current.kind === 'accepted') && (
+              {appealing ? (
+                <Box direction="Column" gap="200">
                   <Button
                     variant="Primary"
                     radii="400"
-                    onClick={rejoin}
-                    disabled={busy}
+                    onClick={appeal}
+                    disabled={busy || !appealText.trim()}
                     before={busy && <Spinner size="100" variant="Primary" fill="Solid" />}
                   >
-                    <Text size="B400">Rejoin</Text>
+                    <Text size="B400">Send Appeal</Text>
                   </Button>
-                )}
-                <Button
-                  variant="Secondary"
-                  fill="Soft"
-                  radii="400"
-                  onClick={dismiss}
-                  disabled={busy}
-                >
-                  <Text size="B400">Okay</Text>
-                </Button>
-              </Box>
+                  <Button
+                    variant="Secondary"
+                    fill="Soft"
+                    radii="400"
+                    onClick={() => setAppealing(false)}
+                    disabled={busy}
+                  >
+                    <Text size="B400">Back</Text>
+                  </Button>
+                </Box>
+              ) : (
+                <Box direction="Column" gap="200">
+                  {(current.kind === 'kicked' || current.kind === 'accepted') && (
+                    <Button
+                      variant="Primary"
+                      radii="400"
+                      onClick={rejoin}
+                      disabled={busy}
+                      before={busy && <Spinner size="100" variant="Primary" fill="Solid" />}
+                    >
+                      <Text size="B400">Rejoin</Text>
+                    </Button>
+                  )}
+                  <Button
+                    variant="Secondary"
+                    fill="Soft"
+                    radii="400"
+                    onClick={dismiss}
+                    disabled={busy}
+                  >
+                    <Text size="B400">Okay</Text>
+                  </Button>
+                  {canAppeal && !appealSent && (
+                    <Button
+                      variant="Primary"
+                      fill="Soft"
+                      radii="400"
+                      onClick={() => setAppealing(true)}
+                    >
+                      <Text size="B400">
+                        Appeal ({MAX_APPEALS - used} of {MAX_APPEALS} left)
+                      </Text>
+                    </Button>
+                  )}
+                </Box>
+              )}
             </Box>
           </Dialog>
         </FocusTrap>
