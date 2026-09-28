@@ -259,7 +259,7 @@ export function SpaceAccentSetting({ permissions }: PerkProps) {
     permissions,
     title: 'Server Accent',
     about:
-      "Optional. Replaces everyone's own accent (buttons, toggles, links) while they're in the server.",
+      "Optional. Colours the server's own touches, like the glow on members' avatars. Everyone keeps their own accent for buttons and links.",
   });
   const saved = hexOr(content.accent, '');
   const [accent, setAccent] = useState(saved);

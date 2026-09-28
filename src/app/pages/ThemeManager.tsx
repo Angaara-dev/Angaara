@@ -2,7 +2,7 @@ import React, { ReactNode, useEffect, useLayoutEffect } from 'react';
 import { configClass, varsClass } from 'folds';
 import { useAtomValue } from 'jotai';
 import { EmberTheme, ThemeContextProvider, ThemeKind, useActiveTheme } from '../hooks/useTheme';
-import { applyAccent, applyServerTheme, usableAsAccent } from '../utils/accent';
+import { applyAccent, applyServerAccent, applyServerTheme, usableAsAccent } from '../utils/accent';
 import { useSetting } from '../state/hooks/settings';
 import { settingsAtom } from '../state/settings';
 import { serverThemeHiddenAtom, spaceThemeAtom } from '../state/spaceAccent';
@@ -47,9 +47,10 @@ export function AuthRouteThemeManager({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const dark = activeTheme.kind === ThemeKind.Dark;
     const serverAccent = spaceTheme?.accent;
-    applyAccent(
-      serverAccent && usableAsAccent(serverAccent, dark) ? serverAccent : userAccent,
-      dark
+    // Your own accent always drives the app; the server's only colours its own touches.
+    applyAccent(userAccent, dark);
+    applyServerAccent(
+      serverAccent && usableAsAccent(serverAccent, dark) ? serverAccent : undefined
     );
     applyServerTheme(spaceTheme, dark);
   }, [spaceTheme, userAccent, activeTheme]);

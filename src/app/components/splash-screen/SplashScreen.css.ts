@@ -17,19 +17,15 @@ const squircleTile = svg(
   "width='44' height='44'"
 );
 
-// The ember glow: a soft, blurred squircle that stretches to whatever box it's given.
-const GLOW_PATH =
-  'M80 50L79.9 60.8L79.5 65.3L78.8 68.6L77.9 71.2L76.7 73.4L75.2 75.2L73.4 76.7L71.2 77.9L68.6 78.8L65.3 79.5L60.8 79.9L50 80L39.2 79.9L34.7 79.5L31.4 78.8L28.8 77.9L26.6 76.7L24.8 75.2L23.3 73.4L22.1 71.2L21.2 68.6L20.5 65.3L20.1 60.8L20 50L20.1 39.2L20.5 34.7L21.2 31.4L22.1 28.8L23.3 26.6L24.8 24.8L26.6 23.3L28.8 22.1L31.4 21.2L34.7 20.5L39.2 20.1L50 20L60.8 20.1L65.3 20.5L68.6 21.2L71.2 22.1L73.4 23.3L75.2 24.8L76.7 26.6L77.9 28.8L78.8 31.4L79.5 34.7L79.9 39.2Z';
-const emberShape = svg(
-  `<filter id='b' x='-50%' y='-50%' width='200%' height='200%'><feGaussianBlur stdDeviation='7'/></filter><path d='${GLOW_PATH}' filter='url(#b)'/>`,
-  "viewBox='0 0 100 100' preserveAspectRatio='none'"
-);
+// The ember glow: a round, soft falloff from the logo out, strongest in the middle.
+const emberShape =
+  'radial-gradient(circle closest-side, #000 0%, rgba(0, 0, 0, 0.75) 30%, rgba(0, 0, 0, 0.35) 60%, transparent 100%)';
 
 // Squircles cover the whole page faintly; this layer lets a little of them through everywhere.
 const everywhere = 'linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35))';
 
-// An even squircle hugging the logo, sized to the shorter side of the screen.
-const GLOW_SIZE = 'min(90vw, 70vh) min(90vw, 70vh)';
+// A circle around the logo, spread wide so it fades out gently.
+const GLOW_SIZE = 'min(150vw, 120vh) min(150vw, 120vh)';
 
 const emberMask = {
   WebkitMaskImage: emberShape,

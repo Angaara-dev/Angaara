@@ -54,6 +54,15 @@ const luminanceOf = (hex: string): number => {
 const readableOn = (hex: string): string => (luminanceOf(hex) > 0.55 ? '#141414' : '#FFFFFF');
 
 // Near-black on a dark theme (or near-white on a light one) would make buttons vanish.
+// A server's accent lives in its own variable, so it never replaces the accent you picked.
+export const SERVER_ACCENT_VAR = '--angaara-server-accent';
+export const serverAccent = `var(${SERVER_ACCENT_VAR}, ${color.Primary.Main})`;
+export const applyServerAccent = (accent: string | undefined) => {
+  const { style } = document.body;
+  if (accent && isHexColor(accent)) style.setProperty(SERVER_ACCENT_VAR, accent);
+  else style.removeProperty(SERVER_ACCENT_VAR);
+};
+
 export const usableAsAccent = (hex: string, dark: boolean): boolean =>
   isHexColor(hex) && (dark ? luminanceOf(hex) > 0.08 : luminanceOf(hex) < 0.85);
 

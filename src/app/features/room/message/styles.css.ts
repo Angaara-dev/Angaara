@@ -1,6 +1,7 @@
 import { createVar, globalStyle, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
 import { PHONE, phoneSize } from '../../../styles/phone';
+import { serverAccent } from '../../../utils/accent';
 
 export const MessageBase = style({
   position: 'relative',
@@ -43,19 +44,35 @@ export const BubbleAvatarBase = style({
   paddingTop: 0,
 });
 
-// A soft ring and glow in the accent colour, which inside a server is that server's accent.
-const avatarGlow = (ring: number, glow: number) =>
-  `0 0 0 ${toRem(2)} color-mix(in srgb, ${color.Primary.Main} ${ring}%, transparent), 0 0 ${toRem(
-    12
-  )} color-mix(in srgb, ${color.Primary.Main} ${glow}%, transparent)`;
+// A round glow on hover, in the server's accent inside a server and yours elsewhere.
+export const MessageAvatarGlow = style({
+  position: 'relative',
+  isolation: 'isolate',
+  selectors: {
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      left: '50%',
+      top: `calc(50% + ${toRem(2)})`,
+      width: toRem(84),
+      height: toRem(84),
+      transform: 'translate(-50%, -50%) scale(0.6)',
+      borderRadius: '50%',
+      background: `radial-gradient(circle closest-side, color-mix(in srgb, ${serverAccent} 55%, transparent), color-mix(in srgb, ${serverAccent} 20%, transparent) 55%, transparent)`,
+      opacity: 0,
+      zIndex: -1,
+      pointerEvents: 'none',
+      transition: 'opacity 180ms ease, transform 220ms ease',
+    },
+    '&:hover::before, &:focus-within::before': {
+      opacity: 1,
+      transform: 'translate(-50%, -50%) scale(1)',
+    },
+  },
+});
 
 export const MessageAvatar = style({
   cursor: 'pointer',
-  boxShadow: avatarGlow(45, 25),
-  transition: 'box-shadow 160ms ease',
-  selectors: {
-    '&:hover, &:focus-visible': { boxShadow: avatarGlow(80, 45) },
-  },
   '@media': {
     [PHONE]: { selectors: { '&&': { width: phoneSize(44), height: phoneSize(44) } } },
   },

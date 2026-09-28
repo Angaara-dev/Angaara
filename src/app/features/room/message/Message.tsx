@@ -934,7 +934,10 @@ export const Message = as<'div', MessageProps>(
 
     const avatarJSX = !collapse && messageLayout !== MessageLayout.Compact && (
       <AvatarBase
-        className={messageLayout === MessageLayout.Bubble ? css.BubbleAvatarBase : undefined}
+        className={classNames(
+          css.MessageAvatarGlow,
+          messageLayout === MessageLayout.Bubble && css.BubbleAvatarBase
+        )}
       >
         <Avatar
           className={css.MessageAvatar}

@@ -83,6 +83,13 @@ const ThemeSelector = as<'div', ThemeSelectorProps>(
   )
 );
 
+// Theme pickers stand out in a light tint of your accent.
+const accentPicker: React.CSSProperties = {
+  background: `color-mix(in srgb, ${color.Primary.Main} 26%, transparent)`,
+  borderColor: `color-mix(in srgb, ${color.Primary.Main} 60%, transparent)`,
+  color: color.Background.OnContainer,
+};
+
 function SelectTheme({ disabled }: { disabled?: boolean }) {
   const themes = useThemes();
   const themeNames = useThemeNames();
@@ -110,6 +117,7 @@ function SelectTheme({ disabled }: { disabled?: boolean }) {
         after={<Icon size="300" src={Icons.ChevronBottom} />}
         onClick={disabled ? undefined : handleThemeMenu}
         aria-disabled={disabled}
+        style={accentPicker}
       >
         <Text size="T300">{themeNames[selectedTheme.id] ?? selectedTheme.id}</Text>
       </Button>
@@ -185,6 +193,7 @@ function SystemThemePreferences() {
           <Chip
             variant={themeKind === ThemeKind.Light ? 'Primary' : 'Secondary'}
             outlined={themeKind === ThemeKind.Light}
+            style={themeKind === ThemeKind.Light ? accentPicker : undefined}
             radii="Pill"
             after={<Icon size="200" src={Icons.ChevronBottom} />}
             onClick={handleLightThemeMenu}
@@ -226,6 +235,7 @@ function SystemThemePreferences() {
           <Chip
             variant={themeKind === ThemeKind.Dark ? 'Primary' : 'Secondary'}
             outlined={themeKind === ThemeKind.Dark}
+            style={themeKind === ThemeKind.Dark ? accentPicker : undefined}
             radii="Pill"
             after={<Icon size="200" src={Icons.ChevronBottom} />}
             onClick={handleDarkThemeMenu}
