@@ -12,6 +12,7 @@ commands, and a built-in developer portal for building your own.
 - [Terms](https://angaara.app/terms.html)
 - [Bot SDK](bot-sdk/)
 
+> [!WARNING]
 > **🚧 In development**
 >
 > The phone layout is in beta. Some things, like swiping between panels, are still being
