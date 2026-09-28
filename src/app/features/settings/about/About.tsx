@@ -80,7 +80,7 @@ export function About({ requestClose }: AboutProps) {
                 >
                   <SettingTile
                     title={`Support ${BRAND_NAME}`}
-                    description={`I'm a solo dev keeping this free for everyone. If it's useful, $2/month helps cover hosting.`}
+                    description={`I'm a solo dev keeping this free for everyone. If it's useful, $2/month helps cover hosting and development.`}
                     after={
                       <Button
                         as="a"
