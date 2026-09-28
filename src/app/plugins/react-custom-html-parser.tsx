@@ -73,7 +73,7 @@ export const makeMentionCustomProps = (
   children: content,
 });
 
-// Tints a user mention with their role color, e.g. #1fd81f -> text + faint background.
+// Tints a user mention with their role color, e.g. #1fd81f becomes the text colour plus a faint background.
 const mentionColorStyle = (color: string | undefined): CSSProperties | undefined => {
   if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return undefined;
   return { color, backgroundColor: `${color}26`, boxShadow: `0 0 0 1px ${color}4d` };

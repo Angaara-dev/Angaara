@@ -1358,7 +1358,7 @@ function RepoDetails({ linked, onRemove }: { linked: LinkedRepo; onRemove: () =>
                 </Text>
               </a>
               <Text size="T200" priority="300">
-                {p.head.ref} → {p.base.ref} · @{p.user.login}
+                {p.head.ref} into {p.base.ref} · @{p.user.login}
                 {p.draft ? ' · draft' : ''}
               </Text>
             </Box>

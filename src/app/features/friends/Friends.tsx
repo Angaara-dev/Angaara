@@ -305,7 +305,7 @@ function VaultNotice() {
       {status === 'no-backup' ? (
         <Text size="T300">
           Friends and your DM list are end-to-end encrypted with your key backup. Verify this device
-          or turn on backup in Settings → Devices to use them.
+          or turn on backup in Settings, under Devices, to use them.
         </Text>
       ) : (
         <>

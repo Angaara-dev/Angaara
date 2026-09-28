@@ -21,7 +21,7 @@ export const deleteServerData = async (mx: MatrixClient): Promise<void> => {
 };
 
 export const PRIVATE_MODE_MESSAGE =
-  "Private mode is on, so this can't reach Angaara's servers. Turn it off in Settings → Account.";
+  "Private mode is on, so this can't reach Angaara's servers. Turn it off in Settings, under Account.";
 
 const isWorkerUrl = (input: RequestInfo | URL): boolean => {
   let url: URL;

@@ -11,7 +11,7 @@ Only the latest version gets security fixes. That's the `angaara` branch, which 
 **Please don't open a public issue, discussion or PR for security problems.**
 
 Report privately instead:
-- GitHub: **Security** tab → **Report a vulnerability**
+- GitHub: **Report a vulnerability** in the **Security** tab
 - Email: `security@angaara.app`
 
 Please include:
@@ -34,9 +34,9 @@ Please include:
 - The bot SDK (`bot-sdk/`)
 
 **Out of scope, please report these to the right place**
-- Matrix homeservers such as matrix.org -> the homeserver's operator ([matrix.org security disclosure](https://matrix.org/security-disclosure-policy/))
-- Bugs that also exist in upstream Cinny -> [cinnyapp/cinny](https://github.com/cinnyapp/cinny)
-- matrix-js-sdk, Element Call and other dependencies -> their own projects
+- Matrix homeservers such as matrix.org: tell the homeserver's operator ([matrix.org security disclosure](https://matrix.org/security-disclosure-policy/))
+- Bugs that also exist in upstream Cinny: report to [cinnyapp/cinny](https://github.com/cinnyapp/cinny)
+- matrix-js-sdk, Element Call and other dependencies: report to their own projects
 - Spam, social engineering, or denial of service by flooding
 
 ## Safe harbor

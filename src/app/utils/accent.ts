@@ -146,7 +146,7 @@ const THEME_EXTRA_VARS = [
   '--angaara-theme-menu',
 ];
 const WASH_GROUPS = [color.Surface, color.SurfaceVariant, color.Secondary];
-// The see-through panel colours, as CSS variable name → value.
+// The see-through panel colours, as CSS variable names and values.
 export const themeWashVars = (dark: boolean): Record<string, string> => {
   const [base, hover, active, line] = dark
     ? ['0.06', '0.1', '0.14', 'rgba(255, 255, 255, 0.08)']

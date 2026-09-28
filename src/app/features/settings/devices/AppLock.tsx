@@ -35,7 +35,7 @@ function PasswordInput({
   );
 }
 
-// Settings → Devices: lock this device's encryption keys behind a password.
+// In Settings, under Devices: lock this device's encryption keys behind a password.
 export function AppLock() {
   const mx = useMatrixClient();
   const userId = mx.getSafeUserId();
