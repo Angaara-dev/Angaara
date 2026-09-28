@@ -55,6 +55,7 @@ import { ACCENT_PRESETS, isHexColor } from '../../../utils/accent';
 import { PHONE_SCROLL_NATIVE } from '../../../utils/touchScroll';
 import { SettingsPageHeader } from '../SettingsPageHeader';
 import { usePhone } from '../../../hooks/useScreenSize';
+import { DeleteAccount } from './DeleteAccount';
 
 type ThemeSelectorProps = {
   themeNames: Record<string, string>;
@@ -1167,6 +1168,7 @@ export function General({ requestClose }: GeneralProps) {
               <DateAndTime />
               <Editor />
               <Messages />
+              <DeleteAccount />
             </Box>
           </PageContent>
         </Scroll>

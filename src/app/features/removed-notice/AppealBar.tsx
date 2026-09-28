@@ -12,7 +12,7 @@ import {
   decideAppeal,
   getAppeal,
   getAppellant,
-  MAX_APPEALS,
+  appealMax,
 } from './appeals';
 
 // Sits above the message box in an appeal ticket: the mods decide or close it, the
@@ -52,7 +52,9 @@ export function AppealBar({ room }: { room: Room }) {
     setBusy(undefined);
   };
 
-  let text = `${name} is appealing their ban from ${appeal.space_name} (appeal ${appeal.attempt} of ${MAX_APPEALS}).`;
+  let text = `${name} is appealing their ban from ${appeal.space_name} (appeal ${
+    appeal.attempt
+  } of ${appealMax(appeal)}).`;
   if (mine) text = `Your appeal for ${appeal.space_name}. The mods will reply here.`;
   if (appeal.status === 'accepted') text = `Appeal accepted. ${name} has been unbanned.`;
   if (appeal.status === 'denied') text = 'Appeal denied.';

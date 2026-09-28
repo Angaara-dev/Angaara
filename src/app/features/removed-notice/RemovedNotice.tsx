@@ -14,7 +14,14 @@ import {
   TextArea,
   toRem,
 } from 'folds';
-import { MatrixClient, MatrixEvent, Room, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
+import {
+  ClientEvent,
+  MatrixClient,
+  MatrixEvent,
+  Room,
+  RoomEvent,
+  RoomStateEvent,
+} from 'matrix-js-sdk';
 import { useNavigate } from 'react-router-dom';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { getMxIdServer } from '../../utils/matrix';
@@ -31,9 +38,13 @@ import {
   getAppellant,
   getMods,
   isBanError,
-  MAX_APPEALS,
+  appealLimit,
+  appealMax,
+  DEFAULT_APPEALS,
   Mod,
   openAppealFor,
+  pingedSettings,
+  receivePing,
   rememberRooms,
   submitAppeal,
 } from './appeals';
@@ -50,6 +61,7 @@ type Notice = {
   kind: 'kicked' | 'banned' | 'retry' | 'accepted' | 'denied' | 'closed' | 'archived';
   // Whether the server takes appeals; unknown until its settings are found.
   appealsOn?: boolean;
+  maxAppeals?: number;
   by?: string;
   byId?: string;
   reason?: string;
@@ -84,6 +96,13 @@ const markSeen = (key: string) => {
 const knownAppealsOn = (room: Room | null): boolean | undefined =>
   room?.currentState.getStateEvents('m.room.power_levels', '') ? appealsEnabled(room) : undefined;
 
+// Settings a mod's app sent since the ban beat whatever the app saw at the time.
+const withPing = (notice: Notice): Notice => {
+  const ping = pingedSettings(notice.roomId);
+  if (!ping || (notice.kind !== 'banned' && notice.kind !== 'retry')) return notice;
+  return { ...notice, appealsOn: ping.enabled, maxAppeals: ping.max };
+};
+
 // A kick or ban by someone else, if that's how you left this room.
 const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   const myId = mx.getSafeUserId();
@@ -107,6 +126,7 @@ const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
     reason: event.getContent().reason,
     mods: banned ? getMods(mx, room) : [],
     appealsOn: banned ? knownAppealsOn(room) : undefined,
+    maxAppeals: banned && knownAppealsOn(room) !== undefined ? appealLimit(room) : undefined,
   };
 };
 
@@ -127,7 +147,7 @@ const outcomeNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
     byId: decider,
     mods: [],
     appealRoomId: room.roomId,
-    appealsLeft: Math.max(0, MAX_APPEALS - appeal.attempt),
+    appealsLeft: Math.max(0, appealMax(appeal) - appeal.attempt),
   };
 };
 
@@ -147,7 +167,8 @@ export function RemovedNotice() {
   useEffect(() => {
     const add = (notice?: Notice) => {
       if (!notice || getSeen().includes(notice.key)) return;
-      setQueue((q) => [...q.filter((n) => n.key !== notice.key), notice]);
+      const pinged = withPing(notice);
+      setQueue((q) => [...q.filter((n) => n.key !== pinged.key), pinged]);
     };
 
     rememberRooms(mx);
@@ -180,7 +201,7 @@ export function RemovedNotice() {
       const roomId = room?.roomId ?? roomIdOrAlias;
       setQueue((q) => [
         ...q.filter((n) => n.roomId !== roomId),
-        {
+        withPing({
           key: `retry${roomId}${Date.now()}`,
           roomId,
           name: name || room?.name || roomIdOrAlias,
@@ -190,7 +211,8 @@ export function RemovedNotice() {
           direct,
           mods: getMods(mx, room),
           appealsOn: knownAppealsOn(room),
-        },
+          maxAppeals: knownAppealsOn(room) === undefined ? undefined : appealLimit(room),
+        }),
       ]);
     };
     const onBanNotice = (evt: Event) => {
@@ -198,6 +220,12 @@ export function RemovedNotice() {
       addRetry(roomIdOrAlias, name, true);
     };
     window.addEventListener(BAN_NOTICE_EVENT, onBanNotice);
+
+    // A mod changed the appeal settings; update any ban notice that's open.
+    const onToDevice = (event: MatrixEvent) => {
+      if (receivePing(mx, event)) setQueue((q) => q.map(withPing));
+    };
+    mx.on(ClientEvent.ToDeviceEvent, onToDevice);
 
     // Every join in the app goes through mx.joinRoom, so catch bans there in one place.
     const { joinRoom } = mx;
@@ -213,6 +241,7 @@ export function RemovedNotice() {
       mx.removeListener(RoomEvent.MyMembership, onMembership);
       mx.removeListener(RoomStateEvent.Events, onState);
       window.removeEventListener(BAN_NOTICE_EVENT, onBanNotice);
+      mx.removeListener(ClientEvent.ToDeviceEvent, onToDevice);
       mx.joinRoom = joinRoom;
     };
   }, [mx]);
@@ -234,13 +263,14 @@ export function RemovedNotice() {
         setQueue((q) =>
           q.map((n) =>
             n.key === currentKey
-              ? {
+              ? withPing({
                   ...n,
                   roomId: info.roomId,
                   name: unnamed(n.name) && info.name ? info.name : n.name,
                   mods: n.mods.length > 0 ? n.mods : info.mods,
                   appealsOn: n.appealsOn ?? info.enabled,
-                }
+                  maxAppeals: n.maxAppeals ?? info.max,
+                })
               : n
           )
         )
@@ -258,13 +288,10 @@ export function RemovedNotice() {
   const place = current.space ? 'server' : 'room';
   const banned = current.kind === 'banned' || current.kind === 'retry';
   const used = banned ? appealsUsed(mx, current.roomId) : 0;
+  const limit = current.maxAppeals ?? DEFAULT_APPEALS;
   const pending = banned && !appealSent && !!openAppealFor(mx, current.roomId);
   const canAppeal =
-    banned &&
-    current.appealsOn === true &&
-    current.mods.length > 0 &&
-    used < MAX_APPEALS &&
-    !pending;
+    banned && current.appealsOn === true && current.mods.length > 0 && used < limit && !pending;
   const ticket = sentRoomId ?? (pending ? openAppealFor(mx, current.roomId)?.roomId : undefined);
   // Straight to the appeal, unless there's none to make.
   const showAppeal = appealing && canAppeal && !appealSent;
@@ -274,7 +301,7 @@ export function RemovedNotice() {
     markSeen(current.key);
     if (current.appealRoomId) mx.leave(current.appealRoomId).catch(() => undefined);
     // Once appeals are over, the server is dropped from the app entirely.
-    if (current.kind === 'closed' || (banned && used >= MAX_APPEALS && !pending)) {
+    if (current.kind === 'closed' || (banned && used >= limit && !pending)) {
       mx.forget(current.roomId).catch(() => undefined);
     }
     setError(undefined);
@@ -310,7 +337,8 @@ export function RemovedNotice() {
           mx,
           { roomId: current.roomId, name: current.name },
           current.mods.filter((m) => m.id === pickedMod),
-          appealText.trim()
+          appealText.trim(),
+          limit
         ),
       (roomId) => {
         setAppealSent(true);
@@ -350,9 +378,7 @@ export function RemovedNotice() {
 
   if (showAppeal) {
     title = `Appeal your ban from ${current.name}`;
-    body = `Tell the mods why you should be unbanned. This is appeal ${
-      used + 1
-    } of ${MAX_APPEALS}.`;
+    body = `Tell the mods why you should be unbanned. This is appeal ${used + 1} of ${limit}.`;
   }
 
   return (
@@ -456,9 +482,9 @@ export function RemovedNotice() {
                   <b>Your appeal is waiting on the mods.</b>
                 </Text>
               )}
-              {banned && !appealSent && !pending && used >= MAX_APPEALS && (
+              {banned && !appealSent && !pending && used >= limit && (
                 <Text size="T300" priority="300">
-                  You&apos;ve used both appeals for this {place}.
+                  You&apos;ve used all {limit} of your appeals for this {place}.
                 </Text>
               )}
               {looking && (
@@ -476,7 +502,7 @@ export function RemovedNotice() {
                 !looking &&
                 current.appealsOn === true &&
                 current.mods.length === 0 &&
-                used < MAX_APPEALS && (
+                used < limit && (
                   <Text size="T300" priority="300">
                     Couldn&apos;t find who can unban you, so you can&apos;t appeal from here.
                   </Text>
@@ -536,13 +562,13 @@ export function RemovedNotice() {
                   </Button>
                   {canAppeal && !appealSent && (
                     <Button
-                      variant="Primary"
+                      variant="Critical"
                       fill="Soft"
                       radii="400"
                       onClick={() => setAppealing(true)}
                     >
                       <Text size="B400">
-                        Appeal ({MAX_APPEALS - used} of {MAX_APPEALS} left)
+                        Appeal ({limit - used} of {limit} left)
                       </Text>
                     </Button>
                   )}

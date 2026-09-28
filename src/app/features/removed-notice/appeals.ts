@@ -1,13 +1,19 @@
-import { MatrixClient, MatrixEvent, Room } from 'matrix-js-sdk';
+import { MatrixClient, MatrixEvent, Room, RoomMember } from 'matrix-js-sdk';
 import { Membership, StateEvent } from '../../../types/matrix/room';
 import { creatorsSupported } from '../../utils/matrix';
 import { getRoomCreators, getRoomCreatorsForRoomId } from '../../hooks/useRoomCreators';
 
 // State in an appeal room, which a banned user opens with the people who can unban them.
 export const APPEAL_STATE = 'io.angaara.appeal';
-// Account data counting the appeals used per server, so each ban gets two tries.
+// Account data counting the appeals used per server.
 const APPEALS_USED_KEY = 'io.angaara.appeals';
-export const MAX_APPEALS = 2;
+// How many appeals a ban gets, unless the server sets its own (between 1 and 10).
+export const DEFAULT_APPEALS = 2;
+export const MAX_APPEALS_LIMIT = 10;
+export const clampAppeals = (n: unknown): number =>
+  typeof n === 'number' && Number.isFinite(n)
+    ? Math.min(MAX_APPEALS_LIMIT, Math.max(1, Math.round(n)))
+    : DEFAULT_APPEALS;
 
 export type AppealStatus = 'open' | 'denied' | 'accepted' | 'closed';
 export type AppealContent = {
@@ -17,6 +23,8 @@ export type AppealContent = {
   status: AppealStatus;
   // Closed tickets stay around for the mods, filed under Archived.
   archived?: boolean;
+  // The server's appeal limit when this one was sent.
+  max?: number;
   // Set once every mod has been invited to read the archived ticket.
   shared?: boolean;
 };
@@ -50,6 +58,13 @@ export const appealsEnabled = (room: Room | null): boolean =>
   room?.currentState.getStateEvents(StateEvent.AngaaraBanAppeals, '')?.getContent()?.enabled ===
   true;
 
+export const appealLimit = (room: Room | null): number =>
+  clampAppeals(
+    room?.currentState.getStateEvents(StateEvent.AngaaraBanAppeals, '')?.getContent()?.max
+  );
+
+export const appealMax = (appeal: AppealContent): number => clampAppeals(appeal.max);
+
 export const getAppeal = (room: Room): AppealContent | undefined => {
   const content = room.currentState.getStateEvents(APPEAL_STATE, '')?.getContent();
   return content?.space ? (content as AppealContent) : undefined;
@@ -66,7 +81,7 @@ export const isBanError = (e: unknown) =>
 
 // Servers forget banned members fast, so each joined room's name and mods are kept here.
 const REMEMBERED_KEY = 'angaara_room_mods';
-type Remembered = Record<string, { name: string; mods: Mod[]; enabled?: boolean }>;
+type Remembered = Record<string, { name: string; mods: Mod[]; enabled?: boolean; max?: number }>;
 const recallAll = (): Remembered => {
   try {
     return JSON.parse(localStorage.getItem(REMEMBERED_KEY) ?? '{}');
@@ -80,7 +95,12 @@ export const rememberRooms = (mx: MatrixClient) => {
     if (room.getMyMembership() !== Membership.Join || getAppeal(room)) return;
     const mods = getMods(mx, room);
     if (mods.length > 0)
-      all[room.roomId] = { name: room.name, mods, enabled: appealsEnabled(room) };
+      all[room.roomId] = {
+        name: room.name,
+        mods,
+        enabled: appealsEnabled(room),
+        max: appealLimit(room),
+      };
   });
   try {
     // Keep what we knew about rooms we've since left or been banned from.
@@ -127,7 +147,7 @@ const leftRoomState = async (mx: MatrixClient, roomId: string): Promise<RawEvent
 export const fetchBannedRoom = async (
   mx: MatrixClient,
   roomIdOrAlias: string
-): Promise<{ roomId: string; name?: string; mods: Mod[]; enabled: boolean }> => {
+): Promise<{ roomId: string; name?: string; mods: Mod[]; enabled: boolean; max: number }> => {
   const roomId = roomIdOrAlias.startsWith('#')
     ? (await mx.getRoomIdForAlias(roomIdOrAlias)).room_id
     : roomIdOrAlias;
@@ -136,6 +156,7 @@ export const fetchBannedRoom = async (
   const local = mx.getRoom(roomId);
   let mods = remembered?.mods ?? getMods(mx, local);
   let enabled = remembered?.enabled ?? (local ? appealsEnabled(local) : undefined);
+  let max = remembered?.max ?? (local ? appealLimit(local) : undefined);
   if (!name || mods.length === 0 || enabled === undefined) {
     const events = await leftRoomState(mx, roomId).catch(() => [] as RawEvent[]);
     const find = (type: string, key = '') =>
@@ -143,6 +164,7 @@ export const fetchBannedRoom = async (
     name =
       name || find('m.room.name')?.content.name || find('m.room.canonical_alias')?.content.alias;
     enabled = enabled ?? find(StateEvent.AngaaraBanAppeals)?.content.enabled === true;
+    max = max ?? clampAppeals(find(StateEvent.AngaaraBanAppeals)?.content.max);
     if (mods.length === 0) {
       const myId = mx.getSafeUserId();
       const pl = find('m.room.power_levels')?.content ?? {};
@@ -165,7 +187,7 @@ export const fetchBannedRoom = async (
       () => undefined
     );
   }
-  return { roomId, name, mods, enabled: enabled === true };
+  return { roomId, name, mods, enabled: enabled === true, max: max ?? DEFAULT_APPEALS };
 };
 
 export const appealsUsed = (mx: MatrixClient, spaceId: string): number =>
@@ -187,15 +209,17 @@ export const submitAppeal = async (
   mx: MatrixClient,
   space: { roomId: string; name: string },
   mods: Mod[],
-  text: string
+  text: string,
+  max: number
 ) => {
   const used = appealsUsed(mx, space.roomId);
-  if (used >= MAX_APPEALS) throw new Error("You've used all your appeals for this server.");
+  if (used >= max) throw new Error("You've used all your appeals for this server.");
   const content: AppealContent = {
     space: space.roomId,
     space_name: space.name,
     attempt: used + 1,
     status: 'open',
+    max,
   };
   // Newer room versions give the creator top power already and reject them in the list.
   const caps = await mx.getCapabilities().catch(() => undefined);
@@ -275,12 +299,15 @@ export const decideAppeal = async (mx: MatrixClient, room: Room, accept: boolean
   const user = getAppellant(room);
   if (!appeal || !user) throw new Error('This is not an appeal.');
   const attempt = Math.max(appeal.attempt, pastAppeals(mx, user, appeal.space, room.roomId) + 1);
+  // The server's current limit wins, so raising it gives pending appellants more tries.
+  const space = mx.getRoom(appeal.space);
+  const max = space ? appealLimit(space) : appealMax(appeal);
   let status: AppealStatus = 'denied';
   if (accept) status = 'accepted';
-  else if (attempt >= MAX_APPEALS) status = 'closed';
+  else if (attempt >= max) status = 'closed';
 
   if (accept) await mx.unban(appeal.space, user);
-  const decided: AppealContent = { ...appeal, attempt, status, archived: true };
+  const decided: AppealContent = { ...appeal, attempt, status, max, archived: true };
   await mx.sendStateEvent(room.roomId, APPEAL_STATE as never, decided as never, '');
   await mx.sendMessage(room.roomId, { msgtype: 'm.notice', body: APPEAL_NOTICES[status] } as never);
   await shareArchive(mx, room, decided);
@@ -324,3 +351,46 @@ export const spaceAppeals = (mx: MatrixClient, space: Room): Room[] =>
 export const canUnbanIn = (mx: MatrixClient, space: Room): boolean =>
   space.getMyMembership() === Membership.Join &&
   canDecide(mx, { space: space.roomId, space_name: '', attempt: 0, status: 'open' });
+
+// Banned members can't read the server's settings anymore, so a mod's app messages their
+// apps directly once whenever the appeal settings change.
+export const APPEAL_SETTINGS_PING = 'io.angaara.ban_appeals.ping';
+const PINGED_KEY = 'angaara_appeal_settings';
+type AppealSettings = { enabled: boolean; max: number };
+
+export const pingBanned = async (mx: MatrixClient, space: Room, settings: AppealSettings) => {
+  const banned: string[] = space
+    .getMembers()
+    .filter((m: RoomMember) => m.membership === Membership.Ban)
+    .map((m: RoomMember) => m.userId);
+  if (banned.length === 0) return;
+  const content = { space: space.roomId, ...settings };
+  const map = new Map(banned.map((id) => [id, new Map([['*', content]])]));
+  await mx.sendToDevice(APPEAL_SETTINGS_PING, map as never);
+};
+
+const pingedAll = (): Record<string, AppealSettings> => {
+  try {
+    return JSON.parse(localStorage.getItem(PINGED_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+};
+export const pingedSettings = (spaceId: string): AppealSettings | undefined => pingedAll()[spaceId];
+
+// Keeps a ping only from someone who could actually unban you there.
+export const receivePing = (mx: MatrixClient, event: MatrixEvent): string | undefined => {
+  if (event.getType() !== APPEAL_SETTINGS_PING) return undefined;
+  const { space, enabled, max } = event.getContent();
+  const sender = event.getSender();
+  if (typeof space !== 'string' || !sender) return undefined;
+  const known = recallAll()[space]?.mods ?? getMods(mx, mx.getRoom(space));
+  if (known.length > 0 && !known.some((m) => m.id === sender)) return undefined;
+  try {
+    const all = { ...pingedAll(), [space]: { enabled: enabled === true, max: clampAppeals(max) } };
+    localStorage.setItem(PINGED_KEY, JSON.stringify(all));
+  } catch {
+    return undefined;
+  }
+  return space;
+};

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import FocusTrap from 'focus-trap-react';
+import { Room } from 'matrix-js-sdk';
 import {
   Avatar,
   Box,
@@ -24,7 +25,7 @@ import { RoomAvatar, RoomIcon } from '../../components/room-avatar';
 import { AngaaraLogo } from '../../components/angaara-logo';
 import { mxcUrlToHttp, getMxIdLocalPart } from '../../utils/matrix';
 import { millify } from '../../plugins/millify';
-import { requestWelcomeDm } from '../../../client/xp';
+import { requestWelcomeDm, XP_ROOM_KEY } from '../../../client/xp';
 import { BRAND_NAME } from '../../brand';
 import { clearNewAccount, isNewAccount } from '../../utils/newAccount';
 
@@ -138,10 +139,18 @@ export function Welcome() {
   const [failed, setFailed] = useState(0);
   const [dmSent, setDmSent] = useState(false);
   const userId = mx.getSafeUserId();
-  // Only accounts registered through this app get the panel, not ones signing in.
-  const open = isNewAccount(userId) && !seen && !closed;
+  // New accounts get the panel: ones registered here, and ones made elsewhere (e.g. single
+  // sign-on) that haven't joined anything yet, checked once when the app opens.
+  const [empty] = useState(() => {
+    const botRoom = mx.getAccountData(XP_ROOM_KEY as never)?.getContent()?.room_id;
+    return !mx.getRooms().some((r: Room) => r.getMyMembership() === 'join' && r.roomId !== botRoom);
+  });
+  const open = (isNewAccount(userId) || empty) && !seen && !closed;
 
-  const name = mx.getUser(userId)?.displayName || getMxIdLocalPart(userId) || userId;
+  // Without a display name set, Matrix hands back the full ID; the username reads nicer.
+  const displayName = mx.getUser(userId)?.displayName;
+  const name =
+    (displayName && displayName !== userId ? displayName : getMxIdLocalPart(userId)) || userId;
 
   // The bot's hello lands in their DMs while they go through the panel.
   useEffect(() => {

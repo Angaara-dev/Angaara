@@ -26,7 +26,7 @@ import {
   canUnbanIn,
   getAppeal,
   getAppellant,
-  MAX_APPEALS,
+  appealMax,
   spaceAppeals,
 } from './appeals';
 
@@ -99,7 +99,7 @@ function Ticket({ room, onOpen }: TicketProps) {
       </Box>
       <Text size="T200" priority="300">
         {status}
-        {appeal && ` · appeal ${appeal.attempt} of ${MAX_APPEALS}`}
+        {appeal && ` · appeal ${appeal.attempt} of ${appealMax(appeal)}`}
         {created && ` · ${new Date(created).toLocaleDateString()}`}
         {user && user === mx.getSafeUserId() && ' · yours'}
       </Text>
