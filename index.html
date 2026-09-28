@@ -24,6 +24,12 @@
     <meta name="theme-color" content="#0E0E10" />
     <!-- Angaara has its own themes; stops Dark Reader from inverting them. -->
     <meta name="darkreader-lock" />
+    <!-- Orange while the app loads, instead of the browser's blank white; themes take over after. -->
+    <style>
+      body:not([class]) {
+        background-color: #ff6b3d;
+      }
+    </style>
 
     <link id="favicon" rel="shortcut icon" href="./public/favicon.ico" />
 
