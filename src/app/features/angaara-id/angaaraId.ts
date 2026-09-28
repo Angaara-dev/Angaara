@@ -1,0 +1,57 @@
+import { MatrixClient } from 'matrix-js-sdk';
+import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+
+export type AngaaraAccount = {
+  username: string;
+  supporter: boolean;
+  created: number;
+  // Only ever shown to the account's owner.
+  linked: string[];
+  passkeys: number;
+  maxLinks: number;
+};
+
+// Every step proves which Matrix account is asking, with a short-lived OpenID token.
+const api = async (mx: MatrixClient, step: string, extra: Record<string, unknown> = {}) => {
+  const res = await fetch(`${window.location.origin}/api/id/${step}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ openid: await mx.getOpenIdToken(), ...extra }),
+  });
+  const data = await res.json().catch(() => undefined);
+  if (!res.ok) throw new Error(data?.error ?? 'Something went wrong. Try again.');
+  return data;
+};
+
+export const getAngaaraAccount = async (mx: MatrixClient): Promise<AngaaraAccount | null> =>
+  (await api(mx, 'me')).account;
+
+// A new account with this username, or (when already linked) one more passkey for it.
+export const registerPasskey = async (
+  mx: MatrixClient,
+  username?: string
+): Promise<AngaaraAccount> => {
+  const { options } = await api(mx, 'register/options', { username });
+  const response = await startRegistration({ optionsJSON: options }).catch((e) => {
+    if (e?.name === 'InvalidStateError') {
+      throw new Error(
+        'This device already has a passkey for your account. Use another device or a security key.'
+      );
+    }
+    throw e;
+  });
+  return (await api(mx, 'register/verify', { response })).account;
+};
+
+// Links this Matrix account to the Angaara account whose passkey is used.
+export const signInWithPasskey = async (mx: MatrixClient): Promise<AngaaraAccount> => {
+  const { options } = await api(mx, 'login/options');
+  const response = await startAuthentication({ optionsJSON: options });
+  return (await api(mx, 'login/verify', { response })).account;
+};
+
+export const unlinkAngaaraAccount = (mx: MatrixClient) => api(mx, 'unlink');
+
+// Browsers throw these when someone closes the passkey prompt; that's not worth an error.
+export const cancelled = (e: unknown) =>
+  e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'AbortError');

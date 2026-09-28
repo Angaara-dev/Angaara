@@ -8,6 +8,7 @@ import { IgnoredUserList } from './IgnoredUserList';
 import { SettingsPageHeader } from '../SettingsPageHeader';
 import { Experience } from './Experience';
 import { PrivateMode } from './PrivateMode';
+import { AngaaraAccount } from './AngaaraAccount';
 
 type AccountProps = {
   requestClose: () => void;
@@ -21,6 +22,7 @@ export function Account({ requestClose }: AccountProps) {
           <PageContent>
             <Box direction="Column" gap="700">
               <Profile />
+              <AngaaraAccount />
               <Experience />
               <MatrixId />
               <ContactInformation />
