@@ -158,7 +158,16 @@ export function RemovedNotice() {
     mx.on(RoomStateEvent.Events, onState);
 
     const addRetry = (roomIdOrAlias: string, name?: string, direct?: boolean) => {
-      const room = mx.getRoom(roomIdOrAlias);
+      // Cards often know a server only by its address, which getRoom can't look up.
+      const room =
+        mx.getRoom(roomIdOrAlias) ??
+        mx
+          .getRooms()
+          .find(
+            (r: Room) =>
+              r.getCanonicalAlias() === roomIdOrAlias || r.getAltAliases().includes(roomIdOrAlias)
+          ) ??
+        null;
       const roomId = room?.roomId ?? roomIdOrAlias;
       setQueue((q) => [
         ...q.filter((n) => n.roomId !== roomId),
@@ -206,8 +215,10 @@ export function RemovedNotice() {
     !!current &&
     (current.kind === 'banned' || current.kind === 'retry') &&
     (unnamed(current.name) || current.mods.length === 0);
+  const [lookingUp, setLookingUp] = useState<string>();
   useEffect(() => {
     if (!currentKey || !needsInfo) return;
+    setLookingUp(currentKey);
     fetchBannedRoom(mx, currentRoomId)
       .then((info) =>
         setQueue((q) =>
@@ -223,7 +234,8 @@ export function RemovedNotice() {
           )
         )
       )
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setLookingUp((k) => (k === currentKey ? undefined : k)));
   }, [mx, currentKey, currentRoomId, needsInfo]);
 
   // The Appeal button on a server card skips straight to writing the appeal.
@@ -239,6 +251,7 @@ export function RemovedNotice() {
   const canAppeal = banned && current.mods.length > 0 && used < MAX_APPEALS && !pending;
   // Straight to the appeal, unless there's none to make.
   const showAppeal = appealing && canAppeal && !appealSent;
+  const looking = banned && lookingUp === current.key;
 
   const dismiss = () => {
     markSeen(current.key);
@@ -405,6 +418,17 @@ export function RemovedNotice() {
               {banned && !appealSent && !pending && used >= MAX_APPEALS && (
                 <Text size="T300" priority="300">
                   You&apos;ve used both appeals for this {place}.
+                </Text>
+              )}
+              {looking && (
+                <Box alignItems="Center" gap="200">
+                  <Spinner size="100" variant="Secondary" />
+                  <Text size="T300">Finding who can unban you…</Text>
+                </Box>
+              )}
+              {banned && !looking && current.mods.length === 0 && used < MAX_APPEALS && (
+                <Text size="T300" priority="300">
+                  Couldn&apos;t find who can unban you, so you can&apos;t appeal from here.
                 </Text>
               )}
               {error && (

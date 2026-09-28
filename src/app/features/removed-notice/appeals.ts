@@ -76,8 +76,40 @@ export const rememberRooms = (mx: MatrixClient) => {
   }
 };
 
-// When the app no longer has a server loaded, use what it remembered, then whatever the
-// server still shares with former members (state on some servers, the public summary).
+type RawEvent = {
+  type: string;
+  sender?: string;
+  state_key?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content: Record<string, any>;
+};
+
+// Servers hide a room's state from banned members, but a sync that includes left rooms
+// still hands back the state as of the ban.
+const leftRoomState = async (mx: MatrixClient, roomId: string): Promise<RawEvent[]> => {
+  const filter = {
+    room: {
+      rooms: [roomId],
+      include_leave: true,
+      timeline: { limit: 1 },
+      state: { lazy_load_members: false },
+      ephemeral: { not_types: ['*'] },
+      account_data: { not_types: ['*'] },
+    },
+    presence: { not_types: ['*'] },
+    account_data: { not_types: ['*'] },
+  };
+  const res = await mx.http.authedRequest<{
+    rooms?: { leave?: Record<string, { state?: { events?: RawEvent[] } }> };
+  }>('GET' as never, '/sync', { full_state: 'true', filter: JSON.stringify(filter) });
+  const left = res.rooms?.leave?.[roomId] as
+    | { state?: { events?: RawEvent[] }; timeline?: { events?: RawEvent[] } }
+    | undefined;
+  return [...(left?.state?.events ?? []), ...(left?.timeline?.events ?? [])];
+};
+
+// When the app no longer has a server loaded, use what it remembered, then the state as of
+// the ban, then the public summary for at least a name.
 export const fetchBannedRoom = async (
   mx: MatrixClient,
   roomIdOrAlias: string
@@ -87,37 +119,35 @@ export const fetchBannedRoom = async (
     : roomIdOrAlias;
   const remembered = recallAll()[roomId];
   let name = remembered?.name;
-  let mods = remembered?.mods ?? [];
-  try {
-    const events = (await mx.roomState(roomId)) as unknown as {
-      type: string;
-      state_key?: string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      content: Record<string, any>;
-    }[];
+  let mods = remembered?.mods ?? getMods(mx, mx.getRoom(roomId));
+  if (!name || mods.length === 0) {
+    const events = await leftRoomState(mx, roomId).catch(() => [] as RawEvent[]);
     const find = (type: string, key = '') =>
-      events.find((e) => e.type === type && e.state_key === key)?.content;
-    name = name || find('m.room.name')?.name || find('m.room.canonical_alias')?.alias;
-    const pl = find('m.room.power_levels') ?? {};
-    const create = events.find((e) => e.type === 'm.room.create');
-    const ids = new Set(create ? getRoomCreators(new MatrixEvent(create as never)) : []);
-    Object.entries<number>(pl.users ?? {}).forEach(([id, level]) => {
-      if (level >= (pl.ban ?? 50)) ids.add(id);
-    });
-    ids.delete(mx.getSafeUserId());
+      events.filter((e) => e.type === type && e.state_key === key).pop();
+    name =
+      name || find('m.room.name')?.content.name || find('m.room.canonical_alias')?.content.alias;
     if (mods.length === 0) {
+      const myId = mx.getSafeUserId();
+      const pl = find('m.room.power_levels')?.content ?? {};
+      const create = find('m.room.create');
+      const ids = new Set(create ? getRoomCreators(new MatrixEvent(create as never)) : []);
+      Object.entries<number>(pl.users ?? {}).forEach(([id, level]) => {
+        if (level >= (pl.ban ?? 50)) ids.add(id);
+      });
+      const ban = find('m.room.member', myId);
+      if (ban?.content.membership === Membership.Ban && ban.sender) ids.add(ban.sender);
+      ids.delete(myId);
       mods = [...ids]
         .slice(0, 8)
-        .map((id) => ({ id, name: find('m.room.member', id)?.displayname || id }));
+        .map((id) => ({ id, name: find('m.room.member', id)?.content.displayname || id }));
     }
-  } catch {
-    // Most servers hide state from banned members.
   }
-  if (!name)
+  if (!name) {
     name = await mx.getRoomSummary(roomId).then(
       (r: { name?: string }) => r.name,
       () => undefined
     );
+  }
   return { roomId, name, mods };
 };
 
