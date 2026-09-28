@@ -1,4 +1,6 @@
 import { MatrixClient } from 'matrix-js-sdk';
+import { startAuthentication } from '@simplewebauthn/browser';
+import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { getSettings } from '../state/settings';
 
 // With private mode on, nothing reaches Angaara's Worker (/api/*); only the homeserver is used.
@@ -10,14 +12,36 @@ export const setPrivateMode = (on: boolean) => {
 
 const DELETE_PATH = '/api/account/delete';
 
-// Wipes everything Angaara's servers keep tied to your account.
-export const deleteServerData = async (mx: MatrixClient): Promise<void> => {
-  const res = await fetch(`${window.location.origin}${DELETE_PATH}`, {
+const post = async (mx: MatrixClient, path: string, extra: Record<string, unknown> = {}) => {
+  const res = await fetch(`${window.location.origin}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ openid: await mx.getOpenIdToken() }),
+    body: JSON.stringify({ openid: await mx.getOpenIdToken(), ...extra }),
   });
-  if (!res.ok) throw new Error("Couldn't delete your data. Try again later.");
+  const data = await res.json().catch(() => undefined);
+  if (!res.ok) throw new Error(data?.error ?? "Couldn't delete your data. Try again later.");
+  return data;
+};
+
+export type DeleteCheck = {
+  // What to type: the Angaara username, or the Matrix username without one.
+  username: string;
+  // A passkey challenge, only when there's an Angaara account.
+  options: PublicKeyCredentialRequestOptionsJSON | null;
+};
+export const getDeleteCheck = (mx: MatrixClient): Promise<DeleteCheck> =>
+  post(mx, `${DELETE_PATH}/options`);
+
+// Wipes everything Angaara's servers keep about you, after the passkey if one is needed.
+export const deleteServerData = async (
+  mx: MatrixClient,
+  confirm: string,
+  check: DeleteCheck
+): Promise<void> => {
+  const passkey = check.options
+    ? await startAuthentication({ optionsJSON: check.options })
+    : undefined;
+  await post(mx, DELETE_PATH, { confirm, passkey });
 };
 
 export const PRIVATE_MODE_MESSAGE =
@@ -32,7 +56,7 @@ const isWorkerUrl = (input: RequestInfo | URL): boolean => {
   }
   const ours = url.origin === window.location.origin || url.hostname.endsWith('angaara.app');
   // Deleting your data is always allowed, even with private mode on.
-  return ours && url.pathname.startsWith('/api/') && url.pathname !== DELETE_PATH;
+  return ours && url.pathname.startsWith('/api/') && !url.pathname.startsWith(DELETE_PATH);
 };
 
 // One guard for every fetch and popup, so no feature can slip past the switch.

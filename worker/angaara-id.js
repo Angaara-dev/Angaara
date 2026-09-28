@@ -353,6 +353,68 @@ async function handle(request, env, url, userId, body) {
   return json({ error: 'not found' }, 404);
 }
 
+// The Angaara username linked to this Matrix account, if any.
+export async function angaaraUsername(env, userId) {
+  if (!env.XP_DB) return undefined;
+  await ensureTables(env.XP_DB);
+  return (await accountOf(env.XP_DB, userId))?.username;
+}
+
+// Deleting everything needs the account's own passkey, not just a Matrix sign-in.
+export async function deleteCheckOptions(env, url, userId) {
+  if (!env.XP_DB) return undefined;
+  const db = env.XP_DB;
+  await ensureTables(db);
+  const account = await accountOf(db, userId);
+  if (!account) return undefined;
+  const keys = await db
+    .prepare('SELECT id, transports FROM angaara_passkeys WHERE account_id = ?')
+    .bind(account.id)
+    .all();
+  const options = await generateAuthenticationOptions({
+    rpID: url.hostname,
+    userVerification: 'required',
+    allowCredentials: (keys.results ?? []).map((k) => ({
+      id: k.id,
+      transports: k.transports ? JSON.parse(k.transports) : undefined,
+    })),
+  });
+  await saveChallenge(db, userId, 'delete', options.challenge, account.username);
+  return { options, username: account.username };
+}
+
+// True only for a fresh passkey signature from this Matrix account's own Angaara account.
+export async function verifyDeleteCheck(env, url, userId, response) {
+  const db = env.XP_DB;
+  const account = await accountOf(db, userId);
+  if (!account) return true;
+  const pending = await takeChallenge(db, userId, 'delete');
+  if (!pending) return false;
+  const key = await db
+    .prepare('SELECT * FROM angaara_passkeys WHERE id = ? AND account_id = ?')
+    .bind(String(response?.id ?? ''), account.id)
+    .first();
+  if (!key) return false;
+  try {
+    const result = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge: pending.challenge,
+      expectedOrigin: url.origin,
+      expectedRPID: url.hostname,
+      credential: {
+        id: key.id,
+        publicKey: b64url.decode(key.public_key),
+        counter: key.counter,
+        transports: key.transports ? JSON.parse(key.transports) : undefined,
+      },
+      requireUserVerification: true,
+    });
+    return result.verified;
+  } catch {
+    return false;
+  }
+}
+
 export async function handleAngaaraId(request, env, url) {
   if (request.method !== 'POST') return json({ error: 'not found' }, 404);
   if (!env.XP_DB) return json({ error: 'not set up' }, 501);

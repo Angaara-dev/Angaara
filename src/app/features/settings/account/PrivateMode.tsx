@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { Box, Button, Spinner, Switch, Text, color, config } from 'folds';
+import { Box, Button, Input, Spinner, Switch, Text, color, config } from 'folds';
 import { useQueryClient } from '@tanstack/react-query';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
-import { deleteServerData, setPrivateMode } from '../../../utils/privateMode';
+import {
+  DeleteCheck,
+  deleteServerData,
+  getDeleteCheck,
+  setPrivateMode,
+} from '../../../utils/privateMode';
+import { cancelled } from '../../angaara-id/angaaraId';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { userXpQueryKey } from '../../../hooks/useUserXp';
 
@@ -30,22 +36,45 @@ function DeleteServerData({ onDeleted }: { onDeleted: () => void }) {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();
   const [, setEarnXp] = useSetting(settingsAtom, 'earnXp');
-  const [confirming, setConfirming] = useState(false);
+  const [check, setCheck] = useState<DeleteCheck>();
+  const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string }>();
+  const confirming = !!check;
+  const matches = !!check && typed.trim().replace(/^@/, '').toLowerCase() === check.username;
 
-  const remove = async () => {
+  const start = async () => {
     setBusy(true);
     setMessage(undefined);
     try {
-      await deleteServerData(mx);
+      setTyped('');
+      setCheck(await getDeleteCheck(mx));
+    } catch (e) {
+      setMessage({ ok: false, text: e instanceof Error ? e.message : "Couldn't start." });
+    }
+    setBusy(false);
+  };
+
+  const remove = async () => {
+    if (!check || !matches) return;
+    setBusy(true);
+    setMessage(undefined);
+    try {
+      await deleteServerData(mx, typed, check);
       setEarnXp(false);
       onDeleted();
       queryClient.removeQueries({ queryKey: userXpQueryKey(mx.getSafeUserId()) });
       queryClient.removeQueries({ queryKey: ['angaara-account'] });
       setMessage({ ok: true, text: 'Your data was deleted, and private mode is now on.' });
-      setConfirming(false);
+      setCheck(undefined);
     } catch (e) {
+      // A closed passkey prompt just leaves everything as it was.
+      if (cancelled(e)) {
+        setBusy(false);
+        return;
+      }
+      // Each passkey challenge works once, so a new one is needed to try again.
+      setCheck(undefined);
       setMessage({
         ok: false,
         text: e instanceof Error ? e.message : "Couldn't delete your data.",
@@ -67,7 +96,8 @@ function DeleteServerData({ onDeleted }: { onDeleted: () => void }) {
               fill="Soft"
               radii="300"
               outlined
-              onClick={() => setConfirming(true)}
+              disabled={busy}
+              onClick={start}
             >
               <Text size="B300">Delete</Text>
             </Button>
@@ -102,16 +132,34 @@ function DeleteServerData({ onDeleted }: { onDeleted: () => void }) {
               member number. Private mode turns on afterwards.
             </Text>
           </Box>
-          <Box gap="200">
+          <Box direction="Column" gap="100">
+            <Text size="T300">
+              Type <b>{check.username}</b> to confirm
+              {check.options ? ', then confirm with your passkey' : ''}.
+            </Text>
+            <Input
+              variant="Background"
+              radii="300"
+              size="400"
+              value={typed}
+              placeholder={check.username}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTyped(e.target.value)}
+            />
+          </Box>
+          <Box gap="200" wrap="Wrap">
             <Button
               size="300"
               variant="Critical"
               radii="300"
-              disabled={busy}
+              disabled={busy || !matches}
               onClick={remove}
               before={busy && <Spinner size="100" variant="Critical" fill="Solid" />}
             >
-              <Text size="B300">Delete Everything</Text>
+              <Text size="B300">
+                {check.options ? 'Confirm with Passkey and Delete' : 'Delete Everything'}
+              </Text>
             </Button>
             <Button
               size="300"
@@ -119,7 +167,7 @@ function DeleteServerData({ onDeleted }: { onDeleted: () => void }) {
               fill="Soft"
               radii="300"
               disabled={busy}
-              onClick={() => setConfirming(false)}
+              onClick={() => setCheck(undefined)}
             >
               <Text size="B300">Cancel</Text>
             </Button>
