@@ -19,10 +19,10 @@ import { useNavigate } from 'react-router-dom';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { getMxIdServer } from '../../utils/matrix';
 import { Membership } from '../../../types/matrix/room';
-import { getDirectCreatePath, withSearchParam } from '../../pages/pathUtils';
-import { DirectCreateSearchParams } from '../../pages/paths';
+import { getHomeRoomPath } from '../../pages/pathUtils';
 import {
   APPEAL_STATE,
+  appealsEnabled,
   appealsUsed,
   BAN_NOTICE_EVENT,
   BanNoticeDetail,
@@ -47,7 +47,9 @@ type Notice = {
   roomId: string;
   name: string;
   space: boolean;
-  kind: 'kicked' | 'banned' | 'retry' | 'accepted' | 'denied' | 'closed';
+  kind: 'kicked' | 'banned' | 'retry' | 'accepted' | 'denied' | 'closed' | 'archived';
+  // Whether the server takes appeals; unknown until its settings are found.
+  appealsOn?: boolean;
   by?: string;
   byId?: string;
   reason?: string;
@@ -78,6 +80,10 @@ const markSeen = (key: string) => {
   }
 };
 
+// Only trust the setting when the app actually has the server's settings loaded.
+const knownAppealsOn = (room: Room | null): boolean | undefined =>
+  room?.currentState.getStateEvents('m.room.power_levels', '') ? appealsEnabled(room) : undefined;
+
 // A kick or ban by someone else, if that's how you left this room.
 const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   const myId = mx.getSafeUserId();
@@ -100,13 +106,14 @@ const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
     byId: by,
     reason: event.getContent().reason,
     mods: banned ? getMods(mx, room) : [],
+    appealsOn: banned ? knownAppealsOn(room) : undefined,
   };
 };
 
 // The mods' decision on an appeal you made.
 const outcomeNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   const appeal = getAppeal(room);
-  if (!appeal || appeal.status === 'open') return undefined;
+  if (!appeal || (appeal.status === 'open' && !appeal.archived)) return undefined;
   if (getAppellant(room) !== mx.getSafeUserId()) return undefined;
   if (room.getMyMembership() !== Membership.Join) return undefined;
   const event = room.currentState.getStateEvents(APPEAL_STATE, '');
@@ -116,7 +123,7 @@ const outcomeNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
     roomId: appeal.space,
     name: appeal.space_name,
     space: true,
-    kind: appeal.status,
+    kind: appeal.status === 'open' ? 'archived' : appeal.status,
     byId: decider,
     mods: [],
     appealRoomId: room.roomId,
@@ -134,6 +141,8 @@ export function RemovedNotice() {
   const [appealText, setAppealText] = useState('');
   const [appealSent, setAppealSent] = useState(false);
   const [appealing, setAppealing] = useState(false);
+  const [sentRoomId, setSentRoomId] = useState<string>();
+  const [pickedMod, setPickedMod] = useState<string>();
 
   useEffect(() => {
     const add = (notice?: Notice) => {
@@ -180,6 +189,7 @@ export function RemovedNotice() {
           kind: 'retry',
           direct,
           mods: getMods(mx, room),
+          appealsOn: knownAppealsOn(room),
         },
       ]);
     };
@@ -214,7 +224,7 @@ export function RemovedNotice() {
   const needsInfo =
     !!current &&
     (current.kind === 'banned' || current.kind === 'retry') &&
-    (unnamed(current.name) || current.mods.length === 0);
+    (unnamed(current.name) || current.mods.length === 0 || current.appealsOn === undefined);
   const [lookingUp, setLookingUp] = useState<string>();
   useEffect(() => {
     if (!currentKey || !needsInfo) return;
@@ -229,6 +239,7 @@ export function RemovedNotice() {
                   roomId: info.roomId,
                   name: unnamed(n.name) && info.name ? info.name : n.name,
                   mods: n.mods.length > 0 ? n.mods : info.mods,
+                  appealsOn: n.appealsOn ?? info.enabled,
                 }
               : n
           )
@@ -248,7 +259,13 @@ export function RemovedNotice() {
   const banned = current.kind === 'banned' || current.kind === 'retry';
   const used = banned ? appealsUsed(mx, current.roomId) : 0;
   const pending = banned && !appealSent && !!openAppealFor(mx, current.roomId);
-  const canAppeal = banned && current.mods.length > 0 && used < MAX_APPEALS && !pending;
+  const canAppeal =
+    banned &&
+    current.appealsOn === true &&
+    current.mods.length > 0 &&
+    used < MAX_APPEALS &&
+    !pending;
+  const ticket = sentRoomId ?? (pending ? openAppealFor(mx, current.roomId)?.roomId : undefined);
   // Straight to the appeal, unless there's none to make.
   const showAppeal = appealing && canAppeal && !appealSent;
   const looking = banned && lookingUp === current.key;
@@ -263,16 +280,17 @@ export function RemovedNotice() {
     setError(undefined);
     setAppealText('');
     setAppealSent(false);
+    setSentRoomId(undefined);
+    setPickedMod(undefined);
     setAppealing(false);
     setQueue((q) => q.slice(1));
   };
 
-  const run = async (task: () => Promise<unknown>, after: () => void) => {
+  const run = async (task: () => Promise<unknown>, after: (result: unknown) => void) => {
     setBusy(true);
     setError(undefined);
     try {
-      await task();
-      after();
+      after(await task());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
     }
@@ -291,19 +309,20 @@ export function RemovedNotice() {
         submitAppeal(
           mx,
           { roomId: current.roomId, name: current.name },
-          current.mods,
+          current.mods.filter((m) => m.id === pickedMod),
           appealText.trim()
         ),
-      () => {
+      (roomId) => {
         setAppealSent(true);
+        setSentRoomId(roomId as string);
         setAppealing(false);
       }
     );
 
-  const message = (userId: string) => {
+  // The ticket is where the appellant and mods talk it through.
+  const openTicket = (roomId: string) => {
     dismiss();
-    const params: DirectCreateSearchParams = { userId };
-    navigate(withSearchParam(getDirectCreatePath(), params));
+    navigate(getHomeRoomPath(roomId));
   };
 
   let title = `You were ${current.kind} from ${current.name}`;
@@ -324,6 +343,9 @@ export function RemovedNotice() {
   } else if (current.kind === 'closed') {
     title = 'Appeals closed';
     body = `The mods of ${current.name} turned down your last appeal, so appeals for this server are now closed.`;
+  } else if (current.kind === 'archived') {
+    title = 'Your appeal was closed';
+    body = `The mods of ${current.name} closed your appeal without a decision.`;
   }
 
   if (showAppeal) {
@@ -381,33 +403,52 @@ export function RemovedNotice() {
               )}
               {showAppeal && current.mods.length > 0 && (
                 <Box direction="Column" gap="200">
-                  <Text size="L400">Your appeal goes to</Text>
-                  {current.mods.map((mod) => (
-                    <Box key={mod.id} alignItems="Center" gap="200">
-                      <Box grow="Yes" direction="Column" style={{ minWidth: 0 }}>
-                        <Text size="T300" truncate>
-                          <b>{mod.name}</b>
-                        </Text>
-                        <Text size="T200" priority="300" truncate>
-                          {mod.id}
-                        </Text>
-                      </Box>
-                      <Button
-                        size="300"
-                        variant="Secondary"
-                        fill="Soft"
-                        radii="300"
-                        onClick={() => message(mod.id)}
+                  <Text size="L400">Pick a mod to send it to</Text>
+                  {current.mods.map((mod) => {
+                    const picked = pickedMod === mod.id;
+                    return (
+                      <Box
+                        key={mod.id}
+                        as="button"
+                        type="button"
+                        alignItems="Center"
+                        gap="200"
+                        onClick={() => setPickedMod(mod.id)}
+                        aria-pressed={picked}
+                        style={{
+                          padding: config.space.S200,
+                          borderRadius: config.radii.R400,
+                          border: `${config.borderWidth.B300} solid ${
+                            picked ? color.Primary.Main : color.SurfaceVariant.ContainerLine
+                          }`,
+                          background: picked
+                            ? color.Primary.Container
+                            : color.SurfaceVariant.Container,
+                          color: 'inherit',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                        }}
                       >
-                        <Text size="B300">Message</Text>
-                      </Button>
-                    </Box>
-                  ))}
+                        <Box grow="Yes" direction="Column" style={{ minWidth: 0 }}>
+                          <Text size="T300" truncate>
+                            <b>{mod.name}</b>
+                          </Text>
+                          <Text size="T200" priority="300" truncate>
+                            {mod.id}
+                          </Text>
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                  <Text size="T200" priority="300">
+                    Only you and that mod can see the appeal while it&apos;s open.
+                  </Text>
                 </Box>
               )}
               {banned && appealSent && (
                 <Text size="T300" style={{ color: color.Success.Main }}>
-                  <b>Appeal sent.</b> You&apos;ll hear back here when the mods decide.
+                  <b>Appeal sent.</b> You can chat with the mod in it, and you&apos;ll hear back
+                  here when they decide.
                 </Text>
               )}
               {pending && (
@@ -426,11 +467,20 @@ export function RemovedNotice() {
                   <Text size="T300">Finding who can unban you…</Text>
                 </Box>
               )}
-              {banned && !looking && current.mods.length === 0 && used < MAX_APPEALS && (
+              {banned && !looking && current.appealsOn === false && (
                 <Text size="T300" priority="300">
-                  Couldn&apos;t find who can unban you, so you can&apos;t appeal from here.
+                  This {place} doesn&apos;t take ban appeals.
                 </Text>
               )}
+              {banned &&
+                !looking &&
+                current.appealsOn === true &&
+                current.mods.length === 0 &&
+                used < MAX_APPEALS && (
+                  <Text size="T300" priority="300">
+                    Couldn&apos;t find who can unban you, so you can&apos;t appeal from here.
+                  </Text>
+                )}
               {error && (
                 <Text size="T200" style={{ color: color.Critical.Main }}>
                   <b>{error}</b>
@@ -442,7 +492,7 @@ export function RemovedNotice() {
                     variant="Primary"
                     radii="400"
                     onClick={appeal}
-                    disabled={busy || !appealText.trim()}
+                    disabled={busy || !appealText.trim() || !pickedMod}
                     before={busy && <Spinner size="100" variant="Primary" fill="Solid" />}
                   >
                     <Text size="B400">Send Appeal</Text>
@@ -468,6 +518,11 @@ export function RemovedNotice() {
                       before={busy && <Spinner size="100" variant="Primary" fill="Solid" />}
                     >
                       <Text size="B400">Rejoin</Text>
+                    </Button>
+                  )}
+                  {ticket && (
+                    <Button variant="Primary" radii="400" onClick={() => openTicket(ticket)}>
+                      <Text size="B400">Open Appeal</Text>
                     </Button>
                   )}
                   <Button

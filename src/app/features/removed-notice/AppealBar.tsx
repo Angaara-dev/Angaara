@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Button, color, config, Spinner, Text } from 'folds';
 import { Room } from 'matrix-js-sdk';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
@@ -7,31 +7,45 @@ import { StateEvent } from '../../../types/matrix/room';
 import {
   APPEAL_STATE,
   canDecide,
+  closeAppeal,
+  shareArchive,
   decideAppeal,
   getAppeal,
   getAppellant,
   MAX_APPEALS,
 } from './appeals';
 
-// Sits above the message box in a ban appeal, so mods can unban or deny in one click.
+// Sits above the message box in an appeal ticket: the mods decide or close it, the
+// appellant can withdraw it.
 export function AppealBar({ room }: { room: Room }) {
   const mx = useMatrixClient();
-  // Re-renders when the mods decide.
+  // Re-renders when the ticket is decided or closed.
   useStateEvent(room, APPEAL_STATE as StateEvent);
-  const [busy, setBusy] = useState<'accept' | 'deny'>();
+  const [busy, setBusy] = useState<'accept' | 'deny' | 'close'>();
   const [error, setError] = useState<string>();
 
   const appeal = getAppeal(room);
   const user = getAppellant(room);
+
+  // A withdrawn ticket gets filed for every mod the next time its mod opens it.
+  const needsSharing = !!appeal?.archived && !appeal.shared;
+  useEffect(() => {
+    if (needsSharing) shareArchive(mx, room).catch(() => undefined);
+  }, [mx, room, needsSharing]);
+
   if (!appeal || !user) return null;
 
   const mine = user === mx.getSafeUserId();
   const name = room.getMember(user)?.name ?? user;
-  const decide = async (accept: boolean) => {
-    setBusy(accept ? 'accept' : 'deny');
+  const open = appeal.status === 'open' && !appeal.archived;
+  const mod = !mine && canDecide(mx, appeal);
+
+  const act = async (kind: 'accept' | 'deny' | 'close') => {
+    setBusy(kind);
     setError(undefined);
     try {
-      await decideAppeal(mx, room, accept);
+      if (kind === 'close') await closeAppeal(mx, room);
+      else await decideAppeal(mx, room, kind === 'accept');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
     }
@@ -39,11 +53,11 @@ export function AppealBar({ room }: { room: Room }) {
   };
 
   let text = `${name} is appealing their ban from ${appeal.space_name} (appeal ${appeal.attempt} of ${MAX_APPEALS}).`;
-  if (mine) text = `Your appeal for ${appeal.space_name} is waiting on the mods.`;
+  if (mine) text = `Your appeal for ${appeal.space_name}. The mods will reply here.`;
   if (appeal.status === 'accepted') text = `Appeal accepted. ${name} has been unbanned.`;
   if (appeal.status === 'denied') text = 'Appeal denied.';
   if (appeal.status === 'closed') text = 'Appeal denied. Appeals for this server are now closed.';
-  const decidable = appeal.status === 'open' && !mine && canDecide(mx, appeal);
+  if (appeal.status === 'open' && appeal.archived) text = 'This appeal was closed.';
 
   return (
     <Box
@@ -56,39 +70,58 @@ export function AppealBar({ room }: { room: Room }) {
         background: color.SurfaceVariant.Container,
       }}
     >
-      <Text size="T300">{text}</Text>
-      {appeal.status === 'open' && !mine && !decidable && (
-        <Text size="T200" priority="300">
-          You need to be able to ban people in {appeal.space_name} to decide this.
+      <Box alignItems="Center" gap="200">
+        <Text size="T300" style={{ flexGrow: 1 }}>
+          {text}
         </Text>
-      )}
+        {appeal.archived && (
+          <Text size="L400" priority="300">
+            Archived
+          </Text>
+        )}
+      </Box>
       {error && (
         <Text size="T200" style={{ color: color.Critical.Main }}>
           <b>{error}</b>
         </Text>
       )}
-      {decidable && (
-        <Box gap="200">
+      {open && (mine || mod) && (
+        <Box gap="200" wrap="Wrap">
+          {mod && (
+            <>
+              <Button
+                size="300"
+                variant="Success"
+                radii="300"
+                disabled={!!busy}
+                onClick={() => act('accept')}
+                before={busy === 'accept' && <Spinner size="100" variant="Success" fill="Solid" />}
+              >
+                <Text size="B300">Unban</Text>
+              </Button>
+              <Button
+                size="300"
+                variant="Critical"
+                fill="Soft"
+                radii="300"
+                disabled={!!busy}
+                onClick={() => act('deny')}
+                before={busy === 'deny' && <Spinner size="100" variant="Critical" fill="Soft" />}
+              >
+                <Text size="B300">Deny</Text>
+              </Button>
+            </>
+          )}
           <Button
             size="300"
-            variant="Success"
-            radii="300"
-            disabled={!!busy}
-            onClick={() => decide(true)}
-            before={busy === 'accept' && <Spinner size="100" variant="Success" fill="Solid" />}
-          >
-            <Text size="B300">Unban</Text>
-          </Button>
-          <Button
-            size="300"
-            variant="Critical"
+            variant="Secondary"
             fill="Soft"
             radii="300"
             disabled={!!busy}
-            onClick={() => decide(false)}
-            before={busy === 'deny' && <Spinner size="100" variant="Critical" fill="Soft" />}
+            onClick={() => act('close')}
+            before={busy === 'close' && <Spinner size="100" variant="Secondary" fill="Soft" />}
           >
-            <Text size="B300">Deny</Text>
+            <Text size="B300">{mine ? 'Withdraw Appeal' : 'Close & Archive'}</Text>
           </Button>
         </Box>
       )}

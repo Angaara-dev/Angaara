@@ -12,6 +12,7 @@ import { allRoomsAtom } from '../../../state/room-list/roomList';
 import { useSearchParamsViaServers } from '../../../hooks/router/useSearchParamsViaServers';
 import { mDirectAtom } from '../../../state/mDirectList';
 import { settingsAtom } from '../../../state/settings';
+import { getAppeal } from '../../../features/removed-notice/appeals';
 import { useSetting } from '../../../state/hooks/settings';
 
 export function SpaceRouteRoomProvider({ children }: { children: ReactNode }) {
@@ -47,7 +48,10 @@ export function SpaceRouteRoomProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!getAllParents(roomToParents, room.roomId).has(space.roomId)) {
+  // Appeal tickets live outside the server but open inside it, from its Appeals panel.
+  const appealHere = getAppeal(room)?.space === space.roomId;
+
+  if (!appealHere && !getAllParents(roomToParents, room.roomId).has(space.roomId)) {
     if (getSpaceChildren(space).includes(room.roomId)) {
       // fill missing roomToParent mapping
       setRoomToParents({

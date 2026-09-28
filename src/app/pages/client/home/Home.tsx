@@ -77,6 +77,7 @@ import { _RoomSearchParams, DeveloperSection } from '../../paths';
 import { UserPanel } from '../UserPanel';
 import { usePhone } from '../../../hooks/useScreenSize';
 import { useStickySelectedRoom } from '../../../hooks/router/useStickySelectedRoom';
+import { getAppeal, getAppellant } from '../../../features/removed-notice/appeals';
 
 type HomeMenuProps = {
   requestClose: () => void;
@@ -252,11 +253,17 @@ export function Home() {
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
   const sortedRooms = useMemo(() => {
-    const items = Array.from(rooms).sort(
-      closedCategories.has(DEFAULT_CATEGORY_ID)
-        ? factoryRoomIdByActivity(mx)
-        : factoryRoomIdByAtoZ(mx)
-    );
+    // Mods reach appeal tickets from the server's Appeals panel, so only the appellant's shows here.
+    const items = Array.from(rooms)
+      .filter((rId) => {
+        const room = mx.getRoom(rId);
+        return !room || !getAppeal(room) || getAppellant(room) === mx.getSafeUserId();
+      })
+      .sort(
+        closedCategories.has(DEFAULT_CATEGORY_ID)
+          ? factoryRoomIdByActivity(mx)
+          : factoryRoomIdByAtoZ(mx)
+      );
     if (closedCategories.has(DEFAULT_CATEGORY_ID)) {
       return items.filter((rId) => roomToUnread.has(rId) || rId === selectedRoomId);
     }

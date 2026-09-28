@@ -1,5 +1,6 @@
 import { MatrixClient, MatrixEvent, Room } from 'matrix-js-sdk';
-import { Membership } from '../../../types/matrix/room';
+import { Membership, StateEvent } from '../../../types/matrix/room';
+import { creatorsSupported } from '../../utils/matrix';
 import { getRoomCreators, getRoomCreatorsForRoomId } from '../../hooks/useRoomCreators';
 
 // State in an appeal room, which a banned user opens with the people who can unban them.
@@ -14,9 +15,16 @@ export type AppealContent = {
   space_name: string;
   attempt: number;
   status: AppealStatus;
+  // Closed tickets stay around for the mods, filed under Archived.
+  archived?: boolean;
+  // Set once every mod has been invited to read the archived ticket.
+  shared?: boolean;
 };
 
 export type Mod = { id: string; name: string };
+
+// Invites only carry a few basic details, so an invited ticket is recognised by its name.
+export const appealRoomName = (spaceName: string) => `Appeal · ${spaceName}`;
 
 // People with the power to ban and unban here (plus creators).
 export const getMods = (mx: MatrixClient, room: Room | null): Mod[] => {
@@ -37,6 +45,11 @@ export const getMods = (mx: MatrixClient, room: Room | null): Mod[] => {
   return [...ids].slice(0, 8).map((id) => ({ id, name: room.getMember(id)?.name ?? id }));
 };
 
+// Servers opt in to appeals from their settings; off unless turned on.
+export const appealsEnabled = (room: Room | null): boolean =>
+  room?.currentState.getStateEvents(StateEvent.AngaaraBanAppeals, '')?.getContent()?.enabled ===
+  true;
+
 export const getAppeal = (room: Room): AppealContent | undefined => {
   const content = room.currentState.getStateEvents(APPEAL_STATE, '')?.getContent();
   return content?.space ? (content as AppealContent) : undefined;
@@ -53,7 +66,7 @@ export const isBanError = (e: unknown) =>
 
 // Servers forget banned members fast, so each joined room's name and mods are kept here.
 const REMEMBERED_KEY = 'angaara_room_mods';
-type Remembered = Record<string, { name: string; mods: Mod[] }>;
+type Remembered = Record<string, { name: string; mods: Mod[]; enabled?: boolean }>;
 const recallAll = (): Remembered => {
   try {
     return JSON.parse(localStorage.getItem(REMEMBERED_KEY) ?? '{}');
@@ -66,7 +79,8 @@ export const rememberRooms = (mx: MatrixClient) => {
   mx.getRooms().forEach((room: Room) => {
     if (room.getMyMembership() !== Membership.Join || getAppeal(room)) return;
     const mods = getMods(mx, room);
-    if (mods.length > 0) all[room.roomId] = { name: room.name, mods };
+    if (mods.length > 0)
+      all[room.roomId] = { name: room.name, mods, enabled: appealsEnabled(room) };
   });
   try {
     // Keep what we knew about rooms we've since left or been banned from.
@@ -113,19 +127,22 @@ const leftRoomState = async (mx: MatrixClient, roomId: string): Promise<RawEvent
 export const fetchBannedRoom = async (
   mx: MatrixClient,
   roomIdOrAlias: string
-): Promise<{ roomId: string; name?: string; mods: Mod[] }> => {
+): Promise<{ roomId: string; name?: string; mods: Mod[]; enabled: boolean }> => {
   const roomId = roomIdOrAlias.startsWith('#')
     ? (await mx.getRoomIdForAlias(roomIdOrAlias)).room_id
     : roomIdOrAlias;
   const remembered = recallAll()[roomId];
   let name = remembered?.name;
-  let mods = remembered?.mods ?? getMods(mx, mx.getRoom(roomId));
-  if (!name || mods.length === 0) {
+  const local = mx.getRoom(roomId);
+  let mods = remembered?.mods ?? getMods(mx, local);
+  let enabled = remembered?.enabled ?? (local ? appealsEnabled(local) : undefined);
+  if (!name || mods.length === 0 || enabled === undefined) {
     const events = await leftRoomState(mx, roomId).catch(() => [] as RawEvent[]);
     const find = (type: string, key = '') =>
       events.filter((e) => e.type === type && e.state_key === key).pop();
     name =
       name || find('m.room.name')?.content.name || find('m.room.canonical_alias')?.content.alias;
+    enabled = enabled ?? find(StateEvent.AngaaraBanAppeals)?.content.enabled === true;
     if (mods.length === 0) {
       const myId = mx.getSafeUserId();
       const pl = find('m.room.power_levels')?.content ?? {};
@@ -148,7 +165,7 @@ export const fetchBannedRoom = async (
       () => undefined
     );
   }
-  return { roomId, name, mods };
+  return { roomId, name, mods, enabled: enabled === true };
 };
 
 export const appealsUsed = (mx: MatrixClient, spaceId: string): number =>
@@ -162,7 +179,8 @@ export const openAppealFor = (mx: MatrixClient, spaceId: string): Room | undefin
       (r: Room) =>
         r.getMyMembership() === Membership.Join &&
         getAppeal(r)?.space === spaceId &&
-        getAppeal(r)?.status === 'open'
+        getAppeal(r)?.status === 'open' &&
+        !getAppeal(r)?.archived
     );
 
 export const submitAppeal = async (
@@ -179,14 +197,19 @@ export const submitAppeal = async (
     attempt: used + 1,
     status: 'open',
   };
+  // Newer room versions give the creator top power already and reject them in the list.
+  const caps = await mx.getCapabilities().catch(() => undefined);
+  const version: string = caps?.['m.room_versions']?.default ?? '10';
+  const users = Object.fromEntries([
+    ...(creatorsSupported(version) ? [] : [[mx.getSafeUserId(), 100]]),
+    ...mods.map((m) => [m.id, 100]),
+  ]);
   const { room_id: roomId } = await mx.createRoom({
-    name: `Appeal · ${space.name}`,
+    name: appealRoomName(space.name),
     preset: 'private_chat' as never,
     invite: mods.map((m) => m.id),
     initial_state: [{ type: APPEAL_STATE, state_key: '', content }],
-    power_level_content_override: {
-      users: Object.fromEntries([[mx.getSafeUserId(), 100], ...mods.map((m) => [m.id, 100])]),
-    },
+    power_level_content_override: { users },
   });
   await mx.sendMessage(roomId, { msgtype: 'm.text', body: text } as never);
   const all = mx.getAccountData(APPEALS_USED_KEY as never)?.getContent() ?? {};
@@ -206,6 +229,29 @@ export const canDecide = (mx: MatrixClient, appeal: AppealContent): boolean => {
   const pl = space.currentState.getStateEvents('m.room.power_levels', '')?.getContent() ?? {};
   const mine = pl.users?.[myId] ?? pl.users_default ?? 0;
   return mine >= (pl.ban ?? 50);
+};
+
+// While open, a ticket is only between the appellant and the one mod it went to. Once
+// closed, everyone who can ban and unban in the server is invited to read it.
+export const shareArchive = async (
+  mx: MatrixClient,
+  room: Room,
+  appeal: AppealContent | undefined = getAppeal(room)
+) => {
+  const space = appeal && mx.getRoom(appeal.space);
+  if (!appeal?.archived || appeal.shared || !space || !canDecide(mx, appeal)) return;
+  const inRoom = (id: string) => {
+    const m = room.getMember(id)?.membership;
+    return m === Membership.Join || m === Membership.Invite;
+  };
+  const mods = getMods(mx, space).filter((m) => !inRoom(m.id));
+  await Promise.all(mods.map((m) => mx.invite(room.roomId, m.id).catch(() => undefined)));
+  await mx.sendStateEvent(
+    room.roomId,
+    APPEAL_STATE as never,
+    { ...appeal, shared: true } as never,
+    ''
+  );
 };
 
 // Earlier appeals by this user for this server, in case the attempt number was tampered with.
@@ -234,11 +280,47 @@ export const decideAppeal = async (mx: MatrixClient, room: Room, accept: boolean
   else if (attempt >= MAX_APPEALS) status = 'closed';
 
   if (accept) await mx.unban(appeal.space, user);
-  await mx.sendStateEvent(
-    room.roomId,
-    APPEAL_STATE as never,
-    { ...appeal, attempt, status } as never,
-    ''
-  );
+  const decided: AppealContent = { ...appeal, attempt, status, archived: true };
+  await mx.sendStateEvent(room.roomId, APPEAL_STATE as never, decided as never, '');
   await mx.sendMessage(room.roomId, { msgtype: 'm.notice', body: APPEAL_NOTICES[status] } as never);
+  await shareArchive(mx, room, decided);
 };
+
+// Either side can close a ticket; the mods keep it under Archived, the appellant leaves it.
+export const closeAppeal = async (mx: MatrixClient, room: Room) => {
+  const appeal = getAppeal(room);
+  if (!appeal) throw new Error('This is not an appeal.');
+  const mine = getAppellant(room) === mx.getSafeUserId();
+  const closed: AppealContent = { ...appeal, archived: true };
+  await mx.sendStateEvent(room.roomId, APPEAL_STATE as never, closed as never, '');
+  await mx.sendMessage(room.roomId, {
+    msgtype: 'm.notice',
+    body: mine ? 'Appeal withdrawn.' : 'Appeal closed.',
+  } as never);
+  if (mine) await mx.leave(room.roomId);
+  else await shareArchive(mx, room, closed);
+};
+
+// Appeal tickets for a server that you're in or invited to, newest first.
+export const spaceAppeals = (mx: MatrixClient, space: Room): Room[] =>
+  mx
+    .getRooms()
+    .filter((r: Room) => {
+      const membership = r.getMyMembership();
+      if (membership === Membership.Invite) return r.name === appealRoomName(space.name);
+      return (
+        membership === Membership.Join &&
+        getAppeal(r)?.space === space.roomId &&
+        getAppellant(r) !== mx.getSafeUserId()
+      );
+    })
+    .sort(
+      (a: Room, b: Room) =>
+        (b.currentState.getStateEvents('m.room.create', '')?.getTs() ?? 0) -
+        (a.currentState.getStateEvents('m.room.create', '')?.getTs() ?? 0)
+    );
+
+// Whether you can ban (and so unban) in this server.
+export const canUnbanIn = (mx: MatrixClient, space: Room): boolean =>
+  space.getMyMembership() === Membership.Join &&
+  canDecide(mx, { space: space.roomId, space_name: '', attempt: 0, status: 'open' });

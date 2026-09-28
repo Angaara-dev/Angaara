@@ -46,6 +46,7 @@ export enum StateEvent {
   AngaaraHiddenProfile = 'io.angaara.hidden_profile',
   AngaaraSpaceTag = 'io.angaara.space.tag',
   AngaaraSpaceTheme = 'io.angaara.space.theme',
+  AngaaraBanAppeals = 'io.angaara.ban_appeals',
   LegacyRoomBanner = 'io.hearth.room.banner',
 }
 

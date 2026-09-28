@@ -90,6 +90,7 @@ import { UserPanel } from '../UserPanel';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import * as css from './SpaceHeader.css';
 import { ServerLevelPill } from '../../../features/space-level/ServerLevel';
+import { AppealsNavItem } from '../../../features/removed-notice/AppealsNav';
 import { useRoomBannerUrl } from '../../../hooks/useRoomBanner';
 import { LEVEL_ANIMATED_BANNER, useSpaceLevel } from '../../../hooks/useSpaceLevel';
 import { useStillImage } from '../../../hooks/useStillImage';
@@ -545,6 +546,7 @@ export function Space() {
                 </NavItemContent>
               </NavLink>
             </NavItem>
+            <AppealsNavItem space={space} />
             {!phone && (
               <NavItem variant="Background" radii="400" aria-selected={searchSelected}>
                 <NavLink to={getSpaceSearchPath(getCanonicalAliasOrRoomId(mx, space.roomId))}>

@@ -20,6 +20,7 @@ import { SpaceBanner } from './SpaceBanner';
 import { SpaceLevelCard } from './SpaceLevel';
 import { SpacePerks } from './SpacePerks';
 import { SpaceAddress } from './SpaceAddress';
+import { SpaceAppeals } from './SpaceAppeals';
 
 type GeneralProps = {
   requestClose: () => void;
@@ -32,7 +33,10 @@ export function General({ requestClose }: GeneralProps) {
   const me = useMatrixClient().getSafeUserId();
   // Settings you can't change are hidden, not greyed out.
   const can = (type: StateEvent) => permissions.stateEvent(type, me);
-  const canOptions = can(StateEvent.RoomJoinRules) || can(StateEvent.RoomCanonicalAlias);
+  const canOptions =
+    can(StateEvent.RoomJoinRules) ||
+    can(StateEvent.RoomCanonicalAlias) ||
+    can(StateEvent.AngaaraBanAppeals);
 
   return (
     <Page>
@@ -67,6 +71,7 @@ export function General({ requestClose }: GeneralProps) {
                   <Text size="L400">Options</Text>
                   {can(StateEvent.RoomJoinRules) && <RoomJoinRules permissions={permissions} />}
                   {can(StateEvent.RoomCanonicalAlias) && <RoomPublish permissions={permissions} />}
+                  {can(StateEvent.AngaaraBanAppeals) && <SpaceAppeals permissions={permissions} />}
                 </Box>
               )}
               {can(StateEvent.AngaaraDisabledCommands) && (

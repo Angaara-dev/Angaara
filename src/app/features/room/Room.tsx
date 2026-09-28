@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { Box, Line } from 'folds';
+import { Box, Icon, Icons, Line, Text } from 'folds';
 import { useParams } from 'react-router-dom';
 import { isKeyHotkey } from 'is-hotkey';
 import { useAtomValue } from 'jotai';
@@ -23,6 +23,7 @@ import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { openThreadAtom } from '../../state/room/openThread';
 import { ThreadDrawer } from './thread';
 import { markRoomOpen } from '../../utils/timelineTrim';
+import { canDecide, getAppeal, getAppellant } from '../removed-notice/appeals';
 
 export function Room() {
   const { eventId } = useParams();
@@ -59,6 +60,17 @@ export function Room() {
   const threadRootId =
     !callView && openThread && openThread.roomId === room.roomId ? openThread.rootId : undefined;
   const mobileThread = !!threadRootId && screenSize !== ScreenSize.Desktop;
+
+  // Appeal tickets are for the appellant and people who can ban; being in the room isn't enough.
+  const appeal = getAppeal(room);
+  if (appeal && getAppellant(room) !== mx.getSafeUserId() && !canDecide(mx, appeal)) {
+    return (
+      <Box grow="Yes" direction="Column" alignItems="Center" justifyContent="Center" gap="300">
+        <Icon size="600" src={Icons.Lock} />
+        <Text size="H4">You do not have permission to see this room</Text>
+      </Box>
+    );
+  }
 
   return (
     <PowerLevelsContextProvider value={powerLevels}>
