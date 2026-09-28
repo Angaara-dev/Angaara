@@ -57,6 +57,9 @@ import { SettingsPageHeader } from '../SettingsPageHeader';
 import { usePhone } from '../../../hooks/useScreenSize';
 import { DeleteAccount } from './DeleteAccount';
 import { SUPPORTERS_URL } from '../../../brand';
+import { useMatrixClient } from '../../../hooks/useMatrixClient';
+import { PRIVATE_MODE_MESSAGE } from '../../../utils/privateMode';
+import { openSupporterPage } from '../../angaara-id/angaaraId';
 
 type ThemeSelectorProps = {
   themeNames: Record<string, string>;
@@ -1165,29 +1168,49 @@ function Messages() {
 }
 
 function Supporters() {
+  const mx = useMatrixClient();
+  const [privateMode] = useSetting(settingsAtom, 'privateMode');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const open = () => {
+    setBusy(true);
+    setError(undefined);
+    openSupporterPage(mx, SUPPORTERS_URL)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Something went wrong.'))
+      .finally(() => setBusy(false));
+  };
+
   return (
     <Box direction="Column" gap="100">
       <Text size="L400">For Supporters ❤️</Text>
       <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
         <SettingTile
           title="Supporter Page"
-          description="Sign in with your Angaara account passkey. Without an Angaara account, the page won't let you in."
+          description={
+            privateMode
+              ? PRIVATE_MODE_MESSAGE
+              : 'Your perks and Supporter status. Needs an Angaara account, and only opens from here.'
+          }
           after={
             <Button
-              as="a"
-              href={SUPPORTERS_URL}
-              target="_blank"
-              rel="noreferrer noopener"
               variant="Secondary"
               fill="Soft"
               size="300"
               radii="300"
+              disabled={privateMode || busy}
+              onClick={open}
               before={<Icon src={Icons.Heart} size="100" filled />}
             >
               <Text size="B300">Open</Text>
             </Button>
           }
         />
+        {error && (
+          <Text size="T200" style={{ color: color.Critical.Main }}>
+            {error}
+          </Text>
+        )}
       </SequenceCard>
     </Box>
   );

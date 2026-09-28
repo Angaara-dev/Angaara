@@ -76,6 +76,12 @@ const ensureTables = (db) => {
           account_id TEXT PRIMARY KEY, since INTEGER NOT NULL, until INTEGER
         )`
       ),
+      // One-use tickets that open the supporters site; only a hash is kept, for 60 seconds.
+      db.prepare(
+        `CREATE TABLE IF NOT EXISTS supporter_handoffs (
+          ticket TEXT PRIMARY KEY, username TEXT NOT NULL, expires INTEGER NOT NULL
+        )`
+      ),
       db.prepare(
         `CREATE TABLE IF NOT EXISTS angaara_challenges (
           user_id TEXT PRIMARY KEY,
@@ -358,6 +364,20 @@ async function handle(request, env, url, userId, body) {
   if (step === 'unlink') {
     await unlinkAccount(env, userId);
     return json({ account: null });
+  }
+
+  // Vouches for this account to the supporters site, which swaps the ticket for its own session.
+  if (step === 'handoff') {
+    if (!account) return json({ error: 'Create an Angaara account first.' }, 403);
+    const ticket = b64url.encode(crypto.getRandomValues(new Uint8Array(32)));
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ticket));
+    await db.batch([
+      db.prepare('DELETE FROM supporter_handoffs WHERE expires < ?').bind(Date.now()),
+      db
+        .prepare('INSERT INTO supporter_handoffs (ticket, username, expires) VALUES (?, ?, ?)')
+        .bind(b64url.encode(new Uint8Array(hash)), account.username, Date.now() + 60 * 1000),
+    ]);
+    return json({ ticket });
   }
 
   return json({ error: 'not found' }, 404);
