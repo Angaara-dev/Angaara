@@ -37,6 +37,7 @@ import {
 } from '../../../utils/matrix';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { ModalWide } from '../../../styles/Modal.css';
+import { FileCheckDialog } from '../../../features/link-check/FileCheck';
 
 const renderErrorButton = (retry: () => void, text: string) => (
   <TooltipProvider
@@ -254,6 +255,15 @@ export type DownloadFileProps = {
 export function DownloadFile({ body, mimeType, url, info, encInfo }: DownloadFileProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
+  const [checking, setChecking] = useState(false);
+  // Fetched and decrypted here for the check; the file itself never leaves the device.
+  const getFile = useCallback(async () => {
+    const mediaUrl = mxcUrlToHttp(mx, url, useAuthentication);
+    if (!mediaUrl) throw new Error('Invalid media URL');
+    return encInfo
+      ? downloadEncryptedMedia(mediaUrl, (encBuf) => decryptFile(encBuf, mimeType, encInfo))
+      : downloadMedia(mediaUrl);
+  }, [mx, url, useAuthentication, mimeType, encInfo]);
 
   const [downloadState, download] = useAsyncCallback(
     useCallback(async () => {
@@ -270,30 +280,65 @@ export function DownloadFile({ body, mimeType, url, info, encInfo }: DownloadFil
   );
   useRevokeObjectURL(downloadState.status === AsyncStatus.Success ? downloadState.data : undefined);
 
-  return downloadState.status === AsyncStatus.Error ? (
-    renderErrorButton(download, `Retry Download (${bytesToSize(info.size ?? 0)})`)
-  ) : (
-    <Button
-      variant="Secondary"
-      fill="Soft"
-      radii="300"
-      size="400"
-      onClick={() =>
-        downloadState.status === AsyncStatus.Success
-          ? FileSaver.saveAs(downloadState.data, body)
-          : download()
-      }
-      disabled={downloadState.status === AsyncStatus.Loading}
-      before={
-        downloadState.status === AsyncStatus.Loading ? (
-          <Spinner fill="Soft" size="100" variant="Secondary" />
-        ) : (
-          <Icon size="100" src={Icons.Download} filled />
-        )
-      }
-    >
-      <Text size="B400" truncate>{`Download (${bytesToSize(info.size ?? 0)})`}</Text>
-    </Button>
+  const downloadButton =
+    downloadState.status === AsyncStatus.Error ? (
+      renderErrorButton(download, `Retry Download (${bytesToSize(info.size ?? 0)})`)
+    ) : (
+      <Button
+        variant="Secondary"
+        fill="Soft"
+        radii="300"
+        size="400"
+        onClick={() =>
+          downloadState.status === AsyncStatus.Success
+            ? FileSaver.saveAs(downloadState.data, body)
+            : download()
+        }
+        disabled={downloadState.status === AsyncStatus.Loading}
+        before={
+          downloadState.status === AsyncStatus.Loading ? (
+            <Spinner fill="Soft" size="100" variant="Secondary" />
+          ) : (
+            <Icon size="100" src={Icons.Download} filled />
+          )
+        }
+      >
+        <Text size="B400" truncate>{`Download (${bytesToSize(info.size ?? 0)})`}</Text>
+      </Button>
+    );
+
+  return (
+    <Box gap="200">
+      <Box grow="Yes" direction="Column">
+        {downloadButton}
+      </Box>
+      <TooltipProvider
+        tooltip={
+          <Tooltip>
+            <Text>Check File</Text>
+          </Tooltip>
+        }
+        position="Top"
+        align="Center"
+      >
+        {(triggerRef) => (
+          <Button
+            ref={triggerRef}
+            variant="Secondary"
+            fill="Soft"
+            radii="300"
+            size="400"
+            aria-label="Check File"
+            onClick={() => setChecking(true)}
+          >
+            <Icon size="100" src={Icons.Shield} filled />
+          </Button>
+        )}
+      </TooltipProvider>
+      {checking && (
+        <FileCheckDialog name={body} getFile={getFile} onClose={() => setChecking(false)} />
+      )}
+    </Box>
   );
 }
 

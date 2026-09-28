@@ -984,8 +984,8 @@ export const Message = as<'div', MessageProps>(
 
     const handleContextMenu: MouseEventHandler<HTMLDivElement> = (evt) => {
       if (evt.altKey || !window.getSelection()?.isCollapsed || edit) return;
-      const tag = (evt.target as any).tagName;
-      if (typeof tag === 'string' && tag.toLowerCase() === 'a') return;
+      // Links get their own menu (Check Link and more).
+      if ((evt.target as Element).closest?.('a[href]')) return;
       evt.preventDefault();
       if (phone) {
         navigator.vibrate?.(10);
@@ -1495,8 +1495,8 @@ export const Event = as<'div', EventProps>(
 
     const handleContextMenu: MouseEventHandler<HTMLDivElement> = (evt) => {
       if (evt.altKey || !window.getSelection()?.isCollapsed) return;
-      const tag = (evt.target as any).tagName;
-      if (typeof tag === 'string' && tag.toLowerCase() === 'a') return;
+      // Links get their own menu (Check Link and more).
+      if ((evt.target as Element).closest?.('a[href]')) return;
       evt.preventDefault();
       setMenuAnchor({
         x: evt.clientX,

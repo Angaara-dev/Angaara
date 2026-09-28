@@ -1,6 +1,7 @@
 // Crash reports and user bug reports, stored in the XP_DB D1. Readable only by accounts with
 // the "developer" badge in config.json, plus any listed in the optional APP_DEVS secret.
 import { verifyOpenId } from './perks.js';
+import { badgeHolders } from './badges.js';
 
 const HOUR = 60 * 60 * 1000;
 // Per sender (hashed IP) per hour, so a crash loop or a script can't flood the table.
@@ -58,19 +59,11 @@ const ensureTable = (db) => {
   return tableReady;
 };
 
-// The same config.json the app gets, so the dev badge and report access stay one list.
+// The developer badge in config.json, plus anyone in the optional APP_DEVS secret.
 async function devs(env, url) {
-  const ids = (env.APP_DEVS ?? '').split(',');
-  try {
-    const res = await env.ASSETS.fetch(new Request(new URL('/config.json', url.origin)));
-    const badges = (await res.json())?.badges ?? {};
-    Object.entries(badges).forEach(([id, given]) => {
-      if (Array.isArray(given) && given.includes('developer')) ids.push(id);
-    });
-  } catch {
-    // Without the config, only APP_DEVS counts.
-  }
-  return new Set(ids.map((id) => id.trim().toLowerCase()).filter(Boolean));
+  const ids = (env.APP_DEVS ?? '').split(',').map((id) => id.trim().toLowerCase());
+  const badged = await badgeHolders(env, url, 'developer');
+  return new Set([...ids.filter(Boolean), ...badged]);
 }
 
 // Only a hash of the IP is kept, and only for the rate limit.

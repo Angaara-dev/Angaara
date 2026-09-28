@@ -7,6 +7,7 @@ import { handleXp } from './xp.js';
 import { handleAppeals } from './appeals.js';
 import { handleReports } from './reports.js';
 import { handleAccount } from './account.js';
+import { handleLinks } from './links.js';
 
 const STATE_COOKIE = 'gh_oauth_state';
 const SCOPE = 'repo';
@@ -147,6 +148,7 @@ export default {
     if (url.pathname.startsWith('/api/github/')) return handleGitHub(request, env, url);
     if (url.pathname.startsWith('/api/xp/')) return handleXp(request, env, url);
     if (url.pathname.startsWith('/api/account/')) return handleAccount(request, env, url);
+    if (url.pathname.startsWith('/api/links/')) return handleLinks(request, env, url);
     if (url.pathname.startsWith('/api/appeals/')) return handleAppeals(request, env, url, ctx);
     if (url.pathname === '/api/reports' || url.pathname.startsWith('/api/reports/')) {
       return handleReports(request, env, url);

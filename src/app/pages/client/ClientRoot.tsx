@@ -29,6 +29,7 @@ import { MediaConfigProvider } from '../../hooks/useMediaConfig';
 import { MatrixClientProvider } from '../../hooks/useMatrixClient';
 import { SpecVersions } from './SpecVersions';
 import { Welcome } from '../../features/welcome/Welcome';
+import { LinkContextMenu } from '../../features/link-check/LinkCheck';
 import { RemovedNotice } from '../../features/removed-notice/RemovedNotice';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { useSyncState } from '../../hooks/useSyncState';
@@ -232,6 +233,7 @@ export function ClientRoot({ children }: ClientRootProps) {
                       {children}
                       <Welcome />
                       <RemovedNotice />
+                      <LinkContextMenu />
                     </AuthMetadataProvider>
                   </MediaConfigProvider>
                 </CapabilitiesProvider>
