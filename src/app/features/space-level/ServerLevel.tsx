@@ -78,7 +78,7 @@ function LevelCard({ info, index }: { info: SpaceLevel; index: number }) {
       </Box>
       {info.level === index && (
         <Box direction="Column" gap="200">
-          <Goal label="Active members" value={info.members} goal={goal.members} />
+          <Goal label="Members" value={info.members} goal={goal.members} />
           <Goal label="Days old" value={info.days} goal={goal.days} />
         </Box>
       )}
@@ -197,7 +197,7 @@ export function ServerLevelDialog({ room, requestClose }: ServerLevelDialogProps
           style={{ minHeight: 0, overflowY: 'auto' }}
         >
           <div className={css.Stats}>
-            <Stat value={millify(info.members)} label="Active members" />
+            <Stat value={millify(info.members)} label="Members" />
             <Stat value={String(info.days)} label="Days old" />
             <Stat value={String(info.level)} label="Level" />
           </div>

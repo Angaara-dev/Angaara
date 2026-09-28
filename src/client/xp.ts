@@ -86,17 +86,6 @@ const ensureXpRoom = (mx: MatrixClient) => {
   return xpRoomTask;
 };
 
-// Servers you're in, so you count toward their server level; only you can add yourself.
-const joinedSpaces = (mx: MatrixClient) =>
-  mx
-    .getRooms()
-    .filter((room: Room) => room.isSpaceRoom() && room.getMyMembership() === 'join')
-    .slice(0, 50)
-    .map((room: Room) => ({
-      id: room.roomId,
-      created: room.currentState.getStateEvents('m.room.create', '')?.getTs(),
-    }));
-
 // Asks the bot for its one-time welcome DM; the Worker makes sure it's only ever sent once.
 export const requestWelcomeDm = async (mx: MatrixClient): Promise<string | undefined> => {
   const dmRoom = await ensureXpRoom(mx);
@@ -136,7 +125,6 @@ export const startXpReporter = (mx: MatrixClient, onUnavailable: () => void): ((
           openid: await openId(),
           events: batch,
           dm_room: await ensureXpRoom(mx),
-          spaces: joinedSpaces(mx),
         }),
         keepalive: true,
       });

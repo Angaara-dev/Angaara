@@ -79,7 +79,7 @@ export function SpaceLevelCard() {
         </Box>
         {next && (
           <Box gap="400" wrap="Wrap">
-            <Progress label="Active members" value={members} goal={next.members} />
+            <Progress label="Members" value={members} goal={next.members} />
             <Progress label="Days old" value={days} goal={next.days} />
           </Box>
         )}
