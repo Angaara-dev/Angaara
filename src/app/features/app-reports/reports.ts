@@ -76,6 +76,9 @@ export type BugReport = {
   body: string;
   build: string | null;
   ua: string | null;
+  // Set once a developer marks it Done; archived reports stay readable.
+  archivedAt: number | null;
+  archivedBy: string | null;
 };
 
 // Anonymous, like crash reports: no account, user ID or rooms go with it.
@@ -113,7 +116,12 @@ export const listBugReports = async (mx: MatrixClient): Promise<BugReport[] | un
   return data?.dev ? (data.reports as BugReport[]) : undefined;
 };
 
-export const resolveBugReport = async (mx: MatrixClient, id: number): Promise<void> => {
+export const archiveBugReport = async (mx: MatrixClient, id: number): Promise<void> => {
   const data = await asDev(mx, '/bugs/resolve', { id });
-  if (!data?.deleted) throw new Error("Couldn't mark it done.");
+  if (data?.archived !== true) throw new Error("Couldn't archive it.");
+};
+
+export const reopenBugReport = async (mx: MatrixClient, id: number): Promise<void> => {
+  const data = await asDev(mx, '/bugs/reopen', { id });
+  if (data?.archived !== false) throw new Error("Couldn't reopen it.");
 };

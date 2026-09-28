@@ -44,6 +44,12 @@ const ensureTable = (db) => {
           type TEXT, title TEXT, body TEXT, build TEXT, ua TEXT
         )`
       ),
+      // Bug reports marked Done stay readable here, with who archived them and when.
+      db.prepare(
+        `CREATE TABLE IF NOT EXISTS bug_report_archive (
+          id INTEGER PRIMARY KEY, at INTEGER NOT NULL, by TEXT NOT NULL
+        )`
+      ),
       db.prepare(
         `CREATE TABLE IF NOT EXISTS app_report_rate (
           sender TEXT PRIMARY KEY,
@@ -155,6 +161,7 @@ async function submitBug(request, env) {
         clip(request.headers.get('User-Agent'), LIMITS.ua)
       ),
     trim(db, 'bug_reports'),
+    db.prepare('DELETE FROM bug_report_archive WHERE id NOT IN (SELECT id FROM bug_reports)'),
   ]);
   return json({ sent: true });
 }
@@ -164,7 +171,7 @@ async function asDev(request, env, url) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);
   if (!userId || !(await devs(env, url)).has(userId.toLowerCase())) return { body, dev: false };
-  return { body, dev: true };
+  return { body, dev: true, userId };
 }
 
 async function list(request, env, url) {
@@ -180,7 +187,10 @@ async function listBugs(request, env, url) {
   const { dev } = await asDev(request, env, url);
   if (!dev) return json({ dev: false });
   const { results } = await env.XP_DB.prepare(
-    'SELECT id, at, type, title, body, build, ua FROM bug_reports ORDER BY id DESC LIMIT 200'
+    `SELECT r.id, r.at, r.type, r.title, r.body, r.build, r.ua,
+       a.at AS archivedAt, a.by AS archivedBy
+     FROM bug_reports r LEFT JOIN bug_report_archive a ON a.id = r.id
+     ORDER BY r.id DESC LIMIT 200`
   ).all();
   return json({ dev: true, reports: results ?? [] });
 }
@@ -193,6 +203,25 @@ async function resolve(request, env, url, table) {
   return json({ deleted: true });
 }
 
+// Done archives a bug report instead of deleting it; reopening moves it back.
+async function archiveBug(request, env, url, archive) {
+  const { body, dev, userId } = await asDev(request, env, url);
+  if (!dev) return json({ error: 'not allowed' }, 403);
+  if (!Number.isInteger(body?.id)) return json({ error: 'bad id' }, 400);
+  const db = env.XP_DB;
+  await (archive
+    ? db
+        .prepare(
+          `INSERT INTO bug_report_archive (id, at, by)
+           SELECT id, ?, ? FROM bug_reports WHERE id = ?
+           ON CONFLICT(id) DO NOTHING`
+        )
+        .bind(Date.now(), userId, body.id)
+    : db.prepare('DELETE FROM bug_report_archive WHERE id = ?').bind(body.id)
+  ).run();
+  return json({ archived: archive });
+}
+
 export async function handleReports(request, env, url) {
   if (!env.XP_DB) return json({ error: 'not set up' }, 501);
   await ensureTable(env.XP_DB);
@@ -202,7 +231,7 @@ export async function handleReports(request, env, url) {
   if (url.pathname === '/api/reports/resolve') return resolve(request, env, url, 'app_reports');
   if (url.pathname === '/api/reports/bug') return submitBug(request, env);
   if (url.pathname === '/api/reports/bugs/list') return listBugs(request, env, url);
-  if (url.pathname === '/api/reports/bugs/resolve')
-    return resolve(request, env, url, 'bug_reports');
+  if (url.pathname === '/api/reports/bugs/resolve') return archiveBug(request, env, url, true);
+  if (url.pathname === '/api/reports/bugs/reopen') return archiveBug(request, env, url, false);
   return json({ error: 'not found' }, 404);
 }

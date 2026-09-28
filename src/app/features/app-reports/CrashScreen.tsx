@@ -56,7 +56,7 @@ export function CrashScreen({ error }: { error: unknown }) {
   };
 
   return (
-    <div style={page}>
+    <div style={page} data-crash-screen>
       <div style={card} role="alert">
         <div style={{ fontSize: 32 }} aria-hidden>
           🔥

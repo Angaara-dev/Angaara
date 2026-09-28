@@ -21,7 +21,8 @@ import {
   bugTypeLabel,
   listBugReports,
   listReports,
-  resolveBugReport,
+  archiveBugReport,
+  reopenBugReport,
   resolveReport,
 } from './reports';
 import { MarkdownText } from './MarkdownText';
@@ -169,28 +170,31 @@ export function AppReports() {
   );
 }
 
+type OnArchive = (id: number, archived: boolean) => void;
+
 function BugDetail({
   report,
-  onDone,
+  onArchive,
   requestClose,
 }: {
   report: BugReport;
-  onDone: (id: number) => void;
+  onArchive: OnArchive;
   requestClose: () => void;
 }) {
   const mx = useMatrixClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const archived = !!report.archivedAt;
 
-  const done = async () => {
+  const toggle = async () => {
     setBusy(true);
     setError(undefined);
     try {
-      await resolveBugReport(mx, report.id);
-      onDone(report.id);
+      await (archived ? reopenBugReport(mx, report.id) : archiveBugReport(mx, report.id));
+      onArchive(report.id, !archived);
       requestClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't mark it done.");
+      setError(e instanceof Error ? e.message : 'Something went wrong.');
       setBusy(false);
     }
   };
@@ -228,6 +232,12 @@ function BugDetail({
                   {report.ua}
                 </Text>
               )}
+              {report.archivedAt && (
+                <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
+                  Archived {new Date(report.archivedAt).toLocaleString()}
+                  {report.archivedBy && ` by ${report.archivedBy}`}
+                </Text>
+              )}
               {error && (
                 <Text size="T200" style={{ color: color.Critical.Main }}>
                   {error}
@@ -236,13 +246,13 @@ function BugDetail({
               <Box>
                 <Button
                   size="300"
-                  variant="Success"
+                  variant={archived ? 'Secondary' : 'Success'}
                   fill="Soft"
                   radii="300"
                   disabled={busy}
-                  onClick={done}
+                  onClick={toggle}
                 >
-                  <Text size="B300">Done</Text>
+                  <Text size="B300">{archived ? 'Reopen' : 'Done'}</Text>
                 </Button>
               </Box>
             </Box>
@@ -257,11 +267,11 @@ function BugDetail({
 function BugTicket({
   report,
   isNew,
-  onDone,
+  onArchive,
 }: {
   report: BugReport;
   isNew: boolean;
-  onDone: (id: number) => void;
+  onArchive: OnArchive;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -276,7 +286,10 @@ function BugTicket({
           padding: config.space.S300,
           borderRadius: config.radii.R400,
           background: color.SurfaceVariant.Container,
-          borderLeft: `${config.borderWidth.B700} solid ${color.Critical.Main}`,
+          borderLeft: `${config.borderWidth.B700} solid ${
+            report.archivedAt ? color.SurfaceVariant.ContainerLine : color.Critical.Main
+          }`,
+          opacity: report.archivedAt ? 0.75 : 1,
           color: 'inherit',
           textAlign: 'left',
           cursor: 'pointer',
@@ -299,7 +312,9 @@ function BugTicket({
           {bugTypeLabel(report.type)} · {new Date(report.at).toLocaleDateString()}
         </Text>
       </Box>
-      {open && <BugDetail report={report} onDone={onDone} requestClose={() => setOpen(false)} />}
+      {open && (
+        <BugDetail report={report} onArchive={onArchive} requestClose={() => setOpen(false)} />
+      )}
     </>
   );
 }
@@ -314,9 +329,17 @@ export function UserBugReports() {
   });
   const seenBefore = useMarkBugsSeen(data);
 
-  const onDone = (id: number) =>
+  const onArchive: OnArchive = (id, archived) =>
     queryClient.setQueryData<BugReport[] | undefined>(BUG_REPORTS_KEY, (old) =>
-      old?.filter((r) => r.id !== id)
+      old?.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              archivedAt: archived ? Date.now() : null,
+              archivedBy: archived ? mx.getSafeUserId() : null,
+            }
+          : r
+      )
     );
 
   if (isLoading) {
@@ -333,14 +356,16 @@ export function UserBugReports() {
     return <Text priority="300">Only accounts with the developer badge can read bug reports.</Text>;
   }
 
-  const fresh = data.filter((r) => r.id > seenBefore);
-  const earlier = data.filter((r) => r.id <= seenBefore);
+  const active = data.filter((r) => !r.archivedAt);
+  const fresh = active.filter((r) => r.id > seenBefore);
+  const earlier = active.filter((r) => r.id <= seenBefore);
+  const archived = data.filter((r) => r.archivedAt);
   const section = (title: string, reports: BugReport[], isNew: boolean) =>
     reports.length > 0 && (
       <Box direction="Column" gap="200">
         <Text size="L400">{title}</Text>
         {reports.map((report) => (
-          <BugTicket key={report.id} report={report} isNew={isNew} onDone={onDone} />
+          <BugTicket key={report.id} report={report} isNew={isNew} onArchive={onArchive} />
         ))}
       </Box>
     );
@@ -349,9 +374,9 @@ export function UserBugReports() {
     <Box direction="Column" gap="500">
       <Box alignItems="Center" gap="300">
         <Text size="T300" priority="300" style={{ flexGrow: 1 }}>
-          {data.length === 0
-            ? 'No bug reports right now.'
-            : `${data.length} bug report${data.length === 1 ? '' : 's'}`}
+          {active.length === 0
+            ? 'No open bug reports right now.'
+            : `${active.length} open bug report${active.length === 1 ? '' : 's'}`}
         </Text>
         <Button
           size="300"
@@ -365,7 +390,8 @@ export function UserBugReports() {
         </Button>
       </Box>
       {section('New', fresh, true)}
-      {section('Earlier', earlier, false)}
+      {section('Open', earlier, false)}
+      {section('Archived', archived, false)}
     </Box>
   );
 }

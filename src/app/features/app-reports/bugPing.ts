@@ -41,7 +41,7 @@ export const useNewBugReports = (): number => {
     refetchInterval: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
-  return data?.filter((r) => r.id > seen).length ?? 0;
+  return data?.filter((r) => r.id > seen && !r.archivedAt).length ?? 0;
 };
 
 // Clears the badge once the list is shown, and returns what was seen before, to mark "New".
