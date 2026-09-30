@@ -31,7 +31,6 @@ import {
   spaceAppeals,
 } from './appeals';
 
-// Re-renders whenever rooms, memberships or appeal states change.
 const useRoomsTick = () => {
   const mx = useMatrixClient();
   const [, tick] = useReducer((n: number) => n + 1, 0);
@@ -134,7 +133,6 @@ function Section({
   );
 }
 
-// Lists a server's appeal tickets: open ones you were picked for, and closed ones for every mod.
 function AppealsPanel({ space, requestClose }: { space: Room; requestClose: () => void }) {
   const mx = useMatrixClient();
   const navigate = useNavigate();
@@ -193,7 +191,6 @@ function AppealsPanel({ space, requestClose }: { space: Room; requestClose: () =
   );
 }
 
-// Sidebar entry, only for people who can ban and unban in this server.
 export function AppealsNavItem({ space }: { space: Room }) {
   const mx = useMatrixClient();
   useRoomsTick();

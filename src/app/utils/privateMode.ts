@@ -24,15 +24,12 @@ const post = async (mx: MatrixClient, path: string, extra: Record<string, unknow
 };
 
 export type DeleteCheck = {
-  // What to type: the Angaara username, or the Matrix username without one.
   username: string;
-  // A passkey challenge, only when there's an Angaara account.
   options: PublicKeyCredentialRequestOptionsJSON | null;
 };
 export const getDeleteCheck = (mx: MatrixClient): Promise<DeleteCheck> =>
   post(mx, `${DELETE_PATH}/options`);
 
-// Wipes everything Angaara's servers keep about you, after the passkey if one is needed.
 export const deleteServerData = async (
   mx: MatrixClient,
   confirm: string,

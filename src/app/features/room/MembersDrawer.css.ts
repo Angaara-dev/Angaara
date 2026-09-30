@@ -4,7 +4,6 @@ import { themeBackdrop } from '../../styles/themeBackdrop';
 
 const SHADE = 'var(--angaara-theme-shade, transparent)';
 
-// On themed servers: the server gradient, shaded darker so member names stand out.
 export const MembersDrawer = style({
   width: toRem(266),
   selectors: {
@@ -54,7 +53,6 @@ export const DrawerGroup = style({
   paddingLeft: config.space.S200,
 });
 
-// Even space on both sides, so rows with a user-bar background don't run into the edges.
 export const MembersGroup = style({
   padding: `0 ${config.space.S200}`,
 });
@@ -72,11 +70,9 @@ export const DrawerVirtualItem = style({
   top: 0,
   left: 0,
   width: '100%',
-  // A small gap, so neighbouring rows' backgrounds don't merge into one block.
   paddingBottom: toRem(2),
 });
 
-// Phone page mode: full width, each role group drawn as one rounded card.
 // Fills the phone page so only the list scrolls and the room header stays put.
 export const MembersPage = style({
   width: '100%',
@@ -113,7 +109,6 @@ export const MemberRow = style({
   isolation: 'isolate',
   overflow: 'hidden',
   selectors: {
-    // Rows with a user-bar background become dark cards, so the art and name stand out.
     '&[data-has-bg=true]': {
       backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5))',
       boxShadow: `inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 ${toRem(2)} ${toRem(
@@ -124,7 +119,6 @@ export const MemberRow = style({
   },
 });
 
-// The member's own user-bar background, faded like on the user panel.
 export const MemberBg = style({
   position: 'absolute',
   inset: 0,

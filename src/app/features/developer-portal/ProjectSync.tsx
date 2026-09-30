@@ -19,7 +19,6 @@ type ProjectSyncProps = {
   onReplaceFiles: (files: ZipFile[]) => void;
   onOpen: (root: string, files: ZipFile[]) => void;
 };
-// Compares the editor with the runner's copy of the project, GitHub style.
 export function ProjectSync({ root, files, onReplaceFiles, onOpen }: ProjectSyncProps) {
   const { pull, projects, save } = useRunnerBridge();
   const savedFiles = useAtomValue(savedFilesAtom);
@@ -49,7 +48,6 @@ export function ProjectSync({ root, files, onReplaceFiles, onOpen }: ProjectSync
     [pull, root]
   );
 
-  // Check once when the runner connects or another project opens.
   const canCheck = !!pull;
   useEffect(() => {
     if (canCheck) refresh();

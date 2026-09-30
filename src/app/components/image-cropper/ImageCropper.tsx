@@ -23,7 +23,6 @@ import { CropRect, cropImageFile } from '../../utils/cropImage';
 
 export type CropPreset = {
   title: string;
-  // Width divided by height of where the image is shown.
   aspect: number;
   // Recommended upload size; the crop is scaled down to this width.
   width: number;
@@ -37,7 +36,6 @@ type Drag = {
   startX: number;
   startY: number;
   start: CropRect;
-  // Resize anchor: the corner opposite the handle, and which way the handle points.
   ax: number;
   ay: number;
   dirX: number;
@@ -57,7 +55,6 @@ type ImageCropperProps = {
   onCancel: () => void;
   onDone: (file: File) => void;
 };
-// GitHub-style cropper: drag the box to move it, drag a corner to resize.
 export function ImageCropper({ file, preset, onCancel, onDone }: ImageCropperProps) {
   const url = useObjectURL(file);
   const [natural, setNatural] = useState<{ w: number; h: number }>();

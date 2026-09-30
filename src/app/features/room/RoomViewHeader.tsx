@@ -723,7 +723,6 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               </FocusTrap>
             }
           />
-          {/* Search sits last, at the far right, so the room name gets the space. */}
           {!encryptedRoom && screenSize !== ScreenSize.Mobile && (
             <Box alignItems="Center" style={{ marginLeft: config.space.S200 }}>
               <HeaderSearch room={room} />

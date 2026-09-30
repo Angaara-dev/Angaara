@@ -9,7 +9,6 @@ import { ResizeHandle } from '../resize-handle';
 type PageRootProps = {
   nav: ReactNode;
   children: ReactNode;
-  // Main app screens: nav and content float as rounded panels on the app frame.
   framed?: boolean;
 };
 

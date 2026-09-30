@@ -1,6 +1,5 @@
 import { RefObject, useEffect } from 'react';
 
-// Marks which edges of a scroller still have content past them, for ScrollFade.
 export const useScrollFade = (ref: RefObject<HTMLElement>) => {
   useEffect(() => {
     const el = ref.current;

@@ -7,7 +7,6 @@ export const IMPORT_LIMITS = {
   maxTotalBytes: 20 * 1024 * 1024,
 };
 
-// Build output, dependencies and VCS data: huge, regenerated, and not worth editing here.
 const SKIP_DIRS = new Set([
   '.git',
   'node_modules',
@@ -23,7 +22,6 @@ const SKIP_DIRS = new Set([
 ]);
 
 export type PickedFile = { path: string; file: File };
-// Folder entries where the browser supports them, plus plain files as a fallback.
 export type DroppedItems = { entries: FileSystemEntry[]; files: File[] };
 
 const skipPath = (path: string) => path.split('/').some((part) => SKIP_DIRS.has(part));
@@ -80,7 +78,6 @@ export const toProjectName = (name: string): string =>
     .replace(/[-_]+$/, '') || 'my-project';
 
 export type ImportResult = {
-  // Set when the pick was one folder, which becomes the whole workspace.
   root?: string;
   files: ZipFile[];
   skipped: { binary: number; tooBig: number; overLimit: number };

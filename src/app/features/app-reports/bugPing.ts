@@ -19,7 +19,6 @@ export const useIsAppDeveloper = (): boolean => {
   return !!badges?.[mx.getSafeUserId()]?.includes('developer');
 };
 
-// The newest bug report this device has shown; anything newer gets a red badge.
 const bugsSeenAtom = atomWithLocalStorage<number>(
   'angaaraBugsSeen',
   (key) => getLocalStorageItem(key, 0),
@@ -28,7 +27,6 @@ const bugsSeenAtom = atomWithLocalStorage<number>(
 
 export const BUG_REPORTS_KEY = ['bug-reports'];
 
-// Unseen bug reports, for developers only; checks every two minutes.
 export const useNewBugReports = (): number => {
   const mx = useMatrixClient();
   const dev = useIsAppDeveloper();
@@ -44,7 +42,6 @@ export const useNewBugReports = (): number => {
   return data?.filter((r) => r.id > seen && !r.archivedAt).length ?? 0;
 };
 
-// Clears the badge once the list is shown, and returns what was seen before, to mark "New".
 export const useMarkBugsSeen = (reports: BugReport[] | undefined): number => {
   const [seen, setSeen] = useAtom(bugsSeenAtom);
   const [seenBefore] = useState(seen);

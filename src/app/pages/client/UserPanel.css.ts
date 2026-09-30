@@ -13,7 +13,6 @@ export const UserPanel = style({
   overflow: 'hidden',
   isolation: 'isolate',
   selectors: {
-    // With a background image: a dark card, like member rows, so the art and name stand out.
     '&[data-has-bg=true]': {
       backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5))',
       boxShadow: `0 ${toRem(2)} ${toRem(8)} rgba(0, 0, 0, 0.35)`,
@@ -22,7 +21,6 @@ export const UserPanel = style({
   },
 });
 
-// Your panel background image, dimmed a little so the text stays readable.
 export const Background = style({
   position: 'absolute',
   inset: 0,
@@ -57,7 +55,6 @@ export const Me = style({
   },
 });
 
-// No hover box: the avatar pops and glows in the accent color, and the name slides over.
 const Pop = `${Me}:hover &, ${Me}:focus-visible &, ${Me}[aria-expanded="true"] &`;
 const Spring = 'cubic-bezier(0.34, 1.56, 0.64, 1)';
 const NoMotion = { '(prefers-reduced-motion: reduce)': { transition: 'none' } };
@@ -90,7 +87,6 @@ export const MeText = style({
   },
 });
 
-// Ring around the status icon, cut out of the avatar.
 export const OnlineDot = style({
   position: 'absolute',
   right: toRem(-3),

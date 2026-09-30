@@ -88,7 +88,6 @@ function XpProgress({ xp, level }: { xp: number; level: number }) {
   );
 }
 
-// Your level, and the switch that stops Angaara counting XP at all.
 export function Experience() {
   const mx = useMatrixClient();
   const userId = mx.getSafeUserId();

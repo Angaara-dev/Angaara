@@ -3,7 +3,6 @@ import { setDirectRoom } from './directs';
 
 // XP needed for each level; keep in sync with worker/xp.js.
 export const XP_LEVELS = [2000, 10000, 30000, 50000, 80000];
-// What each level unlocks; the last one is everything.
 export const XP_LEVEL_REWARDS = [
   'Animated panel background',
   'Animated profile banner',
@@ -12,7 +11,6 @@ export const XP_LEVEL_REWARDS = [
   'Full access',
 ];
 
-// XP each perk needs.
 export const XP_PERKS = {
   panelGif: XP_LEVELS[0],
   bannerGif: XP_LEVELS[1],
@@ -25,14 +23,11 @@ export type XpStatus = {
   xp: number;
   level: number;
   since?: number;
-  // Minutes counted today (UTC), up to the daily limit.
   minutesToday?: number;
   capped?: boolean;
   // Order they joined in; the first EARLY_EMBER_MEMBERS get the Early Ember badge.
   member?: number;
-  // A launch XP boost that's running, like 3x until a date.
   boost?: { times: number; until: number };
-  // Supporter through an Angaara account, which works on any homeserver.
   supporter?: boolean;
 };
 // Matches BOOSTS in worker/xp.js: this many members are Early Embers.
@@ -49,7 +44,6 @@ const COUNTED_TYPES = ['m.room.message', 'm.room.encrypted', 'm.sticker'];
 
 type Sent = { room_id: string; event_id: string; ts: number };
 
-// What the last report did, shown in settings so problems are visible.
 export type XpReportInfo = { at: number; queued: number; result: string };
 let lastReport: XpReportInfo | undefined;
 export const getLastXpReport = () => lastReport;
@@ -85,7 +79,6 @@ const makeXpRoom = async (mx: MatrixClient): Promise<string | undefined> => {
   return roomId;
 };
 
-// Made once, the first time it's needed.
 const ensureXpRoom = (mx: MatrixClient) => {
   xpRoomTask ??= makeXpRoom(mx).catch(() => {
     xpRoomTask = undefined;

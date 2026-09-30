@@ -16,7 +16,6 @@ import {
 } from '../../../hooks/useUserBanner';
 import { getRoomAvatarUrl } from '../../../utils/room';
 
-// Pick one server's tag to wear next to your name everywhere.
 export function ProfileServerTag({ userId }: { userId: string }) {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();

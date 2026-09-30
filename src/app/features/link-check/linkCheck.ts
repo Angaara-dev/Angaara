@@ -22,7 +22,6 @@ export const quotaText = (q?: CheckQuota) =>
       }.`
     : '';
 
-// Asks the Worker to open the link in its sandbox and look for scam signs.
 export const checkLink = async (mx: MatrixClient, url: string): Promise<LinkReport> => {
   const res = await fetch(`${window.location.origin}/api/links/check`, {
     method: 'POST',

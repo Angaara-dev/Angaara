@@ -26,13 +26,11 @@ export async function handleAccount(request, env, url) {
   const userId = await verifyOpenId(body?.openid);
   if (!userId) return json({ error: 'not signed in' }, 401);
 
-  // Step one: what to type, and a passkey challenge if there's an Angaara account.
   if (options) {
     const check = await deleteCheckOptions(env, url, userId);
     return json(check ?? { username: localpart(userId), options: null });
   }
 
-  // Step two: the typed username must match, and an Angaara account needs its passkey.
   const username = (await angaaraUsername(env, userId)) ?? localpart(userId);
   if (
     String(body?.confirm ?? '')

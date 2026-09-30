@@ -76,7 +76,6 @@ export type BugReport = {
   body: string;
   build: string | null;
   ua: string | null;
-  // Set once a developer marks it Done; archived reports stay readable.
   archivedAt: number | null;
   archivedBy: string | null;
 };

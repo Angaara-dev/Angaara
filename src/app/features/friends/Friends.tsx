@@ -91,7 +91,6 @@ function ActionButton({
   );
 }
 
-// One person: avatar, name, a status line, and the actions for this list.
 function PersonRow({
   userId,
   subtitle,

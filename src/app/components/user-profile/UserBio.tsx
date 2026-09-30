@@ -6,7 +6,6 @@ import { useUserBio } from '../../hooks/useUserBio';
 
 type UserBioProps = {
   userId: string;
-  // Caps the lines shown, for compact places like the hover card.
   maxLines?: number;
 };
 export function UserBio({ userId, maxLines }: UserBioProps) {

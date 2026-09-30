@@ -4,13 +4,11 @@ import { Overlay, OverlayBackdrop } from 'folds';
 import { stopPropagation } from '../../utils/keyboard';
 import * as css from './BottomSheet.css';
 
-// Pulled down this far, the sheet closes.
 const CLOSE_PULL = 100;
 // A quick flick down closes it too, in px/ms.
 const CLOSE_FLICK = 0.5;
 const SLOP = 6;
 
-// Whether anything between the touch and the sheet is scrolled down, so the pull should scroll.
 const scrolledInside = (target: EventTarget | null, sheet: HTMLElement) => {
   let el = target instanceof Element ? target : null;
   while (el && el !== sheet) {
@@ -30,7 +28,6 @@ type BottomSheetProps = {
   floatingHandle?: boolean;
   children: ReactNode;
 };
-// Phone bottom sheet: tap outside or swipe it down to close.
 export function BottomSheet({
   open,
   onClose,
@@ -43,7 +40,6 @@ export function BottomSheet({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Pulling down anywhere on the sheet drags it, once its content is scrolled to the top.
   useEffect(() => {
     const sheet = sheetRef.current;
     if (!open || !sheet) return undefined;
@@ -103,7 +99,6 @@ export function BottomSheet({
         return;
       }
       if (dy > CLOSE_PULL || (speed > CLOSE_FLICK && dy > SLOP * 3)) {
-        // Glide the rest of the way down at about the finger's speed, then close.
         mode = 'closing';
         const rest = sheet.offsetHeight - dy;
         const ms = Math.round(Math.min(280, Math.max(140, rest / Math.max(speed, 1.2))));

@@ -98,7 +98,6 @@ const strings = (b: Uint8Array): string[] => {
   ];
 };
 
-// Looks inside a Windows program without running it: signature, packing and what it can do.
 export const scanPe = (scan: Scan, b: Uint8Array): void => {
   const v = view(b);
   const pe = v.getUint32(0x3c, true);
@@ -133,7 +132,6 @@ export const scanPe = (scan: Scan, b: Uint8Array): void => {
   };
   const cstr = (at: number) => (at < 0 ? '' : latin1(b.subarray(at, at + 256)).split('\0')[0]);
 
-  // Imported functions, by name.
   const imports: string[] = [];
   const dlls: string[] = [];
   const imp = dir(1);

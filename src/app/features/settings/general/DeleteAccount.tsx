@@ -29,7 +29,6 @@ import { useAuthMetadata } from '../../../hooks/useAuthMetadata';
 import { useAccountManagementActions } from '../../../hooks/useAccountManagement';
 import { withSearchParam } from '../../../pages/pathUtils';
 
-// Asks twice, then has the homeserver deactivate the account for good.
 function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const mx = useMatrixClient();
   const server = getMxIdServer(mx.getSafeUserId()) ?? 'your homeserver';
@@ -68,7 +67,6 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
     useCallback(
       (next: typeof state) => {
         setState(next);
-        // The account is gone, so this device's data goes too.
         if (next.status === AsyncStatus.Success) logoutClient(mx);
       },
       [mx]

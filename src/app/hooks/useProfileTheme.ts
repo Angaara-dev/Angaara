@@ -58,7 +58,6 @@ export const profileThemeVars = (theme: ProfileTheme, dark: boolean): CSSPropert
   return vars as CSSProperties;
 };
 
-// Someone's profile colours, only once they've earned the XP for them.
 export const useProfileTheme = (userId: string, enabled = true): ProfileTheme | undefined => {
   const theme = parseProfileTheme(
     readProfileString(useExtendedProfile(userId, enabled), [PROFILE_THEME_KEY])

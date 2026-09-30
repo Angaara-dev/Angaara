@@ -61,7 +61,6 @@ function PageZoomFeature() {
   return null;
 }
 
-// Read by the phone message and composer styles.
 function PhoneMessageScaleFeature() {
   const [scale] = useSetting(settingsAtom, 'phoneMessageScale');
 
@@ -132,7 +131,6 @@ function InviteNotifications() {
   const navigate = useNavigate();
   const [showNotificationsSetting] = useSetting(settingsAtom, 'showNotifications');
   const [notificationSoundSetting] = useSetting(settingsAtom, 'notificationSounds');
-  // Do Not Disturb mutes desktop notifications and sounds.
   const dnd = useAtomValue(chosenStatusAtom) === 'dnd';
   const showNotifications = showNotificationsSetting && !dnd;
   const notificationSound = notificationSoundSetting && !dnd;
@@ -187,7 +185,6 @@ function MessageNotifications() {
   const useAuthentication = useMediaAuthentication();
   const [showNotificationsSetting] = useSetting(settingsAtom, 'showNotifications');
   const [notificationSoundSetting] = useSetting(settingsAtom, 'notificationSounds');
-  // Do Not Disturb mutes desktop notifications and sounds.
   const dnd = useAtomValue(chosenStatusAtom) === 'dnd';
   const showNotifications = showNotificationsSetting && !dnd;
   const notificationSound = notificationSoundSetting && !dnd;
@@ -331,8 +328,6 @@ function EmojiDataPreloader() {
   return null;
 }
 
-// Opens the encrypted vault (friends, DM list, privacy), keeps friends in step with rooms,
-// and declines DMs and friend requests your community privacy settings block.
 function VaultFeature() {
   const mx = useMatrixClient();
 

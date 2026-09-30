@@ -130,7 +130,6 @@ function NotLinked({ run }: { run: (task: () => Promise<unknown>) => void }) {
   );
 }
 
-// Create or sign in to an Angaara account, which carries perks across homeservers.
 export function AngaaraAccount() {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();

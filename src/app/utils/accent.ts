@@ -79,7 +79,6 @@ export const applyAccent = (accent: string | undefined, dark: boolean) => {
         [color.Primary.MainLine, mix(72)],
         [color.Primary.OnMain, readableOn(accent)],
         [color.Other.FocusRing, `color-mix(in srgb, ${accent} 60%, transparent)`],
-        // Soft accent tints (like highlighted menu items) instead of the theme's grey.
         [color.Primary.Container, tint(14)],
         [color.Primary.ContainerHover, tint(20)],
         [color.Primary.ContainerActive, tint(26)],
@@ -146,7 +145,6 @@ const THEME_EXTRA_VARS = [
   '--angaara-theme-menu',
 ];
 const WASH_GROUPS = [color.Surface, color.SurfaceVariant, color.Secondary];
-// The see-through panel colours, as CSS variable names and values.
 export const themeWashVars = (dark: boolean): Record<string, string> => {
   const [base, hover, active, line] = dark
     ? ['0.06', '0.1', '0.14', 'rgba(255, 255, 255, 0.08)']
@@ -225,7 +223,6 @@ export const applyServerTheme = (theme: ServerTheme | undefined, dark: boolean) 
   style.setProperty(THEME_SURFACE_VAR, `linear-gradient(${lift}, ${lift}), ${gradient}`);
   style.setProperty('--angaara-theme-row', 'transparent');
   style.setProperty('--angaara-theme-surface-color', 'transparent');
-  // Side panels (like the member list) sit a shade darker than the page.
   style.setProperty('--angaara-theme-shade', dark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.08)');
   // The page behind the app shows at phone edges (under the composer, around the nav bar).
   style.setProperty('background-image', gradient);

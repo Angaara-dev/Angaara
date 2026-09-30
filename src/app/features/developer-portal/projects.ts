@@ -49,7 +49,6 @@ export function useProjectIndex(): ProjectIndex {
 
 // The unlocked dev key for this session (also kept on this device by devCrypto).
 export const devKeyAtom = atom<CryptoKey | undefined>(undefined);
-// Set once this session has checked the device for a saved key.
 export const devKeyCheckedAtom = atom(false);
 
 const ACTIVE_KEY = 'angaara.devProject';
@@ -61,7 +60,6 @@ const loadActive = () => {
   }
 };
 const baseActiveAtom = atom<string | undefined>(loadActive());
-// Which project is open on this device.
 export const activeProjectIdAtom = atom(
   (get) => get(baseActiveAtom),
   (_get, set, id: string | undefined) => {
@@ -85,7 +83,6 @@ export const projectStatusAtom = atom<ProjectStatus>({ status: 'loading' });
 export type SaveState = { state: 'saved' } | { state: 'saving' } | { state: 'error'; text: string };
 export const saveStateAtom = atom<SaveState>({ state: 'saved' });
 
-// Which project dialog is open, so the sidebar and pages can open the same dialogs.
 export type ProjectDialog =
   | { kind: 'new' }
   | { kind: 'rename'; project: ProjectMeta }

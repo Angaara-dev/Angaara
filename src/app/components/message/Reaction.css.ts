@@ -18,7 +18,6 @@ export const Reaction = style([
       [ContainerLine]: color.SurfaceVariant.ContainerLine,
       [OnContainer]: color.SurfaceVariant.OnContainer,
     },
-    // Rounder chips; on phones they follow the Message Size setting.
     padding: `${toRem(4)} ${toRem(10)} ${toRem(4)} ${toRem(8)}`,
     backgroundColor: Container,
     border: `${config.borderWidth.B300} solid ${ContainerLine}`,
@@ -76,7 +75,6 @@ export const ReactionText = style([
   },
 ]);
 
-// The count next to the emoji.
 globalStyle(`${Reaction} > span:last-child`, {
   '@media': { [PHONE]: { fontSize: phoneSize(13) } },
 });

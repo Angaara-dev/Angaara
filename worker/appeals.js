@@ -42,7 +42,6 @@ async function readSettings(env, roomId) {
     return { bot: true, enabled: content?.enabled === true, max: clamp(content?.max) };
   }
   const err = await res.json().catch(() => ({}));
-  // In the server but never set: appeals are off.
   if (res.status === 404 && err.errcode === 'M_NOT_FOUND') {
     return { bot: true, enabled: false, max: DEFAULT_APPEALS };
   }
@@ -68,7 +67,6 @@ async function settings(env, roomId, ctx) {
   }
 }
 
-// Whether the bot is already in the room, or was invited there by this user.
 async function botInvitedBy(env, roomId, userId) {
   const filter = {
     presence: { types: [] },
@@ -110,7 +108,6 @@ async function join(request, env) {
   return json({ joined: true });
 }
 
-// Who to invite; the app needs the bot's Matrix ID.
 async function botId(env) {
   if (!hasBot(env)) return json({ bot: false });
   const res = await botApi(env, '/account/whoami').catch(() => undefined);

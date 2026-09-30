@@ -102,7 +102,6 @@ export type BranchSnapshot = {
 const decodeBase64 = (b64: string) =>
   Uint8Array.from(atob(b64.replace(/\n/g, '')), (c) => c.charCodeAt(0));
 
-// Downloads the branch's text files; binaries, big files and build folders are left out.
 export const fetchBranch = async (
   token: string,
   owner: string,

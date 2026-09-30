@@ -36,7 +36,6 @@ function CopyRow({ title, value }: { title: string; value: string }) {
   );
 }
 
-// The server's address and ID up top, so they're easy to find and share.
 export function SpaceAddress({ canEdit }: { canEdit: boolean }) {
   const room = useRoom();
   const content = useStateEvent(room, StateEvent.RoomCanonicalAlias)?.getContent();

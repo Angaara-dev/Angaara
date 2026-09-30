@@ -41,7 +41,6 @@ function Progress({ label, value, goal }: { label: string; value: number; goal: 
   );
 }
 
-// Servers level up from members and age, and each level unlocks a perk.
 export function SpaceLevelCard() {
   const room = useRoom();
   const { level, members, days, next, granted } = useSpaceLevel(room);

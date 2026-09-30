@@ -13,7 +13,6 @@ import {
 import { themeWashVars, varName } from '../../utils/accent';
 import { serverThemeHiddenAtom } from '../../state/spaceAccent';
 
-// Lets anything open user settings, e.g. "Edit Profile" in the profile popout.
 export const userSettingsPageAtom = atom<SettingsPages | undefined>(undefined);
 
 // Your settings wear your own profile colours (or none), never the server's.

@@ -17,14 +17,11 @@ const squircleTile = svg(
   "width='44' height='44'"
 );
 
-// The ember glow: a round, soft falloff from the logo out, strongest in the middle.
 const emberShape =
   'radial-gradient(circle closest-side, #000 0%, rgba(0, 0, 0, 0.75) 30%, rgba(0, 0, 0, 0.35) 60%, transparent 100%)';
 
-// Squircles cover the whole page faintly; this layer lets a little of them through everywhere.
 const everywhere = 'linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35))';
 
-// A circle around the logo, spread wide so it fades out gently.
 const GLOW_SIZE = 'min(150vw, 120vh) min(150vw, 120vh)';
 
 const emberMask = {
@@ -45,7 +42,6 @@ export const SplashScreen = style({
   backgroundColor: color.Background.Container,
   color: color.Background.OnContainer,
   selectors: {
-    // A field of squircles over the whole page, lit up brightest inside the ember glow.
     '&::before': {
       content: '""',
       position: 'absolute',
@@ -61,11 +57,9 @@ export const SplashScreen = style({
       maskRepeat: 'repeat, no-repeat, no-repeat',
       WebkitMaskPosition: 'center',
       maskPosition: 'center',
-      // Tiles, cut to (glow plus the faint everywhere layer).
       WebkitMaskComposite: 'source-in, source-over',
       maskComposite: 'intersect, add',
     },
-    // The warm glow itself, behind the squircles.
     '&::after': {
       content: '""',
       position: 'absolute',

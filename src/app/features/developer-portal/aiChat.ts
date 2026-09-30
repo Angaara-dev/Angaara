@@ -9,7 +9,6 @@ export type AiSettings = { provider: AiProvider; apiKey: string; model: string }
 export const AI_SETTINGS_FILE = 'ai-settings.json';
 const STORAGE_KEY = 'hearth.devtools.aiSettings';
 
-// Shown in the chat's model picker; "Custom" in the picker takes any other model ID.
 export const MODELS: Record<AiProvider, { id: string; label: string }[]> = {
   anthropic: [
     { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
@@ -36,7 +35,6 @@ export const DEFAULT_AI_SETTINGS_JSON = `${JSON.stringify(
   2
 )}\n`;
 
-// Returns the settings, or a message saying what's wrong with the JSON.
 export const parseAiSettings = (json: string): AiSettings | string => {
   let raw: unknown;
   try {
@@ -136,7 +134,6 @@ const buildSystem = (files: ZipFile[], sdkPrefix: string) => {
 
 export type ChatResult = { text: string; cachedTokens?: number; inputTokens?: number };
 
-// Models that support server-side refusal fallbacks.
 const FALLBACK_MODELS = ['claude-opus-5', 'claude-fable-5-1'];
 
 async function chatWithClaude(

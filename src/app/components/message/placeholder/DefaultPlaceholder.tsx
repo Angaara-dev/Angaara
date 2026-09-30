@@ -8,7 +8,6 @@ const contentMargin: CSSProperties = { marginTop: toRem(3) };
 
 type DefaultPlaceholderProps = {
   variant?: ContainerColor;
-  // Extra message lines and an image block, for skeleton variety.
   lines?: number;
   media?: boolean;
 };

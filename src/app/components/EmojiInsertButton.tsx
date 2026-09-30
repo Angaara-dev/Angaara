@@ -7,7 +7,6 @@ type EmojiInsertButtonProps = {
   disabled?: boolean;
 };
 
-// Opens the emoji picker and types the chosen emoji at the cursor, for plain-text fields like names.
 export function EmojiInsertButton({ inputRef, disabled }: EmojiInsertButtonProps) {
   const [anchor, setAnchor] = useState<RectCords>();
 

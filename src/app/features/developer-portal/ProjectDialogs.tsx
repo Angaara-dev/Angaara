@@ -119,7 +119,6 @@ export function PasswordField({
   );
 }
 
-// Checks a new password pair; returns the problem, if any.
 export const newPasswordProblem = (password: string, confirm: string) => {
   if (password.length < MIN_PASSWORD) return `Use at least ${MIN_PASSWORD} characters.`;
   if (password !== confirm) return "The passwords don't match.";
@@ -409,7 +408,6 @@ function DeleteDialog({ project, onClose }: { project: ProjectMeta; onClose: () 
   );
 }
 
-// Whichever project dialog is open. Lazy-loaded by the sidebar.
 export default function ProjectDialogs() {
   const [dialog, setDialog] = useAtom(projectDialogAtom);
   const close = () => setDialog(undefined);

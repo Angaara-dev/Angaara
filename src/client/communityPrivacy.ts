@@ -2,7 +2,6 @@ import { MatrixClient, Room } from 'matrix-js-sdk';
 import { getVaultItem, updateVaultItem, vaultReady } from './vault';
 import { FRIEND_REQUEST_KEY, getFriendsData } from './friends';
 
-// Per-community privacy, kept in the encrypted vault.
 // Matrix can't filter invites on the server, so Angaara quietly declines blocked ones itself.
 export type CommunityPrivacy = { allowDms: boolean; allowFriendRequests: boolean };
 type PrivacyData = { communities: Record<string, Partial<CommunityPrivacy>> };
@@ -38,7 +37,6 @@ async function isCommunityMember(mx: MatrixClient, spaceId: string, userId: stri
   }
 }
 
-// A DM or friend request from a member of a community where you turned that off (friends are exempt).
 export async function isBlockedInvite(mx: MatrixClient, room: Room): Promise<boolean> {
   if (!vaultReady() || room.getMyMembership() !== 'invite') return false;
   const event = room.getMember(mx.getSafeUserId())?.events.member;
@@ -60,7 +58,6 @@ export async function isBlockedInvite(mx: MatrixClient, room: Room): Promise<boo
 }
 
 const handled = new Set<string>();
-// Declines pending invites that your community privacy settings block.
 export async function declineBlockedInvites(mx: MatrixClient) {
   const invites = mx.getRooms().filter((r) => r.getMyMembership() === 'invite');
   await Promise.all(

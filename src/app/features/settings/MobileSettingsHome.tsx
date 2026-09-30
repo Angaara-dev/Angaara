@@ -52,7 +52,6 @@ type MobileSettingsHomeProps<P> = {
   onSelect: (page: P) => void;
   requestClose: () => void;
 };
-// Phone settings home: your profile on top, then grouped rows that open full pages.
 export function MobileSettingsHome<P>({
   groups,
   profilePage,

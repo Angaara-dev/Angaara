@@ -206,7 +206,6 @@ async function handle(request, env, url, userId, body) {
 
   if (step === 'me') return json(await summary(db, account));
 
-  // New account, or a new passkey for the account this Matrix account is already linked to.
   if (step === 'register/options') {
     let username;
     if (account) {
@@ -305,7 +304,6 @@ async function handle(request, env, url, userId, body) {
     return json(await summary(db, await accountOf(db, userId)));
   }
 
-  // Signing in with a passkey links this Matrix account to the Angaara account.
   if (step === 'login/options') {
     if (account) return json({ error: 'This Matrix account is already linked.' }, 400);
     const options = await generateAuthenticationOptions({ rpID, userVerification: 'required' });
@@ -383,7 +381,6 @@ async function handle(request, env, url, userId, body) {
   return json({ error: 'not found' }, 404);
 }
 
-// The Angaara username linked to this Matrix account, if any.
 export async function angaaraUsername(env, userId) {
   if (!env.XP_DB) return undefined;
   await ensureTables(env.XP_DB);

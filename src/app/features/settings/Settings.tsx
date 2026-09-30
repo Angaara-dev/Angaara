@@ -157,7 +157,6 @@ export function Settings({ initialPage, requestClose }: SettingsProps) {
     requestClose();
   };
 
-  // Phones: Escape steps back to the settings list first, like the back button.
   useEffect(() => {
     if (!phone || activePage === undefined) return undefined;
     const onKey = (evt: KeyboardEvent) => {

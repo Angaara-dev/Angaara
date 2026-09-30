@@ -349,7 +349,6 @@ export function SpaceAccentSetting({ permissions }: PerkProps) {
   );
 }
 
-// Only the perks you're allowed to change are shown.
 export function SpacePerks({ permissions }: PerkProps) {
   const me = useMatrixClient().getSafeUserId();
   const canTag = permissions.stateEvent(StateEvent.AngaaraSpaceTag, me);

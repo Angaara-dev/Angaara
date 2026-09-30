@@ -9,7 +9,6 @@ export const HeaderTopic = style({
   },
 });
 
-// PC: the room name opens the room info window.
 export const HeaderName = style({
   padding: 0,
   border: 'none',
@@ -20,7 +19,6 @@ export const HeaderName = style({
   ':hover': { textDecoration: 'underline' },
 });
 
-// Phones: the room name is one big tap target that opens room info and members.
 export const HeaderInfoButton = style({
   minWidth: 0,
   height: toRem(64),
@@ -36,7 +34,6 @@ export const HeaderInfoButton = style({
   },
 });
 
-// Phones: a taller header, so the room name is easy to tap.
 export const PhoneHeader = style({
   height: toRem(76),
   paddingTop: config.space.S100,

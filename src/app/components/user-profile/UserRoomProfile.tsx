@@ -45,7 +45,6 @@ const formatDay = (ts: number) =>
 
 type UserRoomProfileProps = {
   userId: string;
-  // Small card: just the banner, name and main action, plus a way into the full profile.
   onViewFull?: () => void;
 };
 export function UserRoomProfile({ userId, onViewFull }: UserRoomProfileProps) {

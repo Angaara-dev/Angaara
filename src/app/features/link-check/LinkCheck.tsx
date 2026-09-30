@@ -39,8 +39,9 @@ const daysAgo = (ts: number) => Math.floor((Date.now() - ts) / 86400000);
 function Report({ report }: { report: LinkReport }) {
   const verdict = VERDICTS[report.verdict];
   const redirected = report.hops.length > 1;
+  // Doesn't shrink, so a long report scrolls instead of overlapping.
   return (
-    <Box direction="Column" gap="300">
+    <Box direction="Column" gap="300" style={{ flexShrink: 0 }}>
       <Box
         alignItems="Center"
         gap="200"
@@ -217,7 +218,6 @@ export function LinkCheckDialog({ url, onClose }: { url: string; onClose: () => 
   );
 }
 
-// Right-clicking any web link in the app offers Open, Copy and Check.
 export function LinkContextMenu() {
   const [menu, setMenu] = useState<{ url: string; anchor: RectCords }>();
   const [checking, setChecking] = useState<string>();

@@ -94,7 +94,6 @@ function TypePicker({ value, onChange }: { value?: BugType; onChange: (type: Bug
   );
 }
 
-// Anonymous bug reports; they land in the developers' User Bug Reports page.
 export function BugReportDialog({ onClose }: { onClose: () => void }) {
   const [type, setType] = useState<BugType>();
   const [title, setTitle] = useState('');

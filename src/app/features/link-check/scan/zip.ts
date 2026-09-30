@@ -9,7 +9,6 @@ export type ZipEntry = {
   encrypted: boolean;
 };
 
-// Lists a zip's files from its central directory.
 export const zipEntries = (b: Uint8Array): ZipEntry[] | undefined => {
   const v = view(b);
   let end = -1;
@@ -51,7 +50,6 @@ const { DecompressionStream } = globalThis as unknown as {
   DecompressionStream?: new (format: 'deflate-raw') => TransformStream<Uint8Array, Uint8Array>;
 };
 
-// Unpacks one entry (stored or deflated), stopping early on anything huge.
 export const readEntry = async (
   b: Uint8Array,
   entry: ZipEntry

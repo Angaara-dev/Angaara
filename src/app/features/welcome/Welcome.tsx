@@ -125,7 +125,6 @@ function ServerRow({ alias, checked, onToggle }: ServerRowProps) {
   );
 }
 
-// First-run panel: says hi, asks what you're into and suggests servers to join.
 export function Welcome() {
   const mx = useMatrixClient();
   const phone = usePhone();
@@ -152,7 +151,6 @@ export function Welcome() {
   const name =
     (displayName && displayName !== userId ? displayName : getMxIdLocalPart(userId)) || userId;
 
-  // The bot's hello lands in their DMs while they go through the panel.
   useEffect(() => {
     if (!open) return;
     requestWelcomeDm(mx)

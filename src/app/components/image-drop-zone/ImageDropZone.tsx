@@ -14,7 +14,6 @@ type ImageDropZoneProps = {
   disabled?: boolean;
   busy?: boolean;
 };
-// Click or drop an image; shows the current image as its background.
 export function ImageDropZone({
   imageUrl,
   height,

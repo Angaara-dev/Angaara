@@ -12,11 +12,9 @@ export const PowerColorBadge = style({
   borderRadius: config.radii.Pill,
   border: `${config.borderWidth.B300} solid ${color.Secondary.ContainerLine}`,
   position: 'relative',
-  // A glossy bead: soft highlight top-left, darker rim at the bottom.
   boxShadow: 'inset 0 -1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
 });
 
-// Role chips take their role's colour, with a light top edge and a soft drop for some depth.
 export const RoleChipColor = createVar();
 export const RoleChipColorEnd = createVar();
 export const RoleChip = style({

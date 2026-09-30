@@ -23,6 +23,7 @@ import { themeBackdrop } from '../../styles/themeBackdrop';
 import { bytesToSize } from '../../utils/common';
 import { isPrivateMode } from '../../utils/privateMode';
 import { FileReport } from './fileCheck';
+import { aKind } from './scan/context';
 import {
   clearFileScans,
   FileScan,
@@ -53,8 +54,9 @@ function Report({ report }: { report: FileReport }) {
   else if (report.listed === undefined && !isPrivateMode()) {
     listLine = "The known-malware list isn't set up on this server.";
   }
+  // Doesn't shrink, so a long report scrolls instead of overlapping.
   return (
-    <Box direction="Column" gap="300">
+    <Box direction="Column" gap="300" style={{ flexShrink: 0 }}>
       <Box
         alignItems="Center"
         gap="200"
@@ -140,7 +142,7 @@ function Report({ report }: { report: FileReport }) {
       <Box direction="Column" gap="100">
         <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
           {report.name} · {bytesToSize(report.size)}
-          {report.kind ? ` · really a ${report.kind} file` : ''}
+          {report.kind ? ` · really ${aKind(report.kind)} file` : ''}
         </Text>
         {report.known && (
           <Text size="T200" priority="300" style={{ overflowWrap: 'anywhere' }}>
@@ -234,7 +236,6 @@ function Frame({
 type FileCheckDialogProps = {
   scanId: string;
   onClose: () => void;
-  // Only offered where the file itself is at hand, like a message.
   onRescan?: () => void;
 };
 // Shows one scan; closing it doesn't stop the scan, which carries on in the background.
@@ -366,7 +367,6 @@ function ScanRow({ scan, onOpen }: { scan: FileScan; onOpen: () => void }) {
   );
 }
 
-// Every file checked on this device, including scans still running in the background.
 export function ScannedFilesDialog({ onClose }: { onClose: () => void }) {
   const mx = useMatrixClient();
   const scans = useFileScans(mx);

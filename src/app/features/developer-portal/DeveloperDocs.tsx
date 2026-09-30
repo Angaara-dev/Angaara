@@ -46,7 +46,6 @@ function DocSectionView({ section }: { section: DocSection }) {
   );
 }
 
-// Docs page: jump links up top, "Run script in shell" first, then every section.
 export function DeveloperDocs() {
   const markdown = useMemo(() => docsToMarkdown(DOC_SECTIONS), []);
   const jumpTo = (id: string) =>

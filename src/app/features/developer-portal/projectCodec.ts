@@ -27,7 +27,6 @@ export const encodeProject = async (
   return { v: 1, sealed: await seal(key, packed, projectAad(id)) };
 };
 
-// A project with nothing stored yet (or emptied) opens as undefined.
 export const decodeProject = async (
   id: string,
   content: unknown,

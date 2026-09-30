@@ -17,7 +17,6 @@ const signOutLockedDevice = async () => {
   await clearLoginData();
 };
 
-// Asked before the app loads when app lock is on and this browser session isn't unlocked yet.
 export function AppLockScreen({ onUnlocked }: { onUnlocked: () => void }) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);

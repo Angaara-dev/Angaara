@@ -4,7 +4,6 @@ import { useUserBadges } from '../../hooks/useUserBadges';
 
 type UserBadgesProps = {
   userId: string;
-  // Small inline icons for dense lists like the member list.
   size?: 'small' | 'normal';
 };
 export function UserBadges({ userId, size = 'normal' }: UserBadgesProps) {

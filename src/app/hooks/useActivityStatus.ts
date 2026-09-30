@@ -36,7 +36,6 @@ export const chosenStatusAtom = atom(
     }
   }
 );
-// What this device publishes right now, after auto-idle.
 export const ownActivityAtom = atom<ActivityStatus>('online');
 
 // Stored as "state:timestamp" so it works on servers that only take string profile values.

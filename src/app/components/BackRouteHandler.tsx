@@ -12,12 +12,10 @@ import { DIRECT_PATH, EXPLORE_PATH, HOME_PATH, INBOX_PATH, SPACE_PATH } from '..
 type BackRouteHandlerProps = {
   children: (onBack: () => void) => ReactNode;
 };
-// Goes from a room or page up to its section's list, like the mobile header's back arrow.
 export function useBackRoute() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // `replace` swaps the current entry instead of adding one (used for the phone's back button).
   const goBack = useCallback(
     (replace?: unknown) => {
       const opts = { replace: replace === true };

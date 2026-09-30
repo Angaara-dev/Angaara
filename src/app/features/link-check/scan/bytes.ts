@@ -1,4 +1,3 @@
-// Small byte and text helpers shared by the scanners.
 export const latin1 = (b: Uint8Array, max = b.length): string =>
   new TextDecoder('latin1').decode(b.subarray(0, max));
 
@@ -38,7 +37,6 @@ export const entropy = (b: Uint8Array): number => {
   }, 0);
 };
 
-// Mostly readable text, so it's worth reading as a script.
 export const isText = (b: Uint8Array): boolean => {
   const sample = b.subarray(0, 4096);
   if (sample.length === 0) return false;

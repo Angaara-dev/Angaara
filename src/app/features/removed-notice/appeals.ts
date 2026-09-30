@@ -5,7 +5,6 @@ import { getRoomCreators, getRoomCreatorsForRoomId } from '../../hooks/useRoomCr
 
 // State in an appeal room, which a banned user opens with the people who can unban them.
 export const APPEAL_STATE = 'io.angaara.appeal';
-// Account data counting the appeals used per server.
 const APPEALS_USED_KEY = 'io.angaara.appeals';
 // How many appeals a ban gets, unless the server sets its own (between 1 and 10).
 export const DEFAULT_APPEALS = 2;
@@ -23,28 +22,23 @@ export type AppealContent = {
   status: AppealStatus;
   // Closed tickets stay around for the mods, filed under Archived.
   archived?: boolean;
-  // The server's appeal limit when this one was sent.
   max?: number;
   // Set once every mod has been invited to read the archived ticket.
   shared?: boolean;
-  // A ban from one room in the server, which the server's mods handle.
   room?: string;
   room_name?: string;
 };
 
-// What a ticket is about, for labels: "Room: #general" or "Server: Angaara".
 export const appealLabel = (mx: MatrixClient, appeal: AppealContent): string =>
   appeal.room
     ? `Room: ${mx.getRoom(appeal.room)?.name ?? appeal.room_name ?? 'a room'}`
     : `Server: ${appeal.space_name}`;
 
-// What a ticket is about: the room it names, or the whole server.
 export const appealTarget = (appeal: AppealContent): string => appeal.room ?? appeal.space;
 
 const isChildOf = (space: Room | null | undefined, roomId: string): boolean =>
   !!space?.currentState.getStateEvents('m.space.child', roomId)?.getContent()?.via;
 
-// The joined server a room belongs to, whose mods handle appeals for it.
 export const parentServer = (mx: MatrixClient, roomId: string): Room | undefined =>
   mx
     .getRooms()
@@ -94,7 +88,6 @@ export const getAppeal = (room: Room): AppealContent | undefined => {
   return content?.space ? (content as AppealContent) : undefined;
 };
 
-// Opens the ban notice from elsewhere, e.g. an Appeal button on a server card.
 export const BAN_NOTICE_EVENT = 'angaara:ban-notice';
 export type BanNoticeDetail = { roomIdOrAlias: string; name?: string };
 export const openBanNotice = (detail: BanNoticeDetail) =>
@@ -131,7 +124,6 @@ export const rememberRooms = (mx: MatrixClient) => {
       };
   });
   try {
-    // Keep what we knew about rooms we've since left or been banned from.
     localStorage.setItem(REMEMBERED_KEY, JSON.stringify({ ...recallAll(), ...all }));
   } catch {
     // Storage full or blocked; the ban notice just shows less.
@@ -230,7 +222,6 @@ export const fetchBannedRoom = async (
 export const appealsUsed = (mx: MatrixClient, spaceId: string): number =>
   mx.getAccountData(APPEALS_USED_KEY as never)?.getContent()?.[spaceId] ?? 0;
 
-// An appeal for this server or room that's still waiting on the mods.
 export const openAppealFor = (mx: MatrixClient, targetId: string): Room | undefined =>
   mx
     .getRooms()
@@ -378,7 +369,6 @@ export const closeAppeal = async (mx: MatrixClient, room: Room) => {
   else await shareArchive(mx, room, closed);
 };
 
-// Appeal tickets for a server that you're in or invited to, newest first.
 export const spaceAppeals = (mx: MatrixClient, space: Room): Room[] =>
   mx
     .getRooms()
@@ -397,7 +387,6 @@ export const spaceAppeals = (mx: MatrixClient, space: Room): Room[] =>
         (a.currentState.getStateEvents('m.room.create', '')?.getTs() ?? 0)
     );
 
-// Whether you can ban (and so unban) in this server.
 export const canUnbanIn = (mx: MatrixClient, space: Room): boolean =>
   space.getMyMembership() === Membership.Join &&
   canDecide(mx, { space: space.roomId, space_name: '', attempt: 0, status: 'open' });

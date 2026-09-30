@@ -24,7 +24,6 @@ export const Animated = style({
   },
 });
 
-// Flame shapes flicker from their base, like a real fire.
 export const Flame = style({
   transformOrigin: '50% 78%',
   transformBox: 'fill-box',

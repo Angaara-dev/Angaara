@@ -14,7 +14,6 @@ export type SpaceLevelInfo = {
   unlocks: string;
 };
 
-// Each level needs both its member count and its age in days.
 export const SPACE_LEVELS: Omit<SpaceLevelInfo, 'level'>[] = [
   { members: 50, days: 30, unlocks: 'Animated banner' },
   { members: 250, days: 175, unlocks: 'Server tag' },
@@ -39,9 +38,7 @@ export type SpaceLevel = {
   level: number;
   members: number;
   days: number;
-  // Undefined once the space is maxed out.
   next?: SpaceLevelInfo;
-  // Maxed out by the deployment rather than earned.
   granted?: boolean;
 };
 
@@ -74,7 +71,6 @@ export const computeSpaceLevel = (room: Room): SpaceLevel => {
   return { level, members, days, next: next && { ...next, level: level + 1 } };
 };
 
-// Re-computed whenever someone joins or leaves the space.
 export const useSpaceLevel = (room: Room): SpaceLevel => {
   const [, forceUpdate] = useForceUpdate();
   useStateEventCallback(
@@ -91,7 +87,6 @@ export const useSpaceLevel = (room: Room): SpaceLevel => {
   return computeSpaceLevel(room);
 };
 
-// Level of the server a room belongs to: the space itself, or the best space above it.
 export const useRoomServerLevel = (room: Room): number => {
   const roomToParents = useAtomValue(roomToParentsAtom);
   if (room.isSpaceRoom()) return computeSpaceLevel(room).level;

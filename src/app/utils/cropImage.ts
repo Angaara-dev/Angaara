@@ -1,7 +1,6 @@
 import { decompressFrames, parseGIF, ParsedFrame } from 'gifuct-js';
 import { applyPalette, GIFEncoder, quantize } from 'gifenc';
 
-// A crop in the image's own pixels.
 export type CropRect = { x: number; y: number; width: number; height: number };
 
 const nextTick = () =>
@@ -78,7 +77,6 @@ const cropAnimatedGif = async (
       dispose: transparentIndex >= 0 ? 2 : 1,
     });
     prev = frame;
-    // Let the page breathe on long GIFs.
     // eslint-disable-next-line no-await-in-loop
     if (i % 3 === 2) await nextTick();
   }
@@ -88,7 +86,6 @@ const cropAnimatedGif = async (
 
 const STILL_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
-// Crops and scales down to at most maxWidth wide. Stills keep their format where possible.
 export const cropImageFile = async (
   file: File,
   rect: CropRect,

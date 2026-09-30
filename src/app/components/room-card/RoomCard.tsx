@@ -204,7 +204,6 @@ export const RoomCard = as<'div', RoomCardProps>(
     );
     const joining =
       joinState.status === AsyncStatus.Loading || joinState.status === AsyncStatus.Success;
-    // Banned people get an Appeal button instead of Join.
     const banned =
       mx.getRoom(roomIdOrAlias)?.getMyMembership() === Membership.Ban ||
       (joinState.status === AsyncStatus.Error && isBanError(joinState.error));

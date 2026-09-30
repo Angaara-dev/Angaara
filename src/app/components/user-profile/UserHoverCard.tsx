@@ -130,7 +130,6 @@ function HoverCardContent({ room, userId, tagName, tagColor }: HoverCardContentP
 type UserHoverCardProps = HoverCardContentProps & {
   children: (triggerRef: RefCallback<HTMLElement | SVGElement>) => ReactNode;
 };
-// Mini profile shown after hovering a username; clicking still opens the full profile.
 export function UserHoverCard({ children, ...props }: UserHoverCardProps) {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();

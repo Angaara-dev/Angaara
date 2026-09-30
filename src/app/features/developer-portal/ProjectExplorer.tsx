@@ -22,7 +22,6 @@ import { fileTypeOf } from './fileTypes';
 
 type TreeNode = { name: string; path: string; children?: TreeNode[] };
 
-// Turns flat "a/b/c.rs" paths into a folder tree, folders first.
 const buildTree = (files: ZipFile[]): TreeNode[] => {
   const root: TreeNode = { name: '', path: '', children: [] };
   files.forEach((file) => {
@@ -114,7 +113,6 @@ function Tree({ nodes, selected, collapsed, onSelect, onToggle }: TreeProps) {
                 {node.name}
               </Text>
             </Box>
-            {/* Indent guide, like an IDE's tree. */}
             {open && node.children && (
               <div style={{ marginLeft: toRem(14), paddingLeft: toRem(2), borderLeft: LINE }}>
                 <Tree
@@ -177,13 +175,9 @@ type ProjectExplorerProps = {
   onChange?: (path: string, content: string) => void;
   // Enables the AI review chat; files under this folder are sent as SDK context.
   sdkPrefix?: string;
-  // Enables dropping files and folders onto the explorer.
   onDropItems?: (items: DroppedItems) => void;
-  // Extra toolbar buttons, like Open Folder.
   actions?: ReactNode;
-  // Docked under the editor, like an IDE's terminal panel.
   panel?: ReactNode;
-  // Left side of the status bar, e.g. the runner's connection.
   status?: ReactNode;
   // Files with changes not yet saved; their tabs get a dot.
   dirtyPaths?: Set<string>;
@@ -213,7 +207,6 @@ export function ProjectExplorer({
   const [tabs, setTabs] = useState<string[]>(() => [initialFile]);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const file = files.find((f) => f.path === selected);
-  // Phones get the file tree as a dropdown above the editor, so the code keeps the full width.
   const mobile = useScreenSizeContext() === ScreenSize.Mobile;
   // The frame keeps a fixed height; dragging only moves the editor/terminal split.
   const frameHeight = (mobile ? 560 : 540) + (panel ? 260 : 0);
@@ -225,7 +218,6 @@ export function ProjectExplorer({
     setTabs((t) => (t.includes(path) ? t : [...t, path]));
     if (mobile) setTreeOpen(false);
   };
-  // Tabs for files that still exist, always including the open one.
   const shownTabs = useMemo(() => {
     const open = tabs.filter((path) => files.some((f) => f.path === path));
     if (file && !open.includes(file.path)) open.push(file.path);
@@ -716,6 +708,5 @@ export function ProjectExplorer({
     </Box>
   );
 
-  // Full screen renders on top of everything, outside any scrolling page container.
   return fullScreen ? createPortal(explorer, document.body) : explorer;
 }

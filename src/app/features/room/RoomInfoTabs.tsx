@@ -22,7 +22,6 @@ const TABS: { id: InfoTab; label: string }[] = [
   { id: 'files', label: 'Files' },
 ];
 
-// Sticks under the top of the page once the room info has scrolled away.
 export function InfoTabBar({
   value,
   onChange,
@@ -104,7 +103,6 @@ type Scan = {
   failed: boolean;
   loadMore: () => void;
 };
-// Walks back through room history for media, files or links, decrypting as needed.
 const useRoomScan = (room: Room, kind: ScanKind): Scan => {
   const mx = useMatrixClient();
   const [events, setEvents] = useState<MatrixEvent[]>([]);
@@ -215,7 +213,6 @@ function SenderAvatar({ room, userId, size }: { room: Room; userId: string; size
 const dateOf = (ts: number) =>
   new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 
-// Plain thumbnails, or decrypted ones in encrypted rooms.
 const useThumbnail = (ev: MatrixEvent): string | undefined => {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -310,7 +307,6 @@ function MediaTile({ room, ev, onJump }: { room: Room; ev: MatrixEvent; onJump: 
   );
 }
 
-// Wide is the desktop popup, which fits more columns.
 function MediaTab({ room, onJump, wide }: TabProps & { wide?: boolean }) {
   const scan = useRoomScan(room, 'media');
   return (
@@ -340,7 +336,6 @@ type InfoCardProps = {
   href?: string;
   onClick?: () => void;
 };
-// Card for links and files: preview, title, then who posted it and where.
 function InfoCard({ room, sender, preview, title, subtitle, href, onClick }: InfoCardProps) {
   const style: CSSProperties = {
     display: 'flex',

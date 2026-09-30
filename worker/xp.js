@@ -5,7 +5,6 @@ import { isAngaaraSupporter } from './angaara-id.js';
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
-// Extra XP the first time you're active each day.
 const DAILY_BONUS = 5;
 // Reports can only look back this far, so XP can't be banked up from made-up history.
 const MAX_AGE = 60 * MINUTE;
@@ -22,8 +21,7 @@ const SPOT_CHECKS = 3;
 // The bot tries the daily limit DM at most this many times a day.
 const MAX_DM_TRIES = 3;
 
-// Launch offer, by member number (order of joining): the first 1,000 get 3x XP for 90 days,
-// the rest of the first 100,000 get 1.5x for 30. Keep in sync with src/client/xp.ts.
+// Launch offer.
 const BOOSTS = [
   { upTo: 1000, times: 3, days: 90 },
   { upTo: 100000, times: 1.5, days: 30 },
@@ -49,7 +47,6 @@ const json = (data, status = 200, extra = {}) =>
   });
 
 const MXID_RE = /^@[a-z0-9._=\-/+]{1,255}:[a-z0-9.-]{1,253}(:\d{1,5})?$/i;
-// Hash IDs (room v3+), or the old "$local:server" form.
 const EVENT_RE = /^\$(?:[A-Za-z0-9+/_-]{43}|[^:\s]{1,200}:[a-z0-9.-]{1,253}(?::\d{1,5})?)$/;
 const ROOM_RE = /^![\w\-+/=.:]{1,255}$/;
 
@@ -67,7 +64,6 @@ const ADDED_COLUMNS = [
   'member_no INTEGER',
 ];
 
-// Numbers anyone without one, in the order they joined, after the highest number so far.
 const assignMemberNumbers = (db) =>
   db
     .prepare(
@@ -81,7 +77,6 @@ const assignMemberNumbers = (db) =>
     )
     .run();
 
-// The boost someone has right now, if any.
 const boostFor = (memberNo, firstSeen, now) => {
   const offer = memberNo ? BOOSTS.find((b) => memberNo <= b.upTo) : undefined;
   if (!offer) return undefined;
@@ -207,7 +202,6 @@ async function dmUser(env, userId, room, ownRoom, message = CAP_MESSAGE) {
       const res = await send(room);
       if (res.ok) return { room, status: 'sent' };
     }
-    // No room yet, or they left it: start a fresh DM.
     const res = await api('/createRoom', 'POST', {
       is_direct: true,
       preset: 'trusted_private_chat',
@@ -281,7 +275,6 @@ async function report(request, env) {
     typeof body?.dm_room === 'string' && ROOM_RE.test(body.dm_room) ? body.dm_room : undefined;
   // Messages in the XP DM don't count; there's nobody there to talk to.
   const xpRooms = [row?.dm_room, ownRoom];
-  // Each message counts once, however many times it's listed.
   const ids = new Set();
   const events = (Array.isArray(body?.events) ? body.events : [])
     .slice(0, MAX_EVENTS)
@@ -384,7 +377,6 @@ async function botStatus(env) {
   }
 }
 
-// The bot's one-time welcome DM, sent when someone first opens the app.
 async function welcome(request, env) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);

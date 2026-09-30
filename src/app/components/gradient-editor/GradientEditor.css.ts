@@ -11,7 +11,6 @@ const thumb = {
   cursor: 'pointer',
 };
 
-// Colour track slider: the track shows the colours, with a round white handle.
 export const TrackSlider = style({
   width: '100%',
   height: toRem(10),

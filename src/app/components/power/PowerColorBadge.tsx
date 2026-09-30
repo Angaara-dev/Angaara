@@ -5,7 +5,6 @@ import * as css from './style.css';
 
 type PowerColorBadgeProps = {
   color?: string;
-  // Second colour for two-colour roles.
   gradient?: string;
 };
 export const PowerColorBadge = as<'span', PowerColorBadgeProps>(

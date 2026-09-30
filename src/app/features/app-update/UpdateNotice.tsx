@@ -6,26 +6,27 @@ import { buildId } from '../app-reports/reports';
 const JUST_UPDATED = 'angaara.justUpdated';
 const CHECK_EVERY = 10 * 60 * 1000;
 
-// Set before reloading into a new version, so the next page load can say so.
+// Remembers the build we reload from; the notice only shows if the next load is a different one.
+// A failed chunk load while offline also reloads, and must not claim an update.
 export const markUpdating = () => {
   try {
-    sessionStorage.setItem(JUST_UPDATED, '1');
+    sessionStorage.setItem(JUST_UPDATED, buildId());
   } catch {
-    // Private windows can block storage; the reload still happens.
+    // Storage blocked
   }
 };
 
 const takeJustUpdated = (): boolean => {
   try {
-    const was = sessionStorage.getItem(JUST_UPDATED) === '1';
+    const from = sessionStorage.getItem(JUST_UPDATED);
     sessionStorage.removeItem(JUST_UPDATED);
-    return was;
+    const current = buildId();
+    return !!from && current !== 'dev' && from !== current;
   } catch {
     return false;
   }
 };
 
-// The newest deployed build, read from index.html's main script name.
 const latestBuild = async (): Promise<string | undefined> => {
   const res = await fetch(`${trimTrailingSlash(import.meta.env.BASE_URL)}/`, { cache: 'no-store' });
   if (!res.ok) return undefined;
@@ -33,7 +34,6 @@ const latestBuild = async (): Promise<string | undefined> => {
   return /<script[^>]+type="module"[^>]+src="([^"]+)"/.exec(html)?.[1]?.split('/').pop();
 };
 
-// Says when a new version is out, and confirms it after reloading into one.
 export function UpdateNotice() {
   const [justUpdated, setJustUpdated] = useState(takeJustUpdated);
   const [newBuild, setNewBuild] = useState<string>();
@@ -88,7 +88,6 @@ export function UpdateNotice() {
         width: `min(${toRem(420)}, calc(100% - 32px))`,
         padding: `${config.space.S300} ${config.space.S300} ${config.space.S300} ${config.space.S400}`,
         borderRadius: config.radii.R400,
-        // Solid, in the server theme's colour when there is one.
         background: `var(--angaara-theme-menu, ${color.Surface.Container})`,
         color: color.Surface.OnContainer,
         border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,

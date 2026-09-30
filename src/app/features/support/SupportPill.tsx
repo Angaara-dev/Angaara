@@ -5,7 +5,6 @@ import { userSettingsPageAtom } from '../settings/UserSettingsRenderer';
 import { SettingsPages } from '../settings';
 import * as css from './SupportPill.css';
 
-// Shown to everyone at the top of Home; opens the support section in About.
 export function SupportPill() {
   const openSettings = useSetAtom(userSettingsPageAtom);
   return (

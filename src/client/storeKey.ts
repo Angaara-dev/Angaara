@@ -117,7 +117,6 @@ export const unlockApp = async (userId: string, deviceId: string, password: stri
   rememberForSession(id, await unwrap(record, password));
 };
 
-// The current key, from the plain record or this session's unlock.
 const currentKey = async (id: string, record?: StoreKeyRecord) => {
   if (record?.mode === 'plain') return fromBase64(record.key);
   const key = sessionKey(id);

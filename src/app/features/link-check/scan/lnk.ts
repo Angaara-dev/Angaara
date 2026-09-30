@@ -80,7 +80,7 @@ export const scanLnk = (scan: Scan, b: Uint8Array): void => {
 
     scan.add('warn', "It's a shortcut that runs something, not a document.");
     if (line) {
-      scan.does(`Runs ${line.length > 200 ? `${line.slice(0, 200)}…` : line}`);
+      scan.does(`Runs ${line.length > 100 ? `${line.slice(0, 100)}…` : line}`);
       scan.command(line);
       scanScript(scan, line);
     }

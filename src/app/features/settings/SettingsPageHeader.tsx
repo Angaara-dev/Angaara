@@ -7,7 +7,6 @@ type SettingsPageHeaderProps = {
   title: string;
   requestClose: () => void;
 };
-// Phones get a back arrow to the settings list (like a native app); desktop keeps the close button.
 export function SettingsPageHeader({ title, requestClose }: SettingsPageHeaderProps) {
   const mobile = usePhone();
   return (

@@ -21,7 +21,6 @@ const randomQuip = (not?: string) => {
   return pool[Math.floor(Math.random() * pool.length)];
 };
 
-// Spinner plus a rotating silly line, shown while the code editor loads.
 export function LoadingQuips() {
   const [quip, setQuip] = useState(QUIPS[0]);
   useEffect(() => {

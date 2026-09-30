@@ -26,7 +26,6 @@ type TimelineSkeletonProps = {
   anchorRef: Ref<HTMLDivElement>;
   anchorAt: 'start' | 'end';
 };
-// A tall block of message skeletons, so fast scrolling keeps going while history loads.
 export function TimelineSkeleton({ compact, anchorRef, anchorAt }: TimelineSkeletonProps) {
   const count = compact ? COMPACT_ROWS : SHAPES.length;
   const anchorIndex = anchorAt === 'start' ? 0 : count - 1;

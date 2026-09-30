@@ -35,7 +35,6 @@ type LoadState = 'ok' | 'error';
 // Remembered across mounts, so a list rebuilt after a swipe shows its images straight away.
 const loadCache = new Map<string, LoadState>();
 
-// Draws the first frame locally, for when the server can't make a thumbnail.
 const useFirstFrame = (url: string | undefined): string | undefined => {
   const [still, setStill] = useState<{ src: string; url: string }>();
 
@@ -59,8 +58,6 @@ const useFirstFrame = (url: string | undefined): string | undefined => {
   return url && still?.src === url ? still.url : undefined;
 };
 
-// Shows the quick still thumbnail first, then swaps in the full (animated) image once it's loaded.
-// With freeze on, the still thumbnail is all that's ever shown.
 export const useStillImage = (url: string | undefined, freeze: boolean): string | undefined => {
   const thumb = url ? thumbnailOf(url) : undefined;
   const [loaded, setLoaded] = useState<Record<string, LoadState>>({});

@@ -6,7 +6,6 @@ const IGNORED_DIRS = ['target/', 'bot-data/'];
 export type ChangeKind = 'changed' | 'local' | 'remote';
 export type Change = { path: string; kind: ChangeKind; local?: string; remote?: string };
 
-// Paths relative to the project folder, without the ignored folders.
 export const byRelativePath = (files: ZipFile[], root: string) => {
   const prefix = `${root}/`;
   return new Map(
@@ -33,7 +32,6 @@ export const diffFiles = (local: ZipFile[], remote: ZipFile[], root: string): Ch
   return changes.sort((a, b) => a.path.localeCompare(b.path));
 };
 
-// Applies the remote side of the picked changes to the local files.
 export const takeRemote = (files: ZipFile[], picked: Change[], root: string): ZipFile[] => {
   const drop = new Set(picked.filter((c) => c.kind === 'local').map((c) => `${root}/${c.path}`));
   const replace = new Map(

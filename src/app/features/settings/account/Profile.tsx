@@ -257,7 +257,6 @@ type ProfileImageProps = {
   crop: CropPreset;
   preview: { width: number; height: number };
   userId: string;
-  // The XP perk that makes GIFs animate for everyone else.
   gifPerk: XpPerk;
 };
 function ProfileImage({

@@ -18,7 +18,6 @@ import {
   pingBanned,
 } from '../../removed-notice/appeals';
 
-// Lets banned members appeal to a mod of their choice, off until a server turns it on.
 export function SpaceAppeals({ permissions }: { permissions: RoomPermissionsAPI }) {
   const mx = useMatrixClient();
   const room = useRoom();
@@ -30,7 +29,6 @@ export function SpaceAppeals({ permissions }: { permissions: RoomPermissionsAPI 
   useEffect(() => {
     getAppealsBotId().then(setBotId);
   }, []);
-  // Re-renders the bot's membership after adding it.
   useStateEvent(room, StateEvent.RoomMember, botId);
   const botHere = botInSpace(room, botId);
 

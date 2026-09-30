@@ -41,7 +41,6 @@ const omit = <T>(record: Record<string, T>, ...keys: string[]): Record<string, T
 const myMemberEvent = (mx: MatrixClient, room: Room) =>
   room.getMember(mx.getSafeUserId())?.events.member;
 
-// Invites to you that were sent as friend requests (by anyone you haven't blocked).
 export function getIncomingRequests(mx: MatrixClient): IncomingRequest[] {
   const ignored = new Set(mx.getIgnoredUsers());
   return mx
@@ -78,7 +77,6 @@ export async function sendFriendRequest(mx: MatrixClient, userId: string) {
     return;
   }
 
-  // Checks the user exists before creating anything.
   await mx.getProfileInfo(userId);
   const { room_id: roomId } = await mx.createRoom({
     is_direct: true,
@@ -113,7 +111,6 @@ export async function declineFriendRequest(mx: MatrixClient, request: IncomingRe
 export async function cancelFriendRequest(mx: MatrixClient, userId: string) {
   const request = getFriendsData().outgoing[userId];
   if (request) {
-    // Withdraws the invite, then leaves the empty room.
     await mx.kick(request.roomId, userId).catch(() => undefined);
     await mx.leave(request.roomId).catch(() => undefined);
     await setDirectRoom(mx, request.roomId);

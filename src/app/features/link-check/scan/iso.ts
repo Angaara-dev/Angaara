@@ -5,7 +5,6 @@ export type IsoFile = { name: string; data: Uint8Array };
 export const isIso = (b: Uint8Array) =>
   b.length > 0x8006 && latin1(b.subarray(0x8001, 0x8006)) === 'CD001';
 
-// Lists the files on an ISO 9660 disc image, a few folders deep.
 export const isoFiles = (b: Uint8Array): IsoFile[] => {
   const v = view(b);
   const block = v.getUint16(0x8000 + 128, true) || 2048;

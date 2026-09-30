@@ -45,7 +45,6 @@ const errorText = (e: unknown, fallback: string) => {
   if (e instanceof GitHubError && e.status === 401) return EXPIRED_TEXT;
   return e instanceof Error ? e.message : fallback;
 };
-// Git branch names: no spaces, no "..", no leading dash or trailing slash or ".lock".
 const validBranchName = (name: string) =>
   /^[\w./-]+$/.test(name) &&
   !name.startsWith('-') &&
@@ -130,10 +129,8 @@ export function useGitHub() {
   return { account, link, linkToken, unlink };
 }
 
-// Tokens already checked this session, so each is only verified once.
 const checkedTokens = new Set<string>();
 
-// True while GitHub rejects the linked token; any 401 from the API flags it.
 function useGitHubExpired(): boolean {
   const account = useAtomValue(githubAccountAtom);
   const [expiredToken, setExpiredToken] = useAtom(githubExpiredTokenAtom);
@@ -424,7 +421,6 @@ function RelinkChip({ open, onClick }: { open: boolean; onClick: () => void }) {
   );
 }
 
-// Top of Build Tools: link the account, connect a repo, and jump to Linked Developer Repos.
 export function GitHubLinkBar() {
   const { account } = useGitHub();
   const [linked, setLinked] = useAtom(linkedReposAtom);
@@ -492,7 +488,6 @@ export function GitHubLinkBar() {
   );
 }
 
-// Fetches (and caches) the branch the workspace came from.
 function useBranchSnapshot(target?: { owner: string; repo: string; branch: string; root: string }) {
   const account = useAtomValue(githubAccountAtom);
   const [snapshots, setSnapshots] = useAtom(snapshotsAtom);
@@ -659,7 +654,6 @@ function DraftPullForm({ owner, repo, head }: { owner: string; repo: string; hea
 
 const COMMIT_PANEL_ID = 'angaara-github-commit';
 
-// Toolbar picks: which linked branch the project commits to, and a jump to the commit box.
 export function GitHubEditorActions() {
   const account = useAtomValue(githubAccountAtom);
   const linked = useAtomValue(linkedReposAtom);
@@ -730,7 +724,6 @@ export function GitHubEditorActions() {
   );
 }
 
-// Below the editor: review what changed against the branch, commit, and draft a PR.
 export function GitHubCommitPanel() {
   const account = useAtomValue(githubAccountAtom);
   const [workspace, setWorkspace] = useAtom(workspaceAtom);
@@ -1078,7 +1071,6 @@ function RepoDetails({ linked, onRemove }: { linked: LinkedRepo; onRemove: () =>
 
   if (!account) return null;
 
-  // Fetches the branch and shows how it differs from the workspace; nothing changes yet.
   const pullIntoWorkspace = async () => {
     if (!target) return;
     setPulling(true);
@@ -1369,7 +1361,6 @@ function RepoDetails({ linked, onRemove }: { linked: LinkedRepo; onRemove: () =>
   );
 }
 
-// The Linked Developer Repos page.
 export function DeveloperRepos() {
   const { account, unlink } = useGitHub();
   const [linked, setLinked] = useAtom(linkedReposAtom);

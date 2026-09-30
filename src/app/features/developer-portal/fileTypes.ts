@@ -11,7 +11,6 @@ export const languageFor = (path: string): string => {
 
 type FileType = { badge: string; color: string; label: string };
 
-// Short colored badge per file type, like an IDE's file icons.
 export const fileTypeOf = (path: string): FileType => {
   const name = path.split('/').pop() ?? '';
   const ext = name.includes('.') ? name.split('.').pop()?.toLowerCase() : undefined;

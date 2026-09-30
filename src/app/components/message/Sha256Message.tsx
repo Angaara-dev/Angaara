@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Chip, Icon, Icons, Text, config } from 'folds';
 
-// A /sha256 message: collapsed to a chip, since the hash is long and unreadable anyway.
 export function Sha256Message({ hash }: { hash: string }) {
   const [open, setOpen] = useState(false);
   return (

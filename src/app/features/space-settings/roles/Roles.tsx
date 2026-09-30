@@ -10,7 +10,6 @@ import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../../hooks/useRoomPermissions';
 import { usePermissionGroups } from '../permissions/usePermissionItems';
 
-// The server's roles: names, colours, badges and fades. Its channels use these too.
 export function Roles({ requestClose }: { requestClose: () => void }) {
   const mx = useMatrixClient();
   const room = useRoom();

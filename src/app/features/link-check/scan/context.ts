@@ -1,11 +1,8 @@
 import { LinkFinding } from '../linkCheck';
 
-// What the scanners collect about one file.
 export type ScanResult = {
   findings: LinkFinding[];
-  // Plain-language list of what the file would do if opened.
   behaviors: string[];
-  // Hidden commands it would run, decoded where possible.
   commands: string[];
   links: string[];
 };
@@ -43,3 +40,5 @@ export const createScan = (): Scan => {
   };
   return scan;
 };
+
+export const aKind = (kind: string) => `${/^[aeiou]/i.test(kind) ? 'an' : 'a'} ${kind}`;

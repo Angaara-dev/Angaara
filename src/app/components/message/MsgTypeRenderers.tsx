@@ -197,8 +197,6 @@ export function MImage({ content, renderImageContent, outlined }: MImageProps) {
   if (typeof mxcUrl !== 'string') {
     return <BrokenContent />;
   }
-  // Phones get smaller pictures, so they don't fill the whole chat.
-  // Tall ones get narrower instead of cropped.
   const base = phone ? 280 : 400;
   const scaled = scaleYDimension(imgInfo?.w || base, base, imgInfo?.h || base);
   const height = phone ? Math.min(scaled, 360) : scaled;

@@ -3,10 +3,8 @@ import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
 import { DefaultReset, color, config, toRem } from 'folds';
 import { themeBackdrop } from '../../styles/themeBackdrop';
 
-// Set by PageRoot's drag handle, so the room list width is adjustable.
 export const NavWidth = createVar();
 
-// Panel styles for PageRoot's framed layout; the resize handle doubles as the gap.
 export const Frame = style({
   minWidth: 0,
   padding: `${config.space.S200} ${config.space.S200} ${config.space.S200} 0`,

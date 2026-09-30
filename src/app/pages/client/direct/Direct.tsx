@@ -146,7 +146,6 @@ function DirectHeader() {
   );
 }
 
-// Friends page link, with a count of incoming requests.
 function FriendsNavItem() {
   const navigate = useNavigate();
   const selected = useDirectFriendsSelected();
@@ -235,7 +234,6 @@ export function Direct() {
   const noRoomToDisplay = directs.length === 0;
   const [closedCategories, setClosedCategories] = useAtom(useClosedNavCategoriesAtom());
 
-  // The Angaara bot's DM gets its own section instead of sitting among your chats.
   const botRoomId = useAccountData(XP_ROOM_KEY)?.getContent()?.room_id as string | undefined;
   const botRoom = botRoomId && directs.includes(botRoomId) ? mx.getRoom(botRoomId) : undefined;
   const showBotRoom =

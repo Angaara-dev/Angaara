@@ -131,7 +131,6 @@ type MemberItemProps = {
   pressed?: boolean;
   typing?: boolean;
   large?: boolean;
-  // Role color, like names in the chat; two-colour roles also pass their second colour.
   nameColor?: string;
   nameGradient?: string;
 };
@@ -186,7 +185,11 @@ function MemberItem({
           variant={large ? 'Surface' : 'Background'}
           badge={activity && <StatusIcon status={activity} size={large ? 12 : 10} />}
         >
-          <Avatar size={large ? '400' : '300'} radii="Pill">
+          <Avatar
+            size={large ? '400' : '300'}
+            radii="Pill"
+            style={large ? { width: toRem(34), height: toRem(34) } : undefined}
+          >
             <UserAvatar
               userId={member.userId}
               src={avatarUrl ?? undefined}
@@ -257,7 +260,6 @@ const getRoomMemberStr: SearchItemStrGetter<RoomMember> = (m, query) =>
 type MembersDrawerProps = {
   room: Room;
   members: RoomMember[];
-  // Phone page mode: full width, this header on top, and role groups as rounded cards.
   pageHeader?: ReactNode;
 };
 export function MembersDrawer({ room, members, pageHeader }: MembersDrawerProps) {
@@ -327,7 +329,6 @@ export function MembersDrawer({ room, members, pageHeader }: MembersDrawerProps)
     return counts;
   }, [PLTagOrRoomMember]);
 
-  // Where the list starts inside the scroller, below the header and filters.
   const listRef = useRef<HTMLDivElement>(null);
   const [listOffset, setListOffset] = useState(0);
   useLayoutEffect(() => {
@@ -398,7 +399,6 @@ export function MembersDrawer({ room, members, pageHeader }: MembersDrawerProps)
           hideTrack
         >
           <Box className={css.MemberDrawerContent} direction="Column" gap="200">
-            {/* Phones: the room info scrolls away with the list. */}
             {page && pageHeader}
             <Box
               ref={scrollTopAnchorRef}

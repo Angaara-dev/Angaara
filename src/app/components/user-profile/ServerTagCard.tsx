@@ -112,7 +112,6 @@ function CardBody({ info, action }: { info: CardInfo; action: React.ReactNode })
   );
 }
 
-// A server you're in: everything is known locally, including its banner and age.
 function JoinedServer({ space, onClose }: { space: Room; onClose: () => void }) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -146,7 +145,6 @@ function JoinedServer({ space, onClose }: { space: Room; onClose: () => void }) 
   );
 }
 
-// A server you're not in: only its public summary is available.
 function OtherServer({
   spaceId,
   via,
@@ -234,7 +232,6 @@ type ServerTagCardProps = {
   userId: string;
   onClose: () => void;
 };
-// Clicking someone's server tag shows that server, with a way in if you're not a member.
 export function ServerTagCard({ anchor, spaceId, userId, onClose }: ServerTagCardProps) {
   const mx = useMatrixClient();
   const space = mx.getRoom(spaceId);
@@ -251,7 +248,6 @@ export function ServerTagCard({ anchor, spaceId, userId, onClose }: ServerTagCar
           focusTrapOptions={{
             initialFocus: false,
             returnFocusOnDeactivate: false,
-            // Nothing is focusable while it loads.
             fallbackFocus: () => cardRef.current ?? document.body,
             onDeactivate: onClose,
             clickOutsideDeactivates: true,

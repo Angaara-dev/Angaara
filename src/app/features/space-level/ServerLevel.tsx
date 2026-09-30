@@ -8,7 +8,6 @@ import { usePhone } from '../../hooks/useScreenSize';
 import { BRAND_NAME } from '../../brand';
 import * as css from './styles.css';
 
-// What each level unlocks, shown on its card.
 const LEVEL_PERKS: { icon: IconSrc; label: string }[][] = [
   [{ icon: Icons.Photo, label: 'Animated server banner' }],
   [
@@ -115,7 +114,6 @@ const SPARKS = Array.from({ length: 18 }, (_, i) => {
   };
 });
 
-// The reward for a maxed-out server: a dim ember glow with tiny sparks drifting up.
 function Embers({ sparks, height }: { sparks: number; height: number }) {
   return (
     <div className={css.EmberLayer} aria-hidden>
@@ -157,7 +155,6 @@ export function ServerLevelDialog({ room, requestClose }: ServerLevelDialogProps
   const phone = usePhone();
   const cardsRef = useRef<HTMLDivElement>(null);
 
-  // Open on the level being worked towards, or the last one once maxed.
   useEffect(() => {
     const target = Math.min(info.level, SPACE_LEVELS.length - 1);
     const el = cardsRef.current;
@@ -264,7 +261,6 @@ export function ServerLevelDialog({ room, requestClose }: ServerLevelDialogProps
   );
 }
 
-// Sits in the channel list; shows progress to the next level and opens the levels page.
 export function ServerLevelPill({ room }: { room: Room }) {
   const info = useSpaceLevel(room);
   const [open, setOpen] = useState(false);

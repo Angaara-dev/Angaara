@@ -1,7 +1,6 @@
 import { keyframes, style } from '@vanilla-extract/css';
 import { color } from 'folds';
 
-// Phone bottom sheet: slides up from the bottom, drag the handle down to close.
 const slideUp = keyframes({
   from: { transform: 'translateY(100%)' },
   to: { transform: 'translateY(0)' },

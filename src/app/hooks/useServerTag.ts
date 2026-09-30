@@ -15,7 +15,6 @@ export const cleanServerTag = (tag: unknown): string | undefined => {
   return clean || undefined;
 };
 
-// The tag a space offers its members, if it has one and is levelled up enough.
 export const getSpaceTag = (space: Room): string | undefined => {
   if (computeSpaceLevel(space).level < LEVEL_SERVER_TAG) return undefined;
   return cleanServerTag(getStateEvent(space, StateEvent.AngaaraSpaceTag)?.getContent().tag);

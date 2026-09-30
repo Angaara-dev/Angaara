@@ -89,7 +89,6 @@ const generateFallbackTag = (powerLevelTags: PowerLevelTags, power: number): Mem
   };
 };
 
-// A channel without roles of its own uses its server's.
 const useParentSpace = (room: Room): Room | undefined => {
   const roomToParents = useAtomValue(roomToParentsAtom);
   if (room.isSpaceRoom()) return undefined;

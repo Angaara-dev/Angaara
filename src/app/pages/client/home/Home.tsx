@@ -214,7 +214,6 @@ function HomeEmpty() {
 const DEFAULT_CATEGORY_ID = makeNavCategoryId('home', 'room');
 const DEVELOPER_CATEGORY_ID = makeNavCategoryId('home', 'developer');
 const PROJECTS_CATEGORY_ID = makeNavCategoryId('home', 'projects');
-// Pages only accounts with the developer badge see.
 const DEV_ONLY = new Set<DeveloperSection>(['reports', 'bugs']);
 
 function DeveloperNavItem({ section, badge = 0 }: { section: DeveloperSection; badge?: number }) {

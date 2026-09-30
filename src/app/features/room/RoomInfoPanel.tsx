@@ -33,10 +33,8 @@ type RoomInfoPanelProps = {
   avatarUrl?: string;
   direct: boolean;
   requestClose: () => void;
-  // Desktop: a centered window instead of a full-screen page.
   popup?: boolean;
 };
-// Tapping the room name opens members, media, pins and more: full screen on phones, a window on PC.
 export function RoomInfoPanel({
   room,
   name,
@@ -56,7 +54,6 @@ export function RoomInfoPanel({
   const [tab, setTab] = useState<InfoTab>('members');
   const { navigateRoom } = useRoomNavigate();
 
-  // Phone back button closes this page first.
   const closeRef = useRef(requestClose);
   closeRef.current = requestClose;
   useEffect(() => {

@@ -58,14 +58,7 @@ export function VerificationStatusBadge({
     );
   }
 
-  if (otherUnverifiedCount > 0) {
-    return (
-      <Badge variant="Warning" fill="Solid" size="500">
-        <Text size="L400">{otherUnverifiedCount} Unverified</Text>
-      </Badge>
-    );
-  }
-
+  // Other unverified sessions are marked in the device list; only this one gets a warning here.
   return (
     <Badge variant="Success" fill="Solid" size="500">
       <Text size="L400">Verified</Text>

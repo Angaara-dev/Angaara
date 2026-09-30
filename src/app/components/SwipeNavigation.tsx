@@ -16,15 +16,12 @@ import { useBackRoute } from './BackRouteHandler';
 import { DIRECT_PATH, EXPLORE_PATH, HOME_PATH, INBOX_PATH, SPACE_PATH } from '../pages/paths';
 import { THEME_BG_VAR, THEME_SURFACE_VAR } from '../utils/accent';
 
-// Pixels a finger moves before we decide whether it's a sideways swipe or a scroll.
 const DECIDE_AFTER = 12;
 // Android's own back gesture lives at the very left edge; leave it alone.
 const EDGE_GUARD = 24;
 const COMMIT_RATIO = 0.33;
 const BACK_GUARD = 'angaaraBack';
-// The last room or page open, so swiping left from the list goes back into it.
 let lastPage: string | undefined;
-// Which page the preview's snapshot shows, and scroll offsets to restore once it's visible.
 let snapshotPage: string | undefined;
 let snapshotScrolls: [HTMLElement, number, number][] = [];
 
@@ -70,8 +67,6 @@ const setThemeSlide = (node: HTMLElement | null, on: boolean) => {
   node.style.removeProperty(THEME_SURFACE_VAR);
 };
 
-// Where a sideways swipe must not start: typing, text selection, the code editor, drag handles
-// and anything that scrolls sideways itself.
 const blocksSwipe = (target: EventTarget | null, container: HTMLElement): boolean => {
   if (window.getSelection()?.toString()) return true;
   let el = target instanceof Element ? target : null;
@@ -125,7 +120,6 @@ export function SwipeUnderlay({
   );
 }
 
-// Name of the room a path points at, for the preview that slides in from the right.
 function usePageName(path?: string): string {
   const mx = useMatrixClient();
   const id = path
@@ -156,7 +150,6 @@ function useIsSectionList() {
   return !!(home || direct || space || explore || inbox);
 }
 
-// Swipes on phones: right from a chat back to the list, left from the list back in.
 export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: ReactNode }) {
   const mobile = useScreenSizeContext() === ScreenSize.Mobile;
   const ref = useRef<HTMLDivElement>(null);
@@ -174,7 +167,6 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
     (navEl: HTMLDivElement | null) => setSlots((s) => (s.nav === navEl ? s : { ...s, nav: navEl })),
     []
   );
-  // How far a released swipe already moved (0 to 1), so the page change continues from there.
   const handoffRef = useRef<number>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -188,7 +180,6 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
   // and a released swipe continues from where the finger let go. A layout effect, so the new
   // page never shows for a frame before its slide starts.
   const wasOnList = useRef(onList);
-  // Bumped to cancel a pending preview slide or fade; set while the preview is in use.
   const revealRef = useRef(0);
   const revealingRef = useRef(false);
   useLayoutEffect(() => {
@@ -227,7 +218,6 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
     const entering = mobile && changed && !onList;
     const swipePreview = handoff !== undefined && preview?.style.display !== 'none';
     const covering = entering && (hasSnapshotOf(location.pathname) || swipePreview);
-    // Leaving a chat: its snapshot slides away over the list.
     const leaving = mobile && changed && onList && hasSnapshotOf(lastPage);
     if (!onList) {
       lastPage = location.pathname;
@@ -298,13 +288,11 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
           [{ transform: `translateX(${done * 100}%)` }, { transform: 'translateX(100%)' }],
           timing
         );
-        // The snapshot stays, so swiping back in can show it again.
         slide.onfinish = () => {
           if (revealRef.current === token) hidePreview();
         };
         return;
       }
-      // Nothing to slide away (no snapshot): ease the list in instead.
       setThemeSlide(el, true);
       const slide = el.animate(
         [
@@ -362,7 +350,6 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
       const { onList: list, pathname } = actionsRef.current;
       if (into && !list) takeSnapshot(el, into, pathname);
     };
-    // Shows the snapshot (when it's of the page we'd return to) or the name-only fallback.
     const showSnapshot = () => {
       const has = snapshotPage === lastPage && !!snapshotRef.current?.firstChild;
       if (snapshotRef.current) snapshotRef.current.style.display = has ? 'flex' : 'none';
@@ -416,7 +403,6 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
         if (direction === 1) setThemeSlide(el, true);
         if (direction === -1) setThemeSlide(previewRef.current, true);
         el.style.transition = 'none';
-        // Right shows the list underneath; left brings the chat in from the edge.
         const behind = direction === 1 ? underlayRef.current : previewRef.current;
         if (behind) {
           behind.style.transition = 'none';
@@ -424,8 +410,6 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
         }
         if (direction === -1) showSnapshot();
       }
-      // Only follow the finger in the allowed direction. Either way only the chat moves;
-      // the list stays still underneath, both leaving a chat and coming back to it.
       const offset = direction === 1 ? Math.max(0, dx) : Math.min(0, dx);
       if (direction === 1) el.style.transform = `translateX(${offset}px)`;
       const preview = previewRef.current;
@@ -477,7 +461,6 @@ export function SwipeNavigation({ nav, children }: { nav: ReactNode; children: R
         back.oncancel = tidy;
         return;
       }
-      // Navigate right away like a tap; the page change finishes the slide from here.
       handoffRef.current = Math.min(1, (direction * dx) / width);
       const { goBack: back, navigate: go, pathname } = actionsRef.current;
       if (direction === 1) back();

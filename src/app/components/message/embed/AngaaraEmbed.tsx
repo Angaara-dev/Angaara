@@ -55,7 +55,6 @@ const fallbackText = (e: AngaaraEmbedData): string =>
     .filter(Boolean)
     .join('\n');
 
-// The text the bot sent alongside the embed, if any.
 export const embedLeadText = (body: string, e: AngaaraEmbedData): string => {
   const fallback = fallbackText(e);
   if (!body.endsWith(fallback)) return body;

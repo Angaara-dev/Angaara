@@ -66,7 +66,6 @@ const lookUp = async (mx: MatrixClient, sha256: string): Promise<Lookup> => {
   return { listed: data.listed, listedName: data.name, known: data.known, quota: data.quota };
 };
 
-// Checks a file locally, then (unless told not to) looks up its fingerprint.
 export const checkFile = async (
   mx: MatrixClient,
   name: string,

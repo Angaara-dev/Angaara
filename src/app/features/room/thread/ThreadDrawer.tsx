@@ -180,7 +180,6 @@ export function ThreadDrawer({ room, rootId, mobile }: ThreadDrawerProps) {
     [mx, room, linkifyOpts, spoilerClickHandler, mentionClickHandler, useAuthentication]
   );
 
-  // Stick to the newest reply unless the user scrolled up to read history.
   const atBottomRef = useRef(true);
   const handleScroll = () => {
     const el = scrollRef.current;

@@ -7,7 +7,6 @@ type SearchProps = {
   searchInputRef: RefObject<HTMLInputElement>;
   onSearch: (term: string) => void;
   onReset: () => void;
-  // The current term, e.g. when arriving from the header search bar.
   defaultTerm?: string;
 };
 export function SearchInput({

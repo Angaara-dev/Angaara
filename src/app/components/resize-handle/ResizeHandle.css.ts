@@ -13,7 +13,6 @@ export const Handle = style({
   outline: 'none',
 });
 
-// Faint at rest, accent-colored and longer while hovered, focused or dragged.
 export const Grip = style({
   borderRadius: config.radii.Pill,
   background: color.SurfaceVariant.ContainerLine,

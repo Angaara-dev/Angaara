@@ -11,7 +11,6 @@ import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { ScannedFilesDialog } from '../../../features/link-check/FileCheck';
 import { useFileScans } from '../../../features/link-check/fileScans';
 
-// Files checked on this device; the badge counts scans still running.
 export function ScansTab() {
   const mx = useMatrixClient();
   const running = useFileScans(mx).filter((s) => s.status === 'scanning').length;

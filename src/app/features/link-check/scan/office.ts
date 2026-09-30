@@ -4,7 +4,6 @@ import { readEntry, readText, ZipEntry } from './zip';
 
 const HIDDEN_PROGRAM = /\.(exe|scr|bat|cmd|vbs|js|jse|hta|ps1|lnk|dll|msi)\b/i;
 
-// Office tricks that don't need macros: remote templates, DDE commands and hidden files.
 export const scanOffice = async (scan: Scan, b: Uint8Array, entries: ZipEntry[]) => {
   if (entries.some((e) => /(^|\/)vbaProject\.bin$/i.test(e.name))) {
     scan.add('bad', 'This Office document contains macros, code that runs when it opens.');

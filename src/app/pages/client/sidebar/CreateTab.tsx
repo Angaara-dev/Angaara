@@ -16,6 +16,7 @@ import {
 import { useCreateSelected } from '../../../hooks/router/useCreateSelected';
 import { JoinAddressPrompt } from '../../../components/join-address-prompt';
 import { _RoomSearchParams } from '../../paths';
+import { ImportTemplate } from '../../../features/server-template';
 
 export function CreateTab() {
   const createSelected = useCreateSelected();
@@ -23,6 +24,7 @@ export function CreateTab() {
   const navigate = useNavigate();
   const [menuCords, setMenuCords] = useState<RectCords>();
   const [joinAddress, setJoinAddress] = useState(false);
+  const [importTemplate, setImportTemplate] = useState(false);
 
   const handleMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     setMenuCords(menuCords ? undefined : evt.currentTarget.getBoundingClientRect());
@@ -30,6 +32,11 @@ export function CreateTab() {
 
   const handleCreateSpace = () => {
     navigate(getCreatePath());
+    setMenuCords(undefined);
+  };
+
+  const handleImportTemplate = () => {
+    setImportTemplate(true);
     setMenuCords(undefined);
   };
 
@@ -87,6 +94,23 @@ export function CreateTab() {
                       radii="0"
                       as="button"
                       type="button"
+                      onClick={handleImportTemplate}
+                    >
+                      <SettingTile before={<Icon size="400" src={Icons.Download} />}>
+                        <Text size="H6">Import a Server Template</Text>
+                        <Text size="T300" priority="300">
+                          Copy the channels and roles from a template link.
+                        </Text>
+                      </SettingTile>
+                    </SequenceCard>
+                    <SequenceCard
+                      style={{ padding: config.space.S300 }}
+                      variant="Surface"
+                      direction="Column"
+                      gap="100"
+                      radii="0"
+                      as="button"
+                      type="button"
                       onClick={handleJoinWithAddress}
                     >
                       <SettingTile before={<Icon size="400" src={Icons.Link} />}>
@@ -110,6 +134,15 @@ export function CreateTab() {
             >
               <Icon src={Icons.Plus} />
             </SidebarAvatar>
+            {importTemplate && (
+              <ImportTemplate
+                onCancel={() => setImportTemplate(false)}
+                onDone={(spaceId) => {
+                  setImportTemplate(false);
+                  navigate(getSpacePath(spaceId));
+                }}
+              />
+            )}
             {joinAddress && (
               <JoinAddressPrompt
                 onCancel={() => setJoinAddress(false)}

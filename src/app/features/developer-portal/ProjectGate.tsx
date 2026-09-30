@@ -68,7 +68,6 @@ function SubmitButton({
   );
 }
 
-// Shown when an encrypted project is opened on a device that hasn't been unlocked yet.
 function UnlockPanel({ project }: { project: ProjectMeta }) {
   const { unlock, recover, resetEncrypted } = useProjectActions();
   const [mode, setMode] = useState<'password' | 'recover' | 'reset'>('password');

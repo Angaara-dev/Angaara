@@ -37,7 +37,6 @@ export function AngaaraLogo({ size, animated, className }: AngaaraLogoProps) {
           <stop offset="1" stopColor="#F0441E" />
         </linearGradient>
       </defs>
-      {/* Squircle tile (superellipse, n = 4), the shape phone app icons use. */}
       <path d={SQUIRCLE} fill={`url(#${gradientId})`} />
       <g className={css.Flame}>
         <path

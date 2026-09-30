@@ -81,7 +81,6 @@ export const makeZip = (files: ZipFile[]): Blob => {
   });
 };
 
-// Reads text files from an uncompressed zip, like the ones angaara-runner sends.
 export const readZip = (data: ArrayBuffer): ZipFile[] => {
   const view = new DataView(data);
   const bytes = new Uint8Array(data);

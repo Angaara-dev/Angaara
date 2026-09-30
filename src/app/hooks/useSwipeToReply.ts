@@ -1,14 +1,11 @@
 import { RefObject, useEffect, useRef } from 'react';
 
-// Finger travel before deciding between a sideways swipe and a scroll.
 const DECIDE_AFTER = 12;
-// How far left a message has to be pulled to count as a reply, and the most it moves.
 const TRIGGER = 64;
 const MAX_PULL = 96;
 const REPLY_ICON =
   '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
 
-// Same places the page swipe stays out of: typing, selected text, sideways scrollers.
 const blocked = (target: Element, root: HTMLElement) => {
   if (window.getSelection()?.toString()) return true;
   let el: Element | null = target;
@@ -25,7 +22,6 @@ const blocked = (target: Element, root: HTMLElement) => {
   return false;
 };
 
-// Phones: drag a message from right to left to reply to it.
 export const useSwipeToReply = (
   scrollRef: RefObject<HTMLElement>,
   enabled: boolean,
@@ -102,7 +98,6 @@ export const useSwipeToReply = (
         row.appendChild(icon);
         row.style.transition = 'none';
       }
-      // Follows the finger, with resistance past the trigger point.
       const pull = Math.max(-MAX_PULL, dx < -TRIGGER ? -TRIGGER + (dx + TRIGGER) / 3 : dx);
       row.style.transform = `translateX(${pull}px)`;
       const progress = Math.min(1, -pull / TRIGGER);

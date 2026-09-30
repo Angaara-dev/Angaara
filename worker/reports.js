@@ -44,7 +44,6 @@ const ensureTable = (db) => {
           type TEXT, title TEXT, body TEXT, build TEXT, ua TEXT
         )`
       ),
-      // Bug reports marked Done stay readable here, with who archived them and when.
       db.prepare(
         `CREATE TABLE IF NOT EXISTS bug_report_archive (
           id INTEGER PRIMARY KEY, at INTEGER NOT NULL, by TEXT NOT NULL
@@ -65,7 +64,6 @@ const ensureTable = (db) => {
   return tableReady;
 };
 
-// The developer badge in config.json, plus anyone in the optional APP_DEVS secret.
 async function devs(env, url) {
   const ids = (env.APP_DEVS ?? '').split(',').map((id) => id.trim().toLowerCase());
   const badged = await badgeHolders(env, url, 'developer');
@@ -81,7 +79,6 @@ const senderKey = async (request, kind) => {
 
 const clip = (value, max) => (typeof value === 'string' ? value.slice(0, max) : null);
 
-// Counts one more report from this sender, or says no once they've hit the hourly limit.
 async function takeRate(db, sender, now) {
   const rate = await db
     .prepare('SELECT window, count FROM app_report_rate WHERE sender = ?')
@@ -136,7 +133,6 @@ async function submit(request, env) {
   return json({ sent: true });
 }
 
-// Bug reports come in without an account, like crash reports.
 async function submitBug(request, env) {
   const body = await request.json().catch(() => undefined);
   const title = typeof body?.title === 'string' ? body.title.trim() : '';

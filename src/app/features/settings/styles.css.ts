@@ -5,7 +5,6 @@ export const SequenceCardStyle = style({
   padding: config.space.S300,
 });
 
-// Phone settings home: grouped rows in rounded cards, like a native app.
 export const MobileGroup = style({
   borderRadius: config.radii.R500,
   backgroundColor: color.Surface.Container,
@@ -31,7 +30,6 @@ export const MobileRow = style({
   },
 });
 
-// Divider starts after the icon, like native app lists.
 export const MobileRowDivider = style({
   height: config.borderWidth.B300,
   marginLeft: toRem(56),

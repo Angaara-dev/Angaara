@@ -26,7 +26,6 @@ const toSuggestion = (c: LatexCommand): Suggestion => ({
   snippet: c.snippet,
 });
 
-// Where the cursor goes after inserting: inside the first {} or wrapper, else the end.
 const cursorOffset = (snippet: string): number => {
   if (snippet === WRAPPER_SUGGESTION.snippet) return '{latex}'.length;
   const braces = snippet.indexOf('{}');

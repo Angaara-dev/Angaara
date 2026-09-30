@@ -87,7 +87,6 @@ const ThemeSelector = as<'div', ThemeSelectorProps>(
   )
 );
 
-// Theme pickers stand out in a light tint of your accent.
 const accentPicker: React.CSSProperties = {
   background: `color-mix(in srgb, ${color.Primary.Main} 26%, transparent)`,
   borderColor: `color-mix(in srgb, ${color.Primary.Main} 60%, transparent)`,
@@ -355,7 +354,6 @@ function ScrollSpeedSlider() {
   );
 }
 
-// Phones: one slider for chat text, avatars and the message box, with a live preview.
 function MessageSizeSlider() {
   const [scale, setScale] = useSetting(settingsAtom, 'phoneMessageScale');
 

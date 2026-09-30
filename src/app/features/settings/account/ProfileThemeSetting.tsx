@@ -17,7 +17,6 @@ import { XP_PERKS } from '../../../../client/xp';
 const DEFAULT_TOP = '#000000';
 const DEFAULT_BOTTOM = '#662a00';
 
-// Profile colours: a gradient behind your profile card, unlocked with XP.
 export function ProfileThemeSetting({ userId }: { userId: string }) {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();

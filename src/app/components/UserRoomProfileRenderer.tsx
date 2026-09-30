@@ -24,7 +24,6 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
   // Swapping the small card for the full panel drops its focus trap, which must not close both.
   const openingFull = useRef(false);
 
-  // Whether a tap landed on the name or avatar that opened the card.
   const onOpener = (evt: MouseEvent | TouchEvent) => {
     const point = 'changedTouches' in evt ? evt.changedTouches[0] : evt;
     if (!point || !cords.width) return false;
@@ -66,7 +65,6 @@ function UserRoomProfileContextMenu({ state }: { state: UserRoomProfileState }) 
     </SpaceProvider>
   );
 
-  // Phones get a full-width sheet from the bottom instead of a floating card.
   if (phone) {
     return (
       <BottomSheet open onClose={close} label="Profile" floatingHandle>

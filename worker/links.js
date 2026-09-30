@@ -1,6 +1,6 @@
 // Link and file checks. Links: follows redirects and reads a little of the page (no page code
 // runs), then looks for scam signs. Files: only a fingerprint is looked up, on MalwareBazaar and
-// CIRCL's list of known software. Nothing about what was checked is kept.
+// CIRCL's list of known software.
 import { verifyOpenId } from './perks.js';
 import { badgeHolders } from './badges.js';
 import { isAngaaraSupporter } from './angaara-id.js';
@@ -20,7 +20,7 @@ const json = (data, status = 200) =>
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 
-// Brands scammers imitate most; a near miss of one of these is a strong warning sign.
+// Brands scammers imitate most, a near miss of one of these is a strong warning sign.
 const BRANDS = [
   'google',
   'paypal',
@@ -93,7 +93,6 @@ const editDistance = (a, b) => {
   return row[b.length];
 };
 
-// A domain that looks like a brand but isn't it.
 const lookalike = (domain) => {
   const name = domain.split('.')[0];
   const plain = unswap(name.replace(/-/g, ''));
@@ -156,7 +155,6 @@ const rdapBase = async (domain) => {
   return base ? base.replace(/\/?$/, '/') : undefined;
 };
 
-// When the domain was registered, asked straight from its registry.
 const registeredAt = async (domain) => {
   try {
     const base = await rdapBase(domain);

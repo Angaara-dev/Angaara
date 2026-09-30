@@ -136,7 +136,6 @@ export function CrashScreen({ error }: { error: unknown }) {
   );
 }
 
-// For the router, which hands over whatever a page threw.
 export function RouteCrashScreen() {
   return <CrashScreen error={useRouteError()} />;
 }

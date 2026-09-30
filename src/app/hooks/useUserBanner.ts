@@ -39,7 +39,6 @@ export const extendedProfileQuery = (mx: MatrixClient, userId: string) => ({
   staleTime: 5 * 60 * 1000,
 });
 
-// One fetch per user, shared by the banner and bio.
 export const useExtendedProfile = (
   userId: string,
   enabled = true
@@ -49,7 +48,6 @@ export const useExtendedProfile = (
   return data;
 };
 
-// Background of your own user panel, set separately from the banner.
 export const PANEL_BG_PROFILE_KEY = 'io.angaara.panel_background';
 export const LEGACY_PANEL_BG_KEYS: string[] = ['io.hearth.panel_background'];
 
@@ -95,7 +93,6 @@ export const readProfileString = (
     .map((key) => profile?.[key])
     .find((v): v is string => typeof v === 'string' && v.trim() !== '');
 
-// A solid banner colour anyone can pick, shown when there's no banner image.
 export const BANNER_COLOR_PROFILE_KEY = 'io.angaara.banner_color';
 export const useUserBannerColor = (userId: string): string | undefined => {
   const value = useExtendedProfile(userId)?.[BANNER_COLOR_PROFILE_KEY];

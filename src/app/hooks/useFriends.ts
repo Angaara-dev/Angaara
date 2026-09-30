@@ -19,7 +19,6 @@ export const useFriendsData = (): FriendsData => {
   return useMemo(() => normalizeFriends(raw), [raw]);
 };
 
-// Friend requests sent to you, updated as invites come and go or people get blocked.
 export const useIncomingRequests = (): IncomingRequest[] => {
   const mx = useMatrixClient();
   const ignored = useIgnoredUsers();

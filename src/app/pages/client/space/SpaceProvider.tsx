@@ -18,7 +18,6 @@ import { StateEvent } from '../../../../types/matrix/room';
 const hexOrUndefined = (value: unknown) =>
   typeof value === 'string' && isHexColor(value) ? value : undefined;
 
-// Applies a levelled-up space's colours while you're inside it.
 function SpaceTheme({ space }: { space: Room }) {
   const setSpaceTheme = useSetAtom(spaceThemeAtom);
   const { level } = useSpaceLevel(space);

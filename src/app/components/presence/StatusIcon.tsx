@@ -8,7 +8,6 @@ export const ACTIVITY_COLORS: Record<ActivityStatus, string> = {
   offline: '#80848e',
 };
 
-// Status shapes: dot, moon, minus and hollow ring.
 type StatusIconProps = {
   status: ActivityStatus;
   size?: number;

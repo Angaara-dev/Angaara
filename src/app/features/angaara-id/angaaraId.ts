@@ -26,7 +26,6 @@ const api = async (mx: MatrixClient, step: string, extra: Record<string, unknown
 export const getAngaaraAccount = async (mx: MatrixClient): Promise<AngaaraAccount | null> =>
   (await api(mx, 'me')).account;
 
-// A new account with this username, or (when already linked) one more passkey for it.
 export const registerPasskey = async (
   mx: MatrixClient,
   username?: string
@@ -43,7 +42,6 @@ export const registerPasskey = async (
   return (await api(mx, 'register/verify', { response })).account;
 };
 
-// Links this Matrix account to the Angaara account whose passkey is used.
 export const signInWithPasskey = async (mx: MatrixClient): Promise<AngaaraAccount> => {
   const { options } = await api(mx, 'login/options');
   const response = await startAuthentication({ optionsJSON: options });

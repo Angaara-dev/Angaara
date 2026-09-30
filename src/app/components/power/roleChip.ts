@@ -2,7 +2,6 @@ import { CSSProperties } from 'react';
 import { RoleChip, RoleChipColor, RoleChipColorEnd } from './style.css';
 import { varName } from '../../utils/accent';
 
-// Class and colours for a chip wearing a role's colour (and its second colour, if any).
 export const roleChipProps = (
   color: string | undefined,
   gradient?: string
@@ -16,7 +15,6 @@ export const roleChipProps = (
   };
 };
 
-// A name in its role's colour; two-colour roles paint it as a left-to-right gradient.
 export const roleNameStyle = (color?: string, gradient?: string): CSSProperties =>
   color && gradient
     ? {

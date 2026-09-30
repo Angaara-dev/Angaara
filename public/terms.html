@@ -25,10 +25,10 @@
         margin: 0;
         background: var(--bg);
         color: var(--fg);
-        font: 16px/1.6 system-ui, sans-serif;
+        font: 18px/1.6 system-ui, sans-serif;
       }
       main {
-        max-width: 720px;
+        max-width: 860px;
         margin: 0 auto;
         padding: 32px 16px 64px;
       }
@@ -36,8 +36,34 @@
         margin-bottom: 0;
       }
       h2 {
-        margin-top: 32px;
-        font-size: 1.15rem;
+        margin-top: 36px;
+        font-size: 1.4rem;
+      }
+      .byline {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 28px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .author {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--fg);
+        font-size: 17px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .author:hover {
+        color: var(--accent);
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
       }
       .muted {
         color: var(--muted);
@@ -55,8 +81,83 @@
   </head>
   <body>
     <main>
+      <div class="byline">
+        <a class="author" href="https://matrix.to/#/@trigodil:matrix.org" rel="author"
+          ><svg
+            class="avatar"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 512 512"
+          >
+            <rect width="512" height="512" fill="#ffe2cc" />
+            <path
+              d="M112 92 L214 190 L130 262 Z"
+              fill="#f47a3a"
+              stroke="#f47a3a"
+              stroke-width="24"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M400 92 L298 190 L382 262 Z"
+              fill="#f47a3a"
+              stroke="#f47a3a"
+              stroke-width="24"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M136 138 L192 196 L148 234 Z"
+              fill="#ffd0b5"
+              stroke="#ffd0b5"
+              stroke-width="14"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M376 138 L320 196 L364 234 Z"
+              fill="#ffd0b5"
+              stroke="#ffd0b5"
+              stroke-width="14"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M256 168 C340 168 404 214 412 280 C418 330 330 400 256 438 C182 400 94 330 100 280 C108 214 172 168 256 168 Z"
+              fill="#f47a3a"
+            />
+            <path
+              d="M104 290 C150 300 204 318 256 366 C308 318 362 300 408 290 C394 346 320 404 256 438 C192 404 118 346 104 290 Z"
+              fill="#fffaf5"
+            />
+            <path
+              d="M176 272 Q196 250 216 272"
+              fill="none"
+              stroke="#3b2418"
+              stroke-width="12"
+              stroke-linecap="round"
+            />
+            <path
+              d="M296 272 Q316 250 336 272"
+              fill="none"
+              stroke="#3b2418"
+              stroke-width="12"
+              stroke-linecap="round"
+            />
+            <ellipse cx="170" cy="312" rx="20" ry="12" fill="#ffb3a0" opacity="0.8" />
+            <ellipse cx="342" cy="312" rx="20" ry="12" fill="#ffb3a0" opacity="0.8" />
+            <path
+              d="M236 356 Q256 344 276 356 Q268 374 256 378 Q244 374 236 356 Z"
+              fill="#3b2418"
+            />
+            <path
+              d="M256 378 L256 392 M256 392 Q244 404 232 396 M256 392 Q268 404 280 396"
+              fill="none"
+              stroke="#3b2418"
+              stroke-width="7"
+              stroke-linecap="round"
+            /></svg
+          >Trigodil</a
+        >
+        <time datetime="2026-09-28">Last updated September 28, 2026</time>
+      </div>
       <h1>Angaara™ Terms</h1>
-      <p class="muted">Last updated 28 September 2026</p>
 
       <p>
         Angaara is a free, open-source app for chatting on Matrix. By using it you agree to these

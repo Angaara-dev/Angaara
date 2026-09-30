@@ -1,7 +1,6 @@
 import { style } from '@vanilla-extract/css';
 import { config, toRem } from 'folds';
 
-// A dark ember: glowing coal colours, quiet enough to sit among the nav rows.
 export const SupportPill = style({
   display: 'flex',
   alignItems: 'center',

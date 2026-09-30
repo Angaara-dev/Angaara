@@ -32,7 +32,6 @@ const safeEqual = (a, b) => {
   return diff === 0;
 };
 
-// Hands the result to the Angaara tab that opened this popup, then closes.
 const resultPage = (origin, message) => {
   const payload = JSON.stringify({ type: 'angaara-github-auth', ...message }).replace(
     /</g,

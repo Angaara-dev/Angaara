@@ -18,7 +18,6 @@ import {
 type RoomCommandsProps = {
   permissions: RoomPermissionsAPI;
 };
-// Lets admins turn fun commands off for a space (and all its rooms) or a single room.
 export function RoomCommands({ permissions }: RoomCommandsProps) {
   const mx = useMatrixClient();
   const room = useRoom();

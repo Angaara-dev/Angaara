@@ -70,7 +70,6 @@ export function RoomView({ eventId }: { eventId?: string }) {
 
   const mx = useMatrixClient();
 
-  // "Mention" from the member list's right-click menu drops a pill into this room's composer.
   useEffect(() => {
     const onMention = (evt: Event) => {
       const { roomId: target, userId } = (evt as CustomEvent<MentionEventDetail>).detail;

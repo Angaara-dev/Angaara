@@ -51,20 +51,16 @@ const saveNumber = (key: string, value: number) => {
 
 type DiffReviewProps = {
   changes: Change[];
-  // Short name for the other side, like "runner" or "main".
   remoteName: string;
   onTakeRemote: (picked: Change[]) => void;
-  // Extra buttons for the toolbar, like sending local files the other way.
   actions?: ReactNode;
 };
-// GitHub-style review: file list on the left, side-by-side diff on the right.
 export function DiffReview({ changes, remoteName, onTakeRemote, actions }: DiffReviewProps) {
   const [selected, setSelected] = useState<string>();
   const [fullScreen, setFullScreen] = useState(false);
   const [listWidth, setListWidth] = useState(() => loadNumber(LIST_WIDTH_KEY, 260));
   const [height, setHeight] = useState(() => loadNumber(HEIGHT_KEY, 520));
   const current = changes.find((c) => c.path === selected) ?? changes[0];
-  // Phones stack the file list above the diff instead of beside it.
   const mobile = useScreenSizeContext() === ScreenSize.Mobile;
 
   // Nothing left to review (e.g. everything was taken): leave full screen.

@@ -231,7 +231,6 @@ export async function updateVaultItem<T>(item: VaultItem, change: (prev: T | und
 
 export const vaultReady = () => state.status === 'ready';
 
-// Starts the vault for this client; returns a cleanup for logout or client changes.
 export function startVault(mx: MatrixClient): () => void {
   state.mx = mx;
   state.status = 'loading';

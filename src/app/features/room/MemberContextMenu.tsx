@@ -86,7 +86,6 @@ type ModAction = 'kick' | 'ban' | 'serverBan';
 type ModDialogProps = {
   action: ModAction;
   name: string;
-  // Where the ban applies, when the menu offers both room and server bans.
   where?: string;
   onClose: () => void;
   onConfirm: (reason?: string) => Promise<unknown>;

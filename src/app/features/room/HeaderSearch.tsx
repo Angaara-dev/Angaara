@@ -94,7 +94,6 @@ function OptionRow({
   );
 }
 
-// Search box for the room header, with from:/in:/has: filters and history.
 export function HeaderSearch({ room }: { room: Room }) {
   const mx = useMatrixClient();
   const navigate = useNavigate();
@@ -127,7 +126,6 @@ export function HeaderSearch({ room }: { room: Room }) {
     };
   }, [open]);
 
-  // Channels of the current server, or all your rooms outside one.
   const channels = useMemo(() => {
     const children = space
       ? new Set(
@@ -170,7 +168,6 @@ export function HeaderSearch({ room }: { room: Room }) {
     const rooms = entryFilters.filter((f) => f.kind === 'in').map((f) => f.value);
     const params: _SearchPathSearchParams = { term };
     if (senders.length > 0) params.senders = encodeSearchParamValueArray(senders);
-    // Search the whole server; outside a server, stay in this chat.
     if (rooms.length > 0) params.rooms = encodeSearchParamValueArray(rooms);
     else if (!space) params.rooms = room.roomId;
     if (entryFilters.some((f) => f.kind === 'has')) params.has = 'file';
@@ -310,7 +307,6 @@ export function HeaderSearch({ room }: { room: Room }) {
           height: toRem(30),
           padding: `0 ${config.space.S200}`,
           borderRadius: config.radii.R300,
-          // Themed servers: a darker patch of the server colour, like the member list.
           background: `var(--angaara-theme-shade, ${color.Background.Container})`,
           border: `1px solid ${open ? color.Primary.Main : color.Background.ContainerLine}`,
           cursor: 'text',

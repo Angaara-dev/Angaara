@@ -1,6 +1,5 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { color, config, DefaultReset, toRem } from 'folds';
-// Real phones: a taller message box that follows the Message Size setting.
 import { PHONE, phoneSize } from '../../styles/phone';
 import { varName } from '../../utils/accent';
 
@@ -17,7 +16,6 @@ export const Editor = style([
     overflow: 'hidden',
     transition: 'box-shadow 150ms ease',
     selectors: {
-      // Accent ring while typing, so the composer follows the chosen accent color.
       '&:focus-within': {
         boxShadow: `inset 0 0 0 ${config.borderWidth.B300} ${color.Primary.Main}, ${AccentRing}, ${EditorLift}`,
       },
@@ -98,7 +96,6 @@ export const MarkdownBtnBox = style({
   paddingRight: config.space.S100,
 });
 
-// Phones: lines (and mentions in them) follow the box's Message Size instead of the default text size.
 globalStyle(`${EditorTextarea} > *`, {
   '@media': { [PHONE]: { fontSize: 'inherit', lineHeight: 1.45 } },
 });

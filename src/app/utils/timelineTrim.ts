@@ -30,7 +30,6 @@ const getTokenBefore = async (mx: MatrixClient, roomId: string, eventId: string)
   return res.start;
 };
 
-// Drops all but the newest events of a room that's not on screen, freeing old history.
 export const trimRoomTimeline = async (mx: MatrixClient, room: Room): Promise<boolean> => {
   if (openRooms.has(room.roomId) || !needsTrim(room)) return false;
   const timelineSet = room.getUnfilteredTimelineSet();

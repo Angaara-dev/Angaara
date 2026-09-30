@@ -1,7 +1,6 @@
 import { style } from '@vanilla-extract/css';
 import { toRem } from 'folds';
 
-// Content softly fades out at an edge while there's more to scroll that way.
 export const ScrollFade = style({
   vars: { '--fade-top': '0px', '--fade-bottom': '0px' },
   maskImage:

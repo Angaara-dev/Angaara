@@ -132,7 +132,6 @@ export const MessageQuickReactions = as<'div', MessageQuickReactionsProps>(
   }
 );
 
-// Fills the phone sheet's reaction row when there aren't enough recent emojis yet.
 const DEFAULT_QUICK_REACTIONS = [
   { unicode: '👍', shortcode: 'thumbsup' },
   { unicode: '❤️', shortcode: 'heart' },
@@ -141,7 +140,6 @@ const DEFAULT_QUICK_REACTIONS = [
   { unicode: '😭', shortcode: 'sob' },
 ];
 
-// Phone sheet: five quick reactions plus a button for the full emoji board.
 function MessageSheetReactions({
   onReaction,
   onMore,
@@ -619,7 +617,6 @@ export const MessageReportItem = as<
           >
             <Dialog
               variant="Surface"
-              // Grows with the screen so the shared-messages preview is readable on PC.
               style={{ width: encrypted ? 'min(94vw, 48rem)' : undefined, maxWidth: '94vw' }}
             >
               <Header
@@ -843,7 +840,6 @@ export const Message = as<'div', MessageProps>(
     const { focusWithinProps } = useFocusWithin({ onFocusWithinChange: setHover });
     const [menuAnchor, setMenuAnchor] = useState<RectCords>();
     const [emojiBoardAnchor, setEmojiBoardAnchor] = useState<RectCords>();
-    // Phones: long-press opens a sheet instead of the hover toolbar.
     const phone = usePhone();
     const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -984,7 +980,6 @@ export const Message = as<'div', MessageProps>(
 
     const handleContextMenu: MouseEventHandler<HTMLDivElement> = (evt) => {
       if (evt.altKey || !window.getSelection()?.isCollapsed || edit) return;
-      // Links get their own menu (Check Link and more).
       if ((evt.target as Element).closest?.('a[href]')) return;
       evt.preventDefault();
       if (phone) {
@@ -1495,7 +1490,6 @@ export const Event = as<'div', EventProps>(
 
     const handleContextMenu: MouseEventHandler<HTMLDivElement> = (evt) => {
       if (evt.altKey || !window.getSelection()?.isCollapsed) return;
-      // Links get their own menu (Check Link and more).
       if ((evt.target as Element).closest?.('a[href]')) return;
       evt.preventDefault();
       setMenuAnchor({

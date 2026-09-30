@@ -25,7 +25,6 @@ export const SpaceHeader = style({
   },
 });
 
-// The space avatar, blurred and stretched into a banner.
 export const Art = style({
   position: 'absolute',
   inset: toRem(-24),
@@ -38,7 +37,6 @@ export const Art = style({
   pointerEvents: 'none',
 });
 
-// A real banner set in space settings, shown sharp.
 export const Banner = style({
   position: 'absolute',
   inset: 0,

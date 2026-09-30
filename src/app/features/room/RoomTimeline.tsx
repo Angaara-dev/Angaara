@@ -532,7 +532,6 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   >();
   const alive = useAlive();
 
-  // Pings use the same color as the mentioned user's name.
   const getMentionColor = useCallback(
     (userId: string): string | undefined => {
       if (legacyUsernameColor || direct) return colorMXID(userId);
@@ -679,7 +678,6 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
           }));
           return;
         }
-        // Sending a message while scrolled up snaps back down to it.
         const sentHere =
           mEvt.getSender() === mx.getUserId() &&
           mEvt.status !== null &&
@@ -1904,7 +1902,6 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         </Box>
       </Scroll>
       {!atBottom && phone && (
-        // Phones: a round arrow at the bottom right.
         <IconButton
           variant="SurfaceVariant"
           radii="Pill"

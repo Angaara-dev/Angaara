@@ -5,7 +5,6 @@ import { stopPropagation } from '../utils/keyboard';
 import { usePhone } from '../hooks/useScreenSize';
 import { themeBackdrop } from '../styles/themeBackdrop';
 
-// Phones: settings-style dialogs take the whole screen, like a native app page.
 const FULL_SCREEN = {
   position: 'fixed',
   inset: 0,

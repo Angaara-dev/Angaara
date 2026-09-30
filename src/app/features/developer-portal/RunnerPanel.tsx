@@ -127,17 +127,14 @@ const answeredJobs = new Set<string>();
 const REPLY_TIMEOUT_MS = 20000;
 const shellHistory = { items: [] as string[], index: 0 };
 
-// Save sends the editor's files to the runner without building. Shared with the editor toolbar.
 type SaveState = 'idle' | 'saving' | 'saved' | 'failed';
 export const saveStateAtom = atom<SaveState>('idle');
 export const savedFilesAtom = atom<ZipFile[] | undefined>(undefined);
 type RunnerBridge = {
   save?: () => void;
-  // Fetches the runner's copy of a project, with paths under `project/`.
   pull?: (project: string) => Promise<ZipFile[]>;
   projects?: string[];
   vscodeUrl?: string;
-  // Set once a runner answers; used by the docked terminal and status bar.
   act?: (action: Action) => void;
   shell?: (command: string) => void;
   sending?: boolean;
@@ -150,13 +147,11 @@ const pullWaiters = new Map<
   { project: string; resolve: (files: ZipFile[]) => void; reject: (e: Error) => void }
 >();
 const PULL_TIMEOUT_MS = 60000;
-// Files each uploading job carried, so a finished upload marks them saved.
 const uploadedFiles = new Map<string, ZipFile[]>();
 const saveJobs = new Set<string>();
 // The build cache and the bot's login stay on the runner; never upload them.
 const NO_UPLOAD = ['target/', 'bot-data/'];
 
-// Turns an OS path into a URI path: forward slashes, one leading slash, unsafe chars escaped.
 const toUriPath = (path: string): string =>
   encodeURI(`/${path.replace(/\\/g, '/').replace(/^\/+/, '')}`)
     .replace(/#/g, '%23')
@@ -261,7 +256,6 @@ function TermButton({
   );
 }
 
-// The runner's terminal, docked under the editor like an IDE panel.
 export function RunnerTerminal() {
   const { act, shell, sending, runnerLabel } = useAtomValue(bridgeAtom);
   const [lines, setLines] = useAtom(linesAtom);
@@ -377,7 +371,6 @@ export function RunnerTerminal() {
   );
 }
 
-// Runner connection for the editor's status bar.
 export function RunnerStatusItem() {
   const { act } = useAtomValue(bridgeAtom);
   const busy = useAtomValue(busyAtom);
@@ -682,7 +675,6 @@ export function RunnerPanel({ files, projectRoot }: RunnerPanelProps) {
     ) => {
       if (data.liveEvent && !toStart && !removed) handle(ev);
     };
-    // Catch up on replies that arrived while this panel was closed.
     room.getLiveTimeline().getEvents().forEach(handle);
     mx.on(RoomEvent.Timeline, onTimeline);
     return () => {
@@ -868,7 +860,6 @@ export function RunnerPanel({ files, projectRoot }: RunnerPanelProps) {
   const locked = !info;
   const shellOn = !!info?.shell;
 
-  // Lets the editor toolbar save and open VS Code without owning the runner connection.
   const save = useMemo(
     () => (locked ? undefined : () => send('save').catch(failSave)),
     [locked, send, failSave]
@@ -912,7 +903,6 @@ export function RunnerPanel({ files, projectRoot }: RunnerPanelProps) {
     return () => setBridge({});
   }, [save, vscodeUrl, projects, locked, pull, act, shell, sending, runnerLabel, setBridge]);
 
-  // Ctrl+S / Cmd+S anywhere on the page, including inside the editor.
   useEffect(() => {
     const onKey = (evt: KeyboardEvent) => {
       if (!(evt.ctrlKey || evt.metaKey) || evt.altKey || evt.key.toLowerCase() !== 's') return;
@@ -1123,7 +1113,6 @@ export function RunnerPanel({ files, projectRoot }: RunnerPanelProps) {
   );
 }
 
-// Save and VS Code buttons for the editor toolbar; they work once a runner is connected.
 export function RunnerEditorActions({ files }: { files: ZipFile[] }) {
   const { save, vscodeUrl } = useAtomValue(bridgeAtom);
   const saveState = useAtomValue(saveStateAtom);

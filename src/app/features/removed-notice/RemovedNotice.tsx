@@ -120,7 +120,6 @@ const withPing = (notice: Notice): Notice => {
   return { ...notice, appealsOn: ping.enabled, maxAppeals: ping.max };
 };
 
-// A kick or ban by someone else, if that's how you left this room.
 const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   const myId = mx.getSafeUserId();
   const membership = room.getMyMembership();
@@ -153,7 +152,6 @@ const removalNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   };
 };
 
-// The mods' decision on an appeal you made.
 const outcomeNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   const appeal = getAppeal(room);
   if (!appeal || (appeal.status === 'open' && !appeal.archived)) return undefined;
@@ -174,7 +172,6 @@ const outcomeNotice = (mx: MatrixClient, room: Room): Notice | undefined => {
   };
 };
 
-// Tells you when you were kicked or banned, lets you appeal a ban, and shows the result.
 export function RemovedNotice() {
   const mx = useMatrixClient();
   const navigate = useNavigate();
@@ -209,7 +206,6 @@ export function RemovedNotice() {
     };
 
     rememberRooms(mx);
-    // Catch up on anything that happened while you were away.
     mx.getRooms().forEach((room: Room) => add(removalNotice(mx, room) ?? outcomeNotice(mx, room)));
 
     const onMembership = (room: Room) => {
@@ -258,7 +254,6 @@ export function RemovedNotice() {
     };
     window.addEventListener(BAN_NOTICE_EVENT, onBanNotice);
 
-    // A mod changed the appeal settings; update any ban notice that's open.
     const onToDevice = (event: MatrixEvent) => {
       if (receivePing(mx, event)) setQueue((q) => q.map(withPing));
     };
@@ -283,7 +278,6 @@ export function RemovedNotice() {
     };
   }, [mx]);
 
-  // Fill in the server's name and who can unban when the app doesn't have it loaded.
   const current = queue[0];
   const currentKey = current?.key;
   const currentRoomId = current?.roomId ?? '';
@@ -339,7 +333,6 @@ export function RemovedNotice() {
       .finally(() => setCheckingLive((k) => (k === currentKey ? undefined : k)));
   }, [currentKey, currentBanned, currentRoomId]);
 
-  // The Appeal button on a server card skips straight to writing the appeal.
   const currentDirect = !!current?.direct;
   useEffect(() => setAppealing(currentDirect), [currentKey, currentDirect]);
 
@@ -357,7 +350,6 @@ export function RemovedNotice() {
   const pending = appealable && !appealSent && !!openAppealFor(mx, current.roomId);
   const canAppeal = appealable && appealsOn === true && mods.length > 0 && used < limit && !pending;
   const ticket = sentRoomId ?? (pending ? openAppealFor(mx, current.roomId)?.roomId : undefined);
-  // Straight to the appeal, unless there's none to make.
   const showAppeal = appealing && canAppeal && !appealSent;
   const looking = banned && (lookingUp === current.key || checkingLive === current.key);
   const lookingForMods = appealable && looking;
@@ -431,7 +423,6 @@ export function RemovedNotice() {
       }
     );
 
-  // The ticket is where the appellant and mods talk it through.
   const openTicket = (roomId: string) => {
     dismiss();
     navigate(getHomeRoomPath(roomId));

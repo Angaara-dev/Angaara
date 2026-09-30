@@ -34,7 +34,6 @@ type MobileSpaceSettingsHomeProps<P> = {
   onSelect: (page: P) => void;
   requestClose: () => void;
 };
-// Phone space settings home: the server card on top, then big grouped rows like user settings.
 export function MobileSpaceSettingsHome<P>({
   room,
   name,

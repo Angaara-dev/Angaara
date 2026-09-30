@@ -34,7 +34,6 @@ export type ReactionViewerProps = {
   initialKey?: string;
   relations: Relations;
   requestClose: () => void;
-  // Phone bottom sheet: reactions in a row on top, bigger rows, no close button.
   sheet?: boolean;
 };
 export const ReactionViewer = as<'div', ReactionViewerProps>(

@@ -2,7 +2,6 @@ import { style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
 import { PHONE } from '../../styles/phone';
 
-// Ring around the avatar; profile colours set it to their top colour.
 const ProfileRing = `var(--angaara-profile-ring, ${color.Surface.Container})`;
 
 export const UserHeader = style({
@@ -18,7 +17,6 @@ export const UserHero = style({
   position: 'relative',
 });
 
-// Tall banner, taller still on phones where the profile opens as a sheet.
 export const UserHeroCoverContainer = style({
   height: toRem(140),
   overflow: 'hidden',
@@ -62,7 +60,6 @@ export const UserHeroAvatar = style({
     },
   },
 });
-// Smaller hero for the quick card that opens on click.
 export const UserHeroCoverCompact = style({ height: toRem(72) });
 export const UserHeroAvatarContainerCompact = style({ height: toRem(24) });
 export const UserHeroAvatarCompact = style({

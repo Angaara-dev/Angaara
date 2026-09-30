@@ -76,7 +76,6 @@ const MessageHover = style({
   },
 });
 
-// Amber-orange tint and left bar for messages that reply to or mention you.
 const MentionColor = `color-mix(in srgb, ${color.Warning.Main} 45%, ${color.Primary.Main})`;
 const MentionedVariant = styleVariants({
   true: {
@@ -207,7 +206,6 @@ export const Username = style({
     },
   },
 });
-// Names match the bigger phone message text.
 globalStyle(`${Username} > span`, {
   '@media': { [PHONE]: { fontSize: phoneSize(17) } },
 });

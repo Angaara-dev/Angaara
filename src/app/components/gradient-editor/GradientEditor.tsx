@@ -75,7 +75,6 @@ type GradientEditorProps = {
   disabled?: boolean;
   onChange: (top: string, bottom: string) => void;
 };
-// Two-colour, top-to-bottom theme, each end with its own hue and shade sliders.
 export function GradientEditor({ top, bottom, disabled, onChange }: GradientEditorProps) {
   const dark = useTheme().kind === ThemeKind.Dark;
   return (

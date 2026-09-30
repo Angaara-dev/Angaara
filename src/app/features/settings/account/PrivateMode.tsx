@@ -31,7 +31,6 @@ const DELETES = [
   'The XP bot’s chats with you',
 ];
 
-// Wipes your data from Angaara's servers, then turns private mode on so none is made again.
 function DeleteServerData({ onDeleted }: { onDeleted: () => void }) {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();

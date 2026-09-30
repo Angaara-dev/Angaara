@@ -86,7 +86,6 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
   const mobile = screenSize === ScreenSize.Mobile;
 
   const routes = createRoutesFromElements(
-    // Any page that throws lands on the friendly crash screen instead of a raw error.
     <Route errorElement={<RouteCrashScreen />}>
       <Route
         index

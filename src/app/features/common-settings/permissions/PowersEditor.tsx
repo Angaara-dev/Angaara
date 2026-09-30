@@ -330,7 +330,6 @@ function EditPower({ maxPower, power, tag, onSave, onClose }: EditPowerProps) {
 type PowersEditorProps = {
   powerLevels: IPowerLevels;
   requestClose: () => void;
-  // Its own settings page (server Roles) rather than a step inside Permissions.
   standalone?: boolean;
 };
 export function PowersEditor({ powerLevels, requestClose, standalone }: PowersEditorProps) {

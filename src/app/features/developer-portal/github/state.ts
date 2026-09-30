@@ -30,7 +30,6 @@ const store = (key: string, value: unknown) => {
   }
 };
 
-// A writable atom whose value is mirrored to localStorage.
 const persisted = <T>(key: string, initial: T) => {
   const base = atom<T>(initial);
   return atom(

@@ -98,7 +98,6 @@ export function useDevProjectLoader() {
     }
   }, [mx, setSaveState]);
 
-  // Save whatever is waiting when leaving the dev pages or closing the tab.
   useEffect(() => {
     const onHide = () => {
       flush();
@@ -124,7 +123,6 @@ export function useDevProjectLoader() {
     setActiveId(projectId);
   }, [projectId, activeId, setActiveId]);
 
-  // Load the project, and pick up edits made on other devices while nothing is waiting to save.
   useEffect(() => {
     if (!keyChecked) return undefined;
     if (!project) {
@@ -165,7 +163,6 @@ export function useDevProjectLoader() {
     };
   }, [keyChecked, project, content, key, flush, setWorkspace, setStatus, setSaveState]);
 
-  // Any edit to the open project is saved shortly after.
   useEffect(() => {
     const { current } = loaded;
     if (!current || workspace === current.ws) return;
@@ -176,7 +173,6 @@ export function useDevProjectLoader() {
   }, [workspace, flush, setSaveState]);
 }
 
-// Create, rename, delete, unlock and recover. Every index change reads the latest index first.
 export function useProjectActions() {
   const mx = useMatrixClient();
   const [key, setKey] = useAtom(devKeyAtom);
@@ -289,7 +285,6 @@ export function useProjectActions() {
     [mx, activeId, latestIndex, writeIndex, setActive]
   );
 
-  // Lost both password and recovery key: wipe the encrypted projects and start over.
   const resetEncrypted = useCallback(async () => {
     const index = latestIndex();
     const gone = index.projects.filter((p) => p.encrypted);

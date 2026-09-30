@@ -619,7 +619,6 @@ function Card({ children }: { children: ReactNode }) {
   );
 }
 
-// Your Bot page: get a token, invite the bot, run it and see its commands.
 export function DeveloperBot() {
   const [credentials, setCredentials] = useState<BotCredentials>();
 
@@ -647,7 +646,6 @@ export function DeveloperBot() {
   );
 }
 
-// Build Tools page: the project editor and your runner.
 export function DeveloperBuild() {
   const [workspace, setWorkspace] = useAtom(workspaceAtom);
   const [notice, setNotice] = useState<ImportNotice>();

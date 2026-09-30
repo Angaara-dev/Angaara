@@ -8,7 +8,6 @@ type DiffViewProps = {
   remote: string;
   local: string;
 };
-// Read-only side-by-side diff: the other copy on the left, this browser's on the right.
 export default function DiffView({ path, remote, local }: DiffViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor>();
@@ -24,7 +23,6 @@ export default function DiffView({ path, remote, local }: DiffViewProps) {
       minimap: { enabled: false },
       fontSize: 13,
       scrollBeyondLastLine: false,
-      // Side by side when there's room, stacked inline on narrow screens.
       renderSideBySide: true,
       useInlineViewWhenSpaceIsLimited: true,
       renderSideBySideInlineBreakpoint: 640,

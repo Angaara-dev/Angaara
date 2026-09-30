@@ -34,7 +34,6 @@ type CommunityPrivacyDialogProps = {
   space: Room;
   onClose: () => void;
 };
-// Per-community privacy: who from this community can DM you or add you.
 export function CommunityPrivacyDialog({ space, onClose }: CommunityPrivacyDialogProps) {
   const name = useRoomName(space);
   const status = useVaultStatus();

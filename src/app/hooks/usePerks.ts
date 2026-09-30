@@ -19,11 +19,9 @@ export const useUserPerks = (userId: string, enabled = true): PerkPass | undefin
 export const useHasPerk = (userId: string, perk: Perk, enabled = true): boolean =>
   !!useUserPerks(userId, enabled)?.perks.includes(perk);
 
-// The supporter badge, on top of the ones granted in config.json.
 export const usePerkBadges = (userId: string): BadgeInfo[] =>
   useHasPerk(userId, 'supporter') ? [BADGES.supporter] : [];
 
-// First frame of an image as a still, for GIF banners of people who haven't unlocked them.
 export const useStillImageUrl = (src: string | undefined, animate: boolean): string | undefined => {
   const [still, setStill] = useState<string>();
 

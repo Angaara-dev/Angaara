@@ -6,7 +6,6 @@ import { useStateEvent } from './useStateEvent';
 import { useMatrixClient } from './useMatrixClient';
 import { getHiddenProfile, onHiddenProfileChange } from '../../client/hiddenProfile';
 
-// Hidden-name state for rooms that keep their name and topic encrypted (undefined otherwise).
 export const useHiddenProfile = (room: Room) => {
   const mx = useMatrixClient();
   const [, setVersion] = useState(0);

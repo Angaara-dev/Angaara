@@ -116,7 +116,6 @@ function ReportItem({ report, onDone }: { report: AppReport; onDone: (id: number
   );
 }
 
-// Crash reports sent from the error screen, newest first.
 export function AppReports() {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();
@@ -263,7 +262,6 @@ function BugDetail({
   );
 }
 
-// One line per report, like appeal tickets; the full report opens on click.
 function BugTicket({
   report,
   isNew,
@@ -319,7 +317,6 @@ function BugTicket({
   );
 }
 
-// Bug reports people sent from the Home sidebar, newest first.
 export function UserBugReports() {
   const mx = useMatrixClient();
   const queryClient = useQueryClient();

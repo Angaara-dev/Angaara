@@ -53,7 +53,6 @@ const STATUS_OPTIONS: { value: ChosenStatus; label: string; hint?: string }[] = 
   },
 ];
 
-// Your avatar, name and status at the bottom of the room list, with quick profile actions.
 export function UserPanel() {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -88,7 +87,6 @@ export function UserPanel() {
 
   const closeMenu = () => setMenuCords(undefined);
   const meRef = useRef<HTMLButtonElement>(null);
-  // Tapping the bar toggles the card: open, then tap again to close.
   const openMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     if (menuCords) closeMenu();
     else setMenuCords(evt.currentTarget.getBoundingClientRect());
@@ -129,9 +127,7 @@ export function UserPanel() {
               style={
                 profileTheme && {
                   background: profileThemeBackground(profileTheme, dark),
-                  // Rows go see-through so the gradient runs behind them.
                   [varName(color.Surface.Container) ?? '']: 'transparent',
-                  // Hovered and selected rows lighten the gradient instead of a grey box.
                   [varName(color.Surface.ContainerHover) ?? '']: dark
                     ? 'rgba(255, 255, 255, 0.08)'
                     : 'rgba(0, 0, 0, 0.05)',
@@ -184,7 +180,6 @@ export function UserPanel() {
                     size="300"
                     radii="300"
                     aria-pressed={chosen === option.value}
-                    // Grows to fit the hint line.
                     style={
                       option.hint
                         ? {

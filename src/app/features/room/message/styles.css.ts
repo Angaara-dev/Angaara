@@ -30,10 +30,8 @@ export const MessageOptionsBar = style([
     borderRadius: config.radii.R400,
     boxShadow: `0 ${toRem(4)} ${toRem(14)} rgba(0, 0, 0, 0.24)`,
     selectors: {
-      // Solid on themed servers, so timestamps don't show through.
       '&&': {
         backgroundColor: `var(--angaara-theme-menu, ${optionsBg})`,
-        // Buttons blend into the bar until hovered.
         vars: { [color.SurfaceVariant.Container]: 'transparent' },
       },
     },
@@ -44,10 +42,8 @@ export const BubbleAvatarBase = style({
   paddingTop: 0,
 });
 
-// Space above the avatar, so the ring lines up with it in both layouts.
 const avatarTop = createVar();
 
-// A tight round ring on hover like your own panel avatar, in the server's accent inside a server.
 export const MessageAvatarGlow = style({
   vars: { [avatarTop]: toRem(4) },
   position: 'relative',
@@ -111,7 +107,6 @@ export const PhoneNoSelect = style({
   },
 });
 
-// Long-press sheet on phones: quick reactions, then grouped actions.
 export const SheetBody = style({
   overflowY: 'auto',
   padding: `${config.space.S100} ${config.space.S400} ${config.space.S500}`,

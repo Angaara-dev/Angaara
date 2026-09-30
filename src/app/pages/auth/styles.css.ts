@@ -1,7 +1,6 @@
 import { keyframes, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
 
-// A warm glow rising from the bottom of the page, like sitting by a fire.
 export const AuthLayout = style({
   minHeight: '100%',
   backgroundColor: color.Background.Container,
@@ -84,7 +83,6 @@ export const AuthCard = style({
   overflow: 'hidden',
   position: 'relative',
   selectors: {
-    // Fiery top edge.
     '&::before': {
       content: '""',
       position: 'absolute',

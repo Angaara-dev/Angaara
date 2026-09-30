@@ -20,7 +20,6 @@ export const mDirectAtom = atom<Set<string>, [MDirectAction], undefined>(
 
 const directRoomIds = (mx: MatrixClient) => new Set(Object.values(getDirectMap(mx)).flat());
 
-// DM rooms from both the encrypted vault and any plaintext m.direct left over.
 export const useBindMDirectAtom = (mx: MatrixClient, mDirect: typeof mDirectAtom) => {
   const setMDirect = useSetAtom(mDirect);
 

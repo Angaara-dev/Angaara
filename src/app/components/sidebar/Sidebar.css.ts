@@ -4,7 +4,6 @@ import { color, config, DefaultReset, Disabled, FocusOutline, toRem } from 'fold
 import { ContainerColor } from '../../styles/ContainerColor.css';
 import { themeBackdrop } from '../../styles/themeBackdrop';
 
-// Phones get bigger rail icons: bigger, filled, rounded squares.
 const PHONE = 'screen and (max-width: 750px) and (pointer: coarse)';
 
 export const Sidebar = style([
@@ -86,7 +85,6 @@ export const SidebarItem = recipe({
         '&:hover': {
           transform: `translateX(${toRem(PUSH_X)})`,
         },
-        // The pill grows in from nothing: small on hover, tall when active.
         '&::before': {
           content: '',
           display: 'block',
@@ -132,7 +130,6 @@ export const SidebarItemRoot = style({});
 export const SidebarAvatarShape = style({
   transition: 'border-radius 180ms ease',
 });
-// Circles, turning into rounded squares when open (or hovered, with a mouse).
 globalStyle(`${SidebarItemRoot} ${SidebarAvatarShape}`, {
   borderRadius: '50%',
 });
@@ -142,7 +139,6 @@ globalStyle(`${SidebarItemRoot}[data-active="true"] ${SidebarAvatarShape}`, {
 globalStyle(`${SidebarItemRoot}:hover ${SidebarAvatarShape}`, {
   '@media': { '(hover: hover)': { borderRadius: config.radii.R400 } },
 });
-// Images inside (including round user avatars on DMs) follow the icon's shape.
 globalStyle(`${SidebarItemRoot} ${SidebarAvatarShape} > *`, {
   borderRadius: 'inherit',
   transition: 'border-radius 180ms ease',

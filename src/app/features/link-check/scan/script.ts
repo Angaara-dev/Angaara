@@ -80,7 +80,6 @@ const fromBase64 = (b64: string): string | undefined => {
 const ENCODED =
   /(?:-e(?:nc(?:odedcommand)?)?\s+|FromBase64String\s*\(\s*['"]|\batob\s*\(\s*['"])([A-Za-z0-9+/=]{24,})/gi;
 
-// Reads a script or command line, decoding hidden parts a couple of levels deep.
 export const scanScript = (scan: Scan, text: string, depth = 0): void => {
   const hits = RULES.filter((r) => r.test.test(text));
   hits.forEach((r) => {
@@ -106,7 +105,6 @@ export const scanScript = (scan: Scan, text: string, depth = 0): void => {
 export const SCRIPT_EXT =
   /\.(ps1|psm1|psd1|bat|cmd|vbs|vbe|js|jse|wsf|wsh|hta|sh|bash|zsh|command|py|applescript|scpt)$/i;
 
-// Web pages and images that carry code: smuggled downloads and fake sign-in forms.
 export const scanPage = (scan: Scan, text: string): void => {
   if (/<script|\son[a-z]+\s*=|javascript:/i.test(text)) {
     scan.add('bad', 'It carries scripts that run if you open it in a browser.');

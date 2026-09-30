@@ -15,7 +15,6 @@ type ReactionViewerDialogProps = {
   open: boolean;
   onClose: () => void;
 };
-// Centered dialog on PC, bottom sheet on phones.
 export function ReactionViewerDialog({
   room,
   relations,

@@ -16,11 +16,8 @@ import {
   appealLabel,
 } from './appeals';
 
-// Sits above the message box in an appeal ticket: the mods decide or close it, the
-// appellant can withdraw it.
 export function AppealBar({ room }: { room: Room }) {
   const mx = useMatrixClient();
-  // Re-renders when the ticket is decided or closed.
   useStateEvent(room, APPEAL_STATE as StateEvent);
   const [busy, setBusy] = useState<'accept' | 'deny' | 'close'>();
   const [error, setError] = useState<string>();

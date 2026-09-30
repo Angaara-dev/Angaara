@@ -153,7 +153,6 @@ function ProjectNavItem({ project }: { project: ProjectMeta }) {
   );
 }
 
-// The sidebar's Projects list, plus the project dialogs (loaded only when one opens).
 export function ProjectNav({ open }: { open: boolean }) {
   const { projects } = useProjectIndex();
   const [dialog, setDialog] = useAtom(projectDialogAtom);

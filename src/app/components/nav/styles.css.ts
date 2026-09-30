@@ -2,7 +2,6 @@ import { ComplexStyleRule, createVar, globalStyle, style } from '@vanilla-extrac
 import { RecipeVariants, recipe } from '@vanilla-extract/recipes';
 import { ContainerColor, DefaultReset, Disabled, RadiiVariant, color, config, toRem } from 'folds';
 
-// Real phones (touch, narrow): bigger rows that are easy to tap.
 const PHONE = 'screen and (max-width: 750px) and (pointer: coarse)';
 
 export const NavCategory = style([
@@ -62,7 +61,6 @@ const NavItemBase = style({
     [PHONE]: { minHeight: '40px' },
   },
 
-  // Left pill like the server rail: a dot for unread, a bar for the open room.
   '::before': {
     content: '""',
     position: 'absolute',
@@ -155,7 +153,6 @@ export const NavItemContent = style({
   },
 });
 
-// Row icons follow the phone size too (names inherit the row's font size).
 globalStyle(`${NavItemContent} svg`, {
   '@media': { [PHONE]: { width: '18px', height: '18px' } },
 });
@@ -164,7 +161,6 @@ export const NavItemOptions = style({
   paddingRight: config.space.S200,
 });
 
-// Phones: a search bar at the top of the room list.
 export const NavSearchPill = style({
   display: 'flex',
   alignItems: 'center',

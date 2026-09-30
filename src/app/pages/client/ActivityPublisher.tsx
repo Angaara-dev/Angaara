@@ -15,7 +15,6 @@ import {
 const IDLE_AFTER_MS = 10 * 60 * 1000;
 const INPUT_EVENTS = ['pointerdown', 'keydown', 'mousemove', 'wheel', 'touchstart'];
 
-// Publishes your status to your profile, with auto-idle and a heartbeat so closed apps go offline.
 export function ActivityPublisher() {
   const mx = useMatrixClient();
   const supported = useExtendedProfileSupport();

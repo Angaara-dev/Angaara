@@ -20,7 +20,6 @@ const TYPES: Record<string, string> = {
   Virus: 'a virus',
 };
 
-// Matches the file against ReversingLabs' malware rules; the engine loads only when needed.
 export const scanYara = async (scan: Scan, bytes: Uint8Array, rulesUrl: string) => {
   if (bytes.length > MAX_YARA_BYTES) return false;
   try {
@@ -29,7 +28,8 @@ export const scanYara = async (scan: Scan, bytes: Uint8Array, rulesUrl: string) 
       if (!res.ok) throw new Error('rules');
       return res.text();
     });
-    const result = (await yara).run(bytes, await rules);
+    const [engine, text] = await Promise.all([yara, rules]);
+    const result = engine.run(bytes, text);
     if (list(result.compileErrors).some((e) => !e.warning)) throw new Error('rules');
     list(result.matchedRules).forEach(({ ruleName: rule, metadata }) => {
       const meta = Object.fromEntries(list(metadata).map((x) => [x.identifier, x.data]));

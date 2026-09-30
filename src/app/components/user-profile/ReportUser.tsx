@@ -112,7 +112,6 @@ export function ReportUserDialog({ userId, room, open, onClose }: ReportUserDial
         >
           <Dialog
             variant="Surface"
-            // Wider while previewing attached messages, so they're readable on PC.
             style={{ width: attachCount > 0 ? 'min(94vw, 40rem)' : undefined, maxWidth: '94vw' }}
           >
             <Header

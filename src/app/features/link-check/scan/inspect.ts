@@ -1,5 +1,5 @@
 import { findLinks, hasBytes, isText, latin1, utf16, utf8 } from './bytes';
-import { createScan, Scan, ScanResult } from './context';
+import { aKind, createScan, Scan, ScanResult } from './context';
 import { isIso, isoFiles } from './iso';
 import { isLnk, scanLnk } from './lnk';
 import { scanOffice } from './office';
@@ -18,7 +18,6 @@ const PAGE_EXT = /\.(svg|html?|xhtml|mht|shtml)$/i;
 const MAX_HASH_BYTES = 200 * 1024 * 1024;
 const MAX_INNER = 5;
 
-// What the first bytes say the file really is.
 const sniff = (b: Uint8Array): string | undefined => {
   const at = (sig: number[], off = 0) => sig.every((v, i) => b[off + i] === v);
   const ascii = (s: string, off = 0) =>
@@ -44,7 +43,7 @@ const sniff = (b: Uint8Array): string | undefined => {
   if (at([0x50, 0x4b, 0x03, 0x04])) return 'zip';
   if (ascii('Rar!')) return 'rar';
   if (at([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c])) return '7z';
-  if (at([0xd0, 0xcf, 0x11, 0xe0])) return 'old Office file';
+  if (at([0xd0, 0xcf, 0x11, 0xe0])) return 'old Office';
   if (at([0x89, 0x50, 0x4e, 0x47])) return 'PNG';
   if (at([0xff, 0xd8, 0xff])) return 'JPEG';
   if (ascii('GIF8')) return 'GIF';
@@ -96,14 +95,13 @@ const checkName = (scan: Scan, name: string, kind: string | undefined) => {
   if (kind && PROGRAMS.includes(kind) && !PROGRAM_EXT.test(name)) {
     scan.add('bad', `It's named like a normal file, but it's really a ${kind}.`);
   } else if (kind && EXPECTED[kind] && !EXPECTED[kind].test(name) && !PROGRAMS.includes(kind)) {
-    scan.add('warn', `It's really a ${kind} file, which doesn't match its name.`);
+    scan.add('warn', `It's really ${aKind(kind)} file, which doesn't match its name.`);
   }
 };
 
 const worthOpening = (name: string) =>
   PROGRAM_EXT.test(name) || SCRIPT_EXT.test(name) || PAGE_EXT.test(name) || RISKY_EXT.test(name);
 
-// Looks a file over without opening or running it, and one level into archives.
 const inspect = async (
   scan: Scan,
   name: string,
@@ -113,6 +111,7 @@ const inspect = async (
   const kind = sniff(b);
   checkName(scan, name, kind);
 
+  let office = false;
   const inner: { name: string; read: () => Promise<Uint8Array | undefined> }[] = [];
   if (kind === 'zip') {
     const entries = zipEntries(b) ?? [];
@@ -120,6 +119,7 @@ const inspect = async (
       scan.add('warn', "It's a password-protected archive, which scanners can't look inside.");
     }
     if (entries.some((e) => OFFICE.test(e.name))) {
+      office = true;
       await scanOffice(scan, b, entries);
     } else if (!/\.(jar|apk|msix|appx|xpi)$/i.test(name)) {
       const programs = entries.filter((e) => PROGRAM_EXT.test(e.name)).map((e) => e.name);
@@ -158,7 +158,7 @@ const inspect = async (
     }
   }
 
-  if (kind === 'old Office file' && hasBytes(b, '_VBA_PROJECT', true)) {
+  if (kind === 'old Office' && hasBytes(b, '_VBA_PROJECT', true)) {
     scan.add('bad', 'This Office document contains macros, code that runs when it opens.');
     scan.does('Runs macros when opened.');
   } else if (MACRO_EXT.test(name)) {
@@ -202,7 +202,8 @@ const inspect = async (
       scan.add('warn', "It's a damaged or unusual Windows program, so it couldn't be read fully.");
     }
   }
-  return kind;
+  // Office files are zips inside; saying so would only confuse.
+  return office ? 'Office' : kind;
 };
 
 const hex = (buf: ArrayBuffer) =>
@@ -212,11 +213,9 @@ export type LocalScan = ScanResult & {
   size: number;
   kind?: string;
   sha256?: string;
-  // Whether the malware rules ran on this file.
   yara: boolean;
 };
 
-// The whole on-device check. Runs in a worker, so big files never freeze the app.
 export const scanBytes = async (
   name: string,
   bytes: Uint8Array,

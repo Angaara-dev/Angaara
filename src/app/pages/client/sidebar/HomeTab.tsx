@@ -71,7 +71,6 @@ export function HomeTab() {
   const roomToParents = useAtomValue(roomToParentsAtom);
   const orphanRooms = useOrphanRooms(mx, allRoomsAtom, mDirects, roomToParents);
   const homeUnread = useRoomsUnread(orphanRooms, roomToUnreadAtom);
-  // New bug reports ping developers here too, in red like a mention.
   const newBugs = useNewBugReports();
   const badgeCount = (homeUnread?.total ?? 0) + newBugs;
   const homeSelected = useHomeSelected();

@@ -12,7 +12,6 @@ type ServerTagBadgeProps = {
   enabled?: boolean;
   size?: 'small' | 'normal';
 };
-// Server tag next to a name: the space's icon and its short tag.
 export function ServerTagBadge({ userId, enabled = true, size = 'small' }: ServerTagBadgeProps) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();

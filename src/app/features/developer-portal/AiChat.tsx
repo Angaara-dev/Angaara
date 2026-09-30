@@ -30,7 +30,6 @@ const QUICK_PROMPTS = [
   'How do I add a new command?',
 ];
 
-// Plain text with ``` fenced code blocks, which get a monospace box and a copy button.
 function MessageBody({ text }: { text: string }) {
   const parts = text.split(/```[\w-]*\n?([\s\S]*?)```/g);
   return (
@@ -78,7 +77,6 @@ const pickerStyle = {
   border: `1px solid ${color.Secondary.ContainerLine}`,
 };
 
-// Provider + model dropdowns; "Custom" takes any model ID the provider supports.
 function ModelPicker({ settings }: { settings: AiSettings }) {
   const setJson = useSetAtom(aiSettingsJsonAtom);
   const models = MODELS[settings.provider];

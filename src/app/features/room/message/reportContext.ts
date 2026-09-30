@@ -43,7 +43,6 @@ export const reportLine = (room: ReportRoom, event: ReportEvent): string => {
   )}`;
 };
 
-// Up to `count` messages sent before the reported one, oldest first.
 export const historyBefore = (room: ReportRoom, eventId: string, count: number): ReportEvent[] => {
   if (count <= 0) return [];
   const events = (room.getTimelineForEvent(eventId) ?? room.getLiveTimeline()).getEvents();
@@ -73,7 +72,6 @@ export const buildReportReason = (
 export const USER_REPORT_LIMIT = 1000;
 const USER_LINE_MAX = 160;
 
-// Up to `count` of the user's latest messages in the room's loaded timeline, oldest first.
 export const recentMessagesFrom = (
   room: ReportRoom,
   userId: string,

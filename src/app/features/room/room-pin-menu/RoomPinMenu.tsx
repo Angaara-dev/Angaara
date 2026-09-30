@@ -246,7 +246,6 @@ function PinnedMessage({
 type RoomPinMenuProps = {
   room: Room;
   requestClose: () => void;
-  // Plain list for the phone room info page, which scrolls it itself.
   embedded?: boolean;
 };
 export const RoomPinMenu = forwardRef<HTMLDivElement, RoomPinMenuProps>(

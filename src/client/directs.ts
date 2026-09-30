@@ -48,7 +48,6 @@ const withRoom = (map: DirectMap, roomId: string, userId?: string): DirectMap =>
   return out;
 };
 
-// Moves any plaintext m.direct entries into the vault and empties m.direct.
 export async function migrateDirectsToVault(mx: MatrixClient) {
   if (!vaultReady()) return;
   const plain = plainDirects(mx);

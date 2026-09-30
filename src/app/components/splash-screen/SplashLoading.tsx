@@ -22,7 +22,6 @@ const randomQuip = (signedIn: boolean, not?: string) => {
   return pool[Math.floor(Math.random() * pool.length)];
 };
 
-// Glowing logo plus a status line; without a label it cycles through silly lines.
 export function SplashLoading({ label, signedIn = false }: { label?: string; signedIn?: boolean }) {
   const [quip, setQuip] = useState(() => randomQuip(signedIn));
   useEffect(() => {

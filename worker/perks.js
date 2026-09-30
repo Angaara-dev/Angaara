@@ -1,7 +1,6 @@
 // Perks: signed passes for time-earned GIF profiles, the supporter badge and early access.
 // Parked, not wired into worker/index.js yet. Setup and secrets are in docs/PERKS.md.
 
-// Active days before animated banners and panel backgrounds unlock.
 export const GIF_DAYS = 30;
 // Supporting is $2/month: each payment adds a month, plus a few days' grace for late renewals.
 const SUPPORT_MS = 31 * 24 * 60 * 60 * 1000;
@@ -262,7 +261,6 @@ export async function handlePerks(request, env, url) {
     return json({ pass, days, unlockDays: GIF_DAYS }, 200, CORS);
   }
 
-  // A short-lived link into the early access site, for supporters only.
   if (url.pathname === '/api/perks/dev-link') {
     if (!env.DEV_ORIGIN) return json({ error: 'no early access site' }, 501, CORS);
     const user = await loadUser(env, sub);

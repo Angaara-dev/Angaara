@@ -12,7 +12,6 @@ const TAU = 750;
 const STOP_SPEED = 0.02;
 const SAMPLE_WINDOW = 100;
 
-// Close to 1:1 for normal flings, and it never gets past `cap` px/ms.
 export const compressSpeed = (v: number, cap: number): number => cap * Math.tanh(v / cap);
 
 const canScrollY = (el: HTMLElement, style: CSSStyleDeclaration) =>
@@ -86,7 +85,6 @@ export const installTouchScroll = (cap: number): (() => void) => {
   };
 
   const onStart = (evt: TouchEvent) => {
-    // A touch during a fling just stops it, like native scrolling.
     stoppedAt = stopFling() ? evt.timeStamp : -1;
     mode = 'ignored';
     if (evt.touches.length !== 1) return;

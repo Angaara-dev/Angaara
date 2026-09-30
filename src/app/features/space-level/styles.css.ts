@@ -20,7 +20,6 @@ export const LevelPill = style({
     '&:hover': { backgroundColor: color.SurfaceVariant.ContainerHover },
     '&:active': { backgroundColor: color.SurfaceVariant.ContainerActive },
   },
-  // Slimmer with a mouse; phones keep the bigger tap target.
   '@media': {
     '(hover: hover) and (pointer: fine)': {
       height: toRem(32),
@@ -65,7 +64,6 @@ export const Cards = style({
   scrollPadding: `0 ${config.space.S400}`,
   padding: `${config.space.S100} ${config.space.S400} ${config.space.S300}`,
   scrollbarWidth: 'none',
-  // Cards fade out at the sides instead of being cut off.
   maskImage: `linear-gradient(90deg, transparent, #000 ${toRem(16)}, #000 calc(100% - ${toRem(
     16
   )}), transparent)`,
@@ -74,7 +72,6 @@ export const Cards = style({
   )}), transparent)`,
   selectors: {
     '&::-webkit-scrollbar': { display: 'none' },
-    // Room either side for the arrow buttons.
     '&[data-arrows=true]': {
       paddingLeft: toRem(56),
       paddingRight: toRem(56),
@@ -147,7 +144,6 @@ export const ArrowButton = style({
   zIndex: 1,
 });
 
-// Maxed-out servers get a dim ember glow with sparks drifting up.
 const flicker = keyframes({
   '0%': { opacity: 0.65, transform: 'scaleX(1)' },
   '40%': { opacity: 0.9, transform: 'scaleX(1.04)' },

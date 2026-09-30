@@ -186,7 +186,6 @@ const loadRoom = async (mx: MatrixClient, room: Room) => {
 const stateEvent = (room: Room, type: string) =>
   room.currentState.getStateEvents(type, '') ?? undefined;
 
-// Moves the name and topic into the encrypted profile and blanks them on the server.
 export const enableHiddenProfile = async (mx: MatrixClient, room: Room, profile: HiddenProfile) => {
   await writeHiddenProfile(mx, room, profile);
 
@@ -204,7 +203,6 @@ export const enableHiddenProfile = async (mx: MatrixClient, room: Room, profile:
   }
 };
 
-// Puts the name and topic back in plain state for everyone, including the server.
 export const disableHiddenProfile = async (mx: MatrixClient, room: Room) => {
   const profile = getHiddenProfile(mx, room.roomId)?.profile;
   if (!profile) throw new Error("The hidden name hasn't loaded on this device yet.");
