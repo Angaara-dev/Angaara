@@ -7,7 +7,7 @@ export const XP_LEVEL_REWARDS = [
   'Animated panel background',
   'Animated profile banner',
   'Profile colours',
-  'Profile effects',
+  'More perks soon', // 'Profile effects' once they're ready
   'Full access',
 ];
 

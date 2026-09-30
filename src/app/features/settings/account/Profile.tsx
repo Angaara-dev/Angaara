@@ -35,7 +35,8 @@ import { SequenceCardStyle } from '../styles.css';
 import { SettingTile } from '../../../components/setting-tile';
 import { ProfileServerTag } from './ProfileServerTag';
 import { ProfileThemeSetting } from './ProfileThemeSetting';
-import { ProfileEffectSetting } from './ProfileEffectSetting';
+// Profile effects are off until the presets are ready.
+// import { ProfileEffectSetting } from './ProfileEffectSetting';
 import { XP_PERKS, XpPerk } from '../../../../client/xp';
 import { useXpPerk } from '../../../hooks/useXpPerk';
 import { BRAND_NAME } from '../../../brand';
@@ -744,7 +745,7 @@ export function Profile() {
         <ProfileBannerColor userId={userId} />
         <ProfilePanelBackground userId={userId} />
         <ProfileThemeSetting userId={userId} />
-        <ProfileEffectSetting userId={userId} />
+        {/* <ProfileEffectSetting userId={userId} /> */}
         <ProfileDisplayName userId={userId} profile={profile} />
         <ProfileBio userId={userId} />
         <ProfileServerTag userId={userId} />

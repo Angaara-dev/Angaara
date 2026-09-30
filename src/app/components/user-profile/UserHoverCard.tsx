@@ -30,8 +30,9 @@ import {
   useProfileTheme,
 } from '../../hooks/useProfileTheme';
 import { ThemeKind, useTheme } from '../../hooks/useTheme';
-import { useProfileEffect } from '../../hooks/useProfileEffect';
-import { ProfileEffect } from '../profile-effect';
+// Profile effects are off until the presets are ready.
+// import { useProfileEffect } from '../../hooks/useProfileEffect';
+// import { ProfileEffect } from '../profile-effect';
 
 type HoverCardContentProps = {
   room: Room;
@@ -45,7 +46,7 @@ function HoverCardContent({ room, userId, tagName, tagColor }: HoverCardContentP
   const bannerUrl = useUserBannerUrl(userId);
   const status = useUserStatus(userId);
   const profileTheme = useProfileTheme(userId);
-  const profileEffect = useProfileEffect(userId);
+  // const profileEffect = useProfileEffect(userId);
   const dark = useTheme().kind === ThemeKind.Dark;
 
   const displayName = getMemberDisplayName(room, userId) ?? getMxIdLocalPart(userId) ?? userId;
@@ -127,7 +128,7 @@ function HoverCardContent({ room, userId, tagName, tagColor }: HoverCardContentP
         )}
         <UserBio userId={userId} maxLines={3} />
       </Box>
-      {profileEffect && <ProfileEffect effect={profileEffect} />}
+      {/* {profileEffect && <ProfileEffect effect={profileEffect} />} */}
     </Box>
   );
 }
