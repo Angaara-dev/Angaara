@@ -4,41 +4,350 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Angaara Terms</title>
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href="res/svg/angaara.svg" type="image/svg+xml" />
     <style>
       :root {
-        color-scheme: dark light;
-        --bg: #0e0e10;
-        --fg: #ededed;
-        --muted: #a1a1aa;
-        --accent: #ff7a45;
-        --card: #18181b;
+        --bg: #fcf6f1;
+        --surface: #ffffff;
+        --surface-2: #f6ede6;
+        --line: #eadcd1;
+        --text: #1a1614;
+        --muted: #6b625d;
+        --accent: #e8521f;
+        --accent-soft: rgba(232, 82, 31, 0.1);
+        --good: #15803d;
+        --warn: #b45309;
+        --radius: 14px;
+        color-scheme: light;
       }
-      @media (prefers-color-scheme: light) {
-        :root {
-          --bg: #fafafa;
-          --fg: #18181b;
-          --muted: #52525b;
-          --card: #ffffff;
-        }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
       }
       body {
         margin: 0;
         background: var(--bg);
-        color: var(--fg);
-        font: 18px/1.6 system-ui, sans-serif;
+        color: var(--text);
+        font: 18px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
       }
-      main {
-        max-width: 860px;
+      a {
+        color: var(--accent);
+        text-underline-offset: 3px;
+      }
+      code {
+        font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: var(--surface-2);
+        padding: 0.1em 0.35em;
+        border-radius: 6px;
+        overflow-wrap: anywhere;
+      }
+
+      .wrap {
+        max-width: 960px;
         margin: 0 auto;
-        padding: 32px 16px 64px;
+        padding: 0 16px;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+      }
+      header .wrap {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 60px;
+        flex-wrap: wrap;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 700;
+        margin-right: auto;
+      }
+      .brand img {
+        width: 28px;
+        height: 28px;
+      }
+      .brand span {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      nav {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      nav a {
+        color: var(--muted);
+        text-decoration: none;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 15px;
+      }
+      nav a:hover {
+        color: var(--text);
+        background: var(--surface-2);
+      }
+      nav a[aria-current='page'] {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      main {
+        padding: 40px 0 56px;
+      }
+      .hero {
+        padding: 24px 0 8px;
+      }
+      .eyebrow {
+        display: inline-block;
+        color: var(--accent);
+        background: var(--accent-soft);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 4px 10px;
+        border-radius: 999px;
+        margin-bottom: 14px;
       }
       h1 {
-        margin-bottom: 0;
+        font-size: clamp(30px, 6vw, 44px);
+        line-height: 1.15;
+        margin: 0 0 14px;
+        letter-spacing: -0.02em;
       }
       h2 {
-        margin-top: 36px;
-        font-size: 1.4rem;
+        font-size: 28px;
+        line-height: 1.25;
+        margin: 44px 0 12px;
+        letter-spacing: -0.01em;
       }
+      h3 {
+        font-size: 20px;
+        margin: 0 0 6px;
+      }
+      .lead {
+        color: var(--muted);
+        font-size: 20px;
+        margin: 0;
+      }
+      p,
+      ul {
+        margin: 0 0 14px;
+      }
+      li {
+        margin-bottom: 6px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 14px;
+        margin: 28px 0 0;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+      a.card {
+        color: inherit;
+        text-decoration: none;
+        transition: border-color 0.15s, transform 0.15s;
+      }
+      a.card:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+      .card p {
+        color: var(--muted);
+        margin: 0;
+      }
+      .card .icon {
+        font-size: 22px;
+        margin-bottom: 10px;
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+        display: block;
+        overflow-x: auto;
+      }
+      .table th,
+      .table td {
+        text-align: left;
+        vertical-align: top;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        min-width: 140px;
+      }
+      .table tr:last-child td {
+        border-bottom: none;
+      }
+      .table th {
+        background: var(--surface-2);
+        font-size: 14px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .yes,
+      .no {
+        font-weight: 600;
+      }
+      .yes {
+        color: var(--good);
+      }
+      .no {
+        color: var(--warn);
+      }
+
+      .note {
+        border-left: 3px solid var(--accent);
+        background: var(--accent-soft);
+        padding: 14px 16px;
+        border-radius: 0 10px 10px 0;
+        margin: 20px 0;
+      }
+      .note p:last-child {
+        margin: 0;
+      }
+
+      .button {
+        display: inline-block;
+        background: var(--accent);
+        color: #1a0d07;
+        font-weight: 700;
+        text-decoration: none;
+        padding: 10px 16px;
+        border-radius: 10px;
+        margin: 4px 8px 4px 0;
+      }
+      .button.ghost {
+        background: var(--surface-2);
+        color: var(--text);
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 24px 0 40px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      footer .wrap {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+      footer a {
+        color: var(--muted);
+      }
+
+      @media (max-width: 640px) {
+        header {
+          position: static;
+        }
+        main {
+          padding-top: 16px;
+        }
+        .table,
+        .table tbody,
+        .table tr,
+        .table td {
+          display: block;
+          width: 100%;
+        }
+        .table tr:first-child {
+          display: none;
+        }
+        .table tr {
+          border-bottom: 1px solid var(--line);
+        }
+        .table tr:last-child {
+          border-bottom: none;
+        }
+        .table td {
+          border-bottom: none;
+          padding: 4px 16px;
+          min-width: 0;
+        }
+        .table td:first-child {
+          padding-top: 14px;
+          font-weight: 700;
+        }
+        .table td:last-child {
+          padding-bottom: 14px;
+        }
+        .table td:not(:first-child)::before {
+          content: attr(data-label);
+          display: block;
+          color: var(--muted);
+          font-size: 13px;
+          font-weight: 600;
+          margin-top: 6px;
+        }
+      }
+
+      .shots {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 260px));
+        gap: 24px;
+        align-items: start;
+        justify-content: center;
+        margin: 28px 0;
+      }
+      .shots figure {
+        margin: 0;
+      }
+      .shots img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+      }
+      .shots figcaption {
+        color: var(--muted);
+        font-size: 15px;
+        margin-top: 8px;
+      }
+      .shots.stack {
+        grid-template-columns: repeat(2, minmax(0, 260px));
+      }
+      .shots.stack figure:first-child {
+        grid-row: span 2;
+      }
+      .shots figure:only-child {
+        max-width: 300px;
+      }
+      @media (max-width: 480px) {
+        .shots {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
       .byline {
         display: flex;
         flex-direction: column;
@@ -47,12 +356,13 @@
         margin-bottom: 28px;
         color: var(--muted);
         font-size: 15px;
+        text-align: center;
       }
       .author {
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        color: var(--fg);
+        color: var(--text);
         font-size: 17px;
         font-weight: 600;
         text-decoration: none;
@@ -60,274 +370,294 @@
       .author:hover {
         color: var(--accent);
       }
-      .avatar {
+      .author .avatar {
+        flex: none;
         width: 36px;
         height: 36px;
         border-radius: 50%;
+        object-fit: cover;
       }
-      .muted {
-        color: var(--muted);
-      }
-      .key {
-        background: var(--card);
-        border-left: 4px solid var(--accent);
-        border-radius: 8px;
-        padding: 12px 16px;
-      }
-      a {
-        color: var(--accent);
+      .author svg.avatar {
+        display: block;
       }
     </style>
   </head>
   <body>
-    <main>
-      <div class="byline">
-        <a class="author" href="https://matrix.to/#/@trigodil:matrix.org" rel="author"
-          ><svg
-            class="avatar"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 512 512"
-          >
-            <rect width="512" height="512" fill="#ffe2cc" />
-            <path
-              d="M112 92 L214 190 L130 262 Z"
-              fill="#f47a3a"
-              stroke="#f47a3a"
-              stroke-width="24"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M400 92 L298 190 L382 262 Z"
-              fill="#f47a3a"
-              stroke="#f47a3a"
-              stroke-width="24"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M136 138 L192 196 L148 234 Z"
-              fill="#ffd0b5"
-              stroke="#ffd0b5"
-              stroke-width="14"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M376 138 L320 196 L364 234 Z"
-              fill="#ffd0b5"
-              stroke="#ffd0b5"
-              stroke-width="14"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M256 168 C340 168 404 214 412 280 C418 330 330 400 256 438 C182 400 94 330 100 280 C108 214 172 168 256 168 Z"
-              fill="#f47a3a"
-            />
-            <path
-              d="M104 290 C150 300 204 318 256 366 C308 318 362 300 408 290 C394 346 320 404 256 438 C192 404 118 346 104 290 Z"
-              fill="#fffaf5"
-            />
-            <path
-              d="M176 272 Q196 250 216 272"
-              fill="none"
-              stroke="#3b2418"
-              stroke-width="12"
-              stroke-linecap="round"
-            />
-            <path
-              d="M296 272 Q316 250 336 272"
-              fill="none"
-              stroke="#3b2418"
-              stroke-width="12"
-              stroke-linecap="round"
-            />
-            <ellipse cx="170" cy="312" rx="20" ry="12" fill="#ffb3a0" opacity="0.8" />
-            <ellipse cx="342" cy="312" rx="20" ry="12" fill="#ffb3a0" opacity="0.8" />
-            <path
-              d="M236 356 Q256 344 276 356 Q268 374 256 378 Q244 374 236 356 Z"
-              fill="#3b2418"
-            />
-            <path
-              d="M256 378 L256 392 M256 392 Q244 404 232 396 M256 392 Q268 404 280 396"
-              fill="none"
-              stroke="#3b2418"
-              stroke-width="7"
-              stroke-linecap="round"
-            /></svg
-          >Trigodil</a
+    <header>
+      <div class="wrap">
+        <a class="brand" href="./"
+          ><img src="res/svg/angaara.svg" alt="" /> Angaara™ <span>Terms</span></a
         >
-        <time datetime="2026-09-28">Last updated September 28, 2026</time>
+        <nav aria-label="Links">
+          <a href="./">Open Angaara</a><a href="https://security.angaara.app">Security</a>
+        </nav>
       </div>
-      <h1>Angaara™ Terms</h1>
+    </header>
+    <main>
+      <div class="wrap">
+        <section class="hero">
+          <div class="byline">
+            <a class="author" href="https://matrix.to/#/@trigodil:matrix.org" rel="author"
+              ><svg
+                class="avatar"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 512 512"
+              >
+                <rect width="512" height="512" fill="#ffe2cc" />
+                <path
+                  d="M112 92 L214 190 L130 262 Z"
+                  fill="#f47a3a"
+                  stroke="#f47a3a"
+                  stroke-width="24"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M400 92 L298 190 L382 262 Z"
+                  fill="#f47a3a"
+                  stroke="#f47a3a"
+                  stroke-width="24"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M136 138 L192 196 L148 234 Z"
+                  fill="#ffd0b5"
+                  stroke="#ffd0b5"
+                  stroke-width="14"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M376 138 L320 196 L364 234 Z"
+                  fill="#ffd0b5"
+                  stroke="#ffd0b5"
+                  stroke-width="14"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M256 168 C340 168 404 214 412 280 C418 330 330 400 256 438 C182 400 94 330 100 280 C108 214 172 168 256 168 Z"
+                  fill="#f47a3a"
+                />
+                <path
+                  d="M104 290 C150 300 204 318 256 366 C308 318 362 300 408 290 C394 346 320 404 256 438 C192 404 118 346 104 290 Z"
+                  fill="#fffaf5"
+                />
+                <path
+                  d="M176 272 Q196 250 216 272"
+                  fill="none"
+                  stroke="#3b2418"
+                  stroke-width="12"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M296 272 Q316 250 336 272"
+                  fill="none"
+                  stroke="#3b2418"
+                  stroke-width="12"
+                  stroke-linecap="round"
+                />
+                <ellipse cx="170" cy="312" rx="20" ry="12" fill="#ffb3a0" opacity="0.8" />
+                <ellipse cx="342" cy="312" rx="20" ry="12" fill="#ffb3a0" opacity="0.8" />
+                <path
+                  d="M236 356 Q256 344 276 356 Q268 374 256 378 Q244 374 236 356 Z"
+                  fill="#3b2418"
+                />
+                <path
+                  d="M256 378 L256 392 M256 392 Q244 404 232 396 M256 392 Q268 404 280 396"
+                  fill="none"
+                  stroke="#3b2418"
+                  stroke-width="7"
+                  stroke-linecap="round"
+                /></svg
+              >Trigodil</a
+            >
+            <time datetime="2026-09-28">September 28, 2026</time>
+          </div>
+          <span class="eyebrow">📜 Terms</span>
+          <h1>Angaara™ Terms</h1>
+          <p class="lead">
+            Angaara is a free, open-source app for chatting on Matrix. By using it you agree to
+            these terms. They're written in plain language on purpose.
+          </p>
+        </section>
 
-      <p>
-        Angaara is a free, open-source app for chatting on Matrix. By using it you agree to these
-        terms. They're written in plain language on purpose.
-      </p>
-
-      <h2>1. What Angaara is</h2>
-      <p>
-        Angaara is only the app. Your account, messages and files live on the Matrix
-        <b>homeserver</b> you chose when you signed up (for example matrix.org). That homeserver is
-        run by someone else, has its own terms and privacy policy, and is responsible for your
-        account. Angaara does not run homeservers and can't reset your password, restore your
-        account or remove content from them.
-      </p>
-
-      <h2>2. Encryption and recovery</h2>
-      <div class="key">
+        <h2>1. What Angaara is</h2>
         <p>
-          <b
-            >Nobody can recover your encryption keys or encrypted messages for you. Not Angaara, not
-            your homeserver, not anyone.</b
-          >
+          Angaara is only the app. Your account, messages and files live on the Matrix
+          <b>homeserver</b> you chose when you signed up (for example matrix.org). That homeserver
+          is run by someone else, has its own terms and privacy policy, and is responsible for your
+          account. Angaara does not run homeservers and can't reset your password, restore your
+          account or remove content from them.
+        </p>
+
+        <h2>2. Encryption and recovery</h2>
+        <div class="note">
+          <p>
+            <b
+              >Nobody can recover your encryption keys or encrypted messages for you. Not Angaara,
+              not your homeserver, not anyone.</b
+            >
+          </p>
+        </div>
+        <ul>
+          <li>
+            Messages in encrypted chats are locked on your device before they're sent. Only devices
+            holding the keys can read them.
+          </li>
+          <li>
+            Your keys live on your signed-in devices and, if you turn it on, in an encrypted backup
+            protected by your <b>recovery key</b> or passphrase. We never see that key.
+          </li>
+          <li>
+            If you sign out of every device and lose your recovery key, your encrypted message
+            history, and anything else Angaara keeps encrypted with it (like your friends list,
+            private DM list and scanned files list), is <b>gone for good</b>. Resetting your
+            password does not bring it back.
+          </li>
+          <li>
+            If you forget the app lock password on a device, the keys on that device can't be
+            opened. You'll need to sign out and sign back in with your recovery key.
+          </li>
+          <li>
+            Not every chat is encrypted. Public rooms usually aren't, and anyone in them (and their
+            homeservers) can read what's posted.
+          </li>
+        </ul>
+        <p>Keeping your recovery key safe is your responsibility.</p>
+
+        <h2>3. What the Angaara service stores</h2>
+        <ul>
+          <li>
+            <b>XP:</b> your Matrix user ID, your XP and your member number (the order you joined in,
+            used for the Early Ember badge and launch boosts). To count XP, the app sends the IDs
+            and send times of your own messages, never their content. You can turn this off in
+            Settings, under Account, then Experience.
+          </li>
+          <li>
+            <b>Angaara account (optional):</b> your Angaara username, the public keys of your
+            passkeys, which Matrix accounts you linked (up to 3), and whether you're a Supporter,
+            with its start and end dates. Passkeys never leave your device, and we never have a
+            password. Others can only see that you're a Supporter, not your username or your other
+            accounts.
+          </li>
+          <li>
+            <b>Supporter page:</b> opening it from the app creates a one-use ticket, kept only as a
+            hash for 60 seconds.
+          </li>
+          <li>
+            <b>Link and File Checks:</b> a hash of your Matrix user ID and how many checks you've
+            used, for the limit (20 every two months, 300 for Supporters). Never the links you
+            check. Files are scanned on your device, and only their fingerprint is looked up, on
+            MalwareBazaar and CIRCL's list of known software. Your list of scanned files is kept in
+            your Matrix account, encrypted so only you can read it.
+          </li>
+          <li>
+            <b>Crash and bug reports:</b> only what you choose to send. A bug report has its type,
+            title and description. A crash report has the error, where in the app it happened (with
+            room, user and message IDs removed) and your note, if you add one. Both also include the
+            time, the app build, and your browser's user agent (your browser, its version and your
+            operating system), but never your account, user ID or rooms. Only Angaara's developers
+            can read them, and a hash of your IP address is kept to limit how many can be sent per
+            hour.
+          </li>
+          <li>
+            <b>GitHub sign-in:</b> if you link GitHub, the sign-in passes through our server once
+            and the token is stored in your browser, not by us.
+          </li>
+          <li>
+            Everything else (settings, drafts, caches) is stored in your browser on your own device.
+          </li>
+        </ul>
+
+        <h2>4. Private mode and deleting your data</h2>
+        <ul>
+          <li>
+            <b>Private mode</b> (Settings, under Account) stops the app from contacting Angaara's
+            servers. Features that need them, like XP, turn off while it's on.
+          </li>
+          <li>
+            <b>Delete My Data</b> (in the same place) permanently deletes everything Angaara's
+            servers keep about your account, including your XP, level, member number and Early Ember
+            badge, and turns private mode on. You confirm it by typing your username and, if you
+            have an Angaara account, with your passkey. It can't be undone, and anything you earn
+            later starts from zero.
+          </li>
+          <li>
+            If you choose to delete all your data, we are not responsible for your data loss. Your
+            Matrix account and messages live on your homeserver and aren't affected.
+          </li>
+        </ul>
+
+        <h2>5. Using Angaara</h2>
+        <ul>
+          <li>Follow the law and the rules of your homeserver and the communities you join.</li>
+          <li>
+            Don't use Angaara to abuse, spam or harm others, or to attack Angaara or anyone's
+            servers.
+          </li>
+          <li>
+            We may block accounts from Angaara's own features (like XP) if they're abused or
+            cheated.
+          </li>
+          <li>You're responsible for any bots you build and run with Angaara's developer tools.</li>
+        </ul>
+
+        <h2>6. Content you see and share</h2>
+        <ul>
+          <li>
+            Angaara doesn't host, store or check the messages, images or files sent through it. They
+            travel between people's Matrix homeservers, and Angaara only shows them to you.
+          </li>
+          <li>
+            Everyone is responsible for what they send. Content belongs to its sender, and is hosted
+            by their homeserver and yours, under those homeservers' own rules.
+          </li>
+          <li>
+            Angaara isn't responsible for content other people send you, including anything
+            unwanted, offensive or illegal. Report it to the admins of the community it was posted
+            in, or to the sender's homeserver, and block the sender if you need to.
+          </li>
+          <li>
+            Community owners and moderators set and enforce their own community's rules. They aren't
+            Angaara, and Angaara doesn't moderate their communities.
+          </li>
+        </ul>
+
+        <h2>7. No warranty</h2>
+        <p>
+          Angaara is provided "as is", without warranty of any kind, and parts of it (like the phone
+          layout) are still in beta. To the fullest extent the law allows, we aren't liable for lost
+          data, lost messages or other damage from using it. Always keep your recovery key safe.
+        </p>
+
+        <h2>8. Open source</h2>
+        <p>
+          Angaara is based on <a href="https://github.com/cinnyapp/cinny">Cinny</a> and licensed
+          under the GNU Affero General Public License v3.0. That license covers the code; these
+          terms cover using the hosted app. It doesn't cover the Angaara™ name or logo, so if you
+          publish your own version, please give it its own name.
+        </p>
+
+        <h2>9. Changes</h2>
+        <p>
+          If these terms change in a meaningful way, Angaara will ask you to agree again before you
+          continue.
+        </p>
+
+        <h2>10. Contact</h2>
+        <p>
+          Questions? Find us in
+          <a href="https://matrix.to/#/#angaara:matrix.org">#angaara:matrix.org</a>.
         </p>
       </div>
-      <ul>
-        <li>
-          Messages in encrypted chats are locked on your device before they're sent. Only devices
-          holding the keys can read them.
-        </li>
-        <li>
-          Your keys live on your signed-in devices and, if you turn it on, in an encrypted backup
-          protected by your <b>recovery key</b> or passphrase. We never see that key.
-        </li>
-        <li>
-          If you sign out of every device and lose your recovery key, your encrypted message
-          history, and anything else Angaara keeps encrypted with it (like your friends list,
-          private DM list and scanned files list), is <b>gone for good</b>. Resetting your password
-          does not bring it back.
-        </li>
-        <li>
-          If you forget the app lock password on a device, the keys on that device can't be opened.
-          You'll need to sign out and sign back in with your recovery key.
-        </li>
-        <li>
-          Not every chat is encrypted. Public rooms usually aren't, and anyone in them (and their
-          homeservers) can read what's posted.
-        </li>
-      </ul>
-      <p>Keeping your recovery key safe is your responsibility.</p>
-
-      <h2>3. What the Angaara service stores</h2>
-      <ul>
-        <li>
-          <b>XP:</b> your Matrix user ID, your XP and your member number (the order you joined in,
-          used for the Early Ember badge and launch boosts). To count XP, the app sends the IDs and
-          send times of your own messages, never their content. You can turn this off in Settings,
-          under Account, then Experience.
-        </li>
-        <li>
-          <b>Angaara account (optional):</b> your Angaara username, the public keys of your
-          passkeys, which Matrix accounts you linked (up to 3), and whether you're a Supporter, with
-          its start and end dates. Passkeys never leave your device, and we never have a password.
-          Others can only see that you're a Supporter, not your username or your other accounts.
-        </li>
-        <li>
-          <b>Supporter page:</b> opening it from the app creates a one-use ticket, kept only as a
-          hash for 60 seconds.
-        </li>
-        <li>
-          <b>Link and File Checks:</b> a hash of your Matrix user ID and how many checks you've
-          used, for the limit (20 every two months, 300 for Supporters). Never the links you check.
-          Files are scanned on your device, and only their fingerprint is looked up, on
-          MalwareBazaar and CIRCL's list of known software. Your list of scanned files is kept in
-          your Matrix account, encrypted so only you can read it.
-        </li>
-        <li>
-          <b>Crash and bug reports:</b> only what you choose to send. A bug report has its type,
-          title and description. A crash report has the error, where in the app it happened (with
-          room, user and message IDs removed) and your note, if you add one. Both also include the
-          time, the app build, and your browser's user agent (your browser, its version and your
-          operating system), but never your account, user ID or rooms. Only Angaara's developers can
-          read them, and a hash of your IP address is kept to limit how many can be sent per hour.
-        </li>
-        <li>
-          <b>GitHub sign-in:</b> if you link GitHub, the sign-in passes through our server once and
-          the token is stored in your browser, not by us.
-        </li>
-        <li>
-          Everything else (settings, drafts, caches) is stored in your browser on your own device.
-        </li>
-      </ul>
-
-      <h2>4. Private mode and deleting your data</h2>
-      <ul>
-        <li>
-          <b>Private mode</b> (Settings, under Account) stops the app from contacting Angaara's
-          servers. Features that need them, like XP, turn off while it's on.
-        </li>
-        <li>
-          <b>Delete My Data</b> (in the same place) permanently deletes everything Angaara's servers
-          keep about your account, including your XP, level, member number and Early Ember badge,
-          and turns private mode on. You confirm it by typing your username and, if you have an
-          Angaara account, with your passkey. It can't be undone, and anything you earn later starts
-          from zero.
-        </li>
-        <li>
-          If you choose to delete all your data, we are not responsible for your data loss. Your
-          Matrix account and messages live on your homeserver and aren't affected.
-        </li>
-      </ul>
-
-      <h2>5. Using Angaara</h2>
-      <ul>
-        <li>Follow the law and the rules of your homeserver and the communities you join.</li>
-        <li>
-          Don't use Angaara to abuse, spam or harm others, or to attack Angaara or anyone's servers.
-        </li>
-        <li>
-          We may block accounts from Angaara's own features (like XP) if they're abused or cheated.
-        </li>
-        <li>You're responsible for any bots you build and run with Angaara's developer tools.</li>
-      </ul>
-
-      <h2>6. Content you see and share</h2>
-      <ul>
-        <li>
-          Angaara doesn't host, store or check the messages, images or files sent through it. They
-          travel between people's Matrix homeservers, and Angaara only shows them to you.
-        </li>
-        <li>
-          Everyone is responsible for what they send. Content belongs to its sender, and is hosted
-          by their homeserver and yours, under those homeservers' own rules.
-        </li>
-        <li>
-          Angaara isn't responsible for content other people send you, including anything unwanted,
-          offensive or illegal. Report it to the admins of the community it was posted in, or to the
-          sender's homeserver, and block the sender if you need to.
-        </li>
-        <li>
-          Community owners and moderators set and enforce their own community's rules. They aren't
-          Angaara, and Angaara doesn't moderate their communities.
-        </li>
-      </ul>
-
-      <h2>7. No warranty</h2>
-      <p>
-        Angaara is provided "as is", without warranty of any kind, and parts of it (like the phone
-        layout) are still in beta. To the fullest extent the law allows, we aren't liable for lost
-        data, lost messages or other damage from using it. Always keep your recovery key safe.
-      </p>
-
-      <h2>8. Open source</h2>
-      <p>
-        Angaara is based on <a href="https://github.com/cinnyapp/cinny">Cinny</a> and licensed under
-        the GNU Affero General Public License v3.0. That license covers the code; these terms cover
-        using the hosted app. It doesn't cover the Angaara™ name or logo, so if you publish your own
-        version, please give it its own name.
-      </p>
-
-      <h2>9. Changes</h2>
-      <p>
-        If these terms change in a meaningful way, Angaara will ask you to agree again before you
-        continue.
-      </p>
-
-      <h2>10. Contact</h2>
-      <p>
-        Questions? Find us in
-        <a href="https://matrix.to/#/#angaara:matrix.org">#angaara:matrix.org</a>.
-      </p>
     </main>
+    <footer>
+      <div class="wrap">
+        <span>Angaara™ is open source under AGPL-3.0, built on Matrix and Cinny.</span>
+        <span
+          ><a href="./">Open Angaara</a> · <a href="https://security.angaara.app">Security</a> ·
+          <a href="https://github.com/Angaara-dev/Angaara">Source code</a></span
+        >
+      </div>
+    </footer>
   </body>
 </html>
