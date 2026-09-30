@@ -19,6 +19,7 @@ import { General } from './general';
 import { Permissions } from './permissions';
 import { MobileSpaceSettingsHome } from './MobileSpaceSettingsHome';
 import { Roles } from './roles';
+import { AutoMod } from './automod';
 import { useSettingsAccess } from '../../hooks/useSettingsAccess';
 
 type SpaceSettingsMenuItem = {
@@ -49,6 +50,11 @@ const useSpaceSettingsMenuItems = (): SpaceSettingsMenuItem[] =>
         page: SpaceSettingsPage.PermissionsPage,
         name: 'Permissions',
         icon: Icons.Lock,
+      },
+      {
+        page: SpaceSettingsPage.AutoModPage,
+        name: 'AutoMod',
+        icon: Icons.Shield,
       },
       {
         page: SpaceSettingsPage.EmojisStickersPage,
@@ -92,7 +98,8 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
     (item) =>
       (item.page !== SpaceSettingsPage.RolesPage || access.roles) &&
       (item.page !== SpaceSettingsPage.PermissionsPage || access.permissions) &&
-      (item.page !== SpaceSettingsPage.EmojisStickersPage || access.emojis)
+      (item.page !== SpaceSettingsPage.EmojisStickersPage || access.emojis) &&
+      (item.page !== SpaceSettingsPage.AutoModPage || access.automod)
   );
 
   const handlePageRequestClose = () => {
@@ -118,7 +125,8 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
               SpaceSettingsPage.GeneralPage,
               SpaceSettingsPage.MembersPage,
               SpaceSettingsPage.RolesPage,
-              SpaceSettingsPage.PermissionsPage
+              SpaceSettingsPage.PermissionsPage,
+              SpaceSettingsPage.AutoModPage
             ),
           },
           { title: 'Customise', items: pick(SpaceSettingsPage.EmojisStickersPage) },
@@ -205,6 +213,9 @@ export function SpaceSettings({ initialPage, requestClose }: SpaceSettingsProps)
       )}
       {activePage === SpaceSettingsPage.PermissionsPage && (
         <Permissions requestClose={handlePageRequestClose} />
+      )}
+      {activePage === SpaceSettingsPage.AutoModPage && (
+        <AutoMod requestClose={handlePageRequestClose} />
       )}
       {activePage === SpaceSettingsPage.EmojisStickersPage && (
         <EmojisStickers requestClose={handlePageRequestClose} />

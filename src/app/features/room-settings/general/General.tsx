@@ -13,6 +13,7 @@ import {
   RoomPublish,
   RoomUpgrade,
   RoomCommands,
+  RoomSlowmode,
   RoomHiddenProfile,
   RoomPrivateReactions,
 } from '../../common-settings/general';
@@ -82,6 +83,12 @@ export function General({ requestClose }: GeneralProps) {
                 <Box direction="Column" gap="100">
                   <Text size="L400">Privacy</Text>
                   {privacy}
+                </Box>
+              )}
+              {can(StateEvent.AngaaraSlowmode) && (
+                <Box direction="Column" gap="100">
+                  <Text size="L400">Slowmode</Text>
+                  <RoomSlowmode permissions={permissions} />
                 </Box>
               )}
               {can(StateEvent.AngaaraDisabledCommands) && (

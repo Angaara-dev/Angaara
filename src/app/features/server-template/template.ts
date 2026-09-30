@@ -2,6 +2,7 @@ import { ICreateRoomOpts, ICreateRoomStateEvent, MatrixClient, MatrixError } fro
 import { RoomType, StateEvent } from '../../../types/matrix/room';
 import { getMxIdServer } from '../../utils/matrix';
 import type { PowerLevelTags } from '../../hooks/usePowerLevelTags';
+import { readSlowmode } from '../automod/automod';
 
 type TemplateRole = { id: number | string; name: string; color: number; permissions: string };
 type TemplateOverwrite = { id: number | string; type: number; allow: string; deny: string };
@@ -11,6 +12,7 @@ type TemplateChannel = {
   name: string;
   position: number;
   topic?: string | null;
+  rate_limit_per_user?: number;
   parent_id?: number | string | null;
   permission_overwrites?: TemplateOverwrite[];
 };
@@ -32,6 +34,7 @@ export type PlannedChannel = {
   kind: 'text' | 'voice' | 'announcement';
   private: boolean;
   readOnly: boolean;
+  slowmode: number;
 };
 export type PlannedCategory = { name?: string; channels: PlannedChannel[] };
 export type ImportPlan = {
@@ -128,6 +131,7 @@ const planChannel = (channel: TemplateChannel): PlannedChannel | undefined => {
     kind,
     private: everyoneDenies(channel, PERM.view),
     readOnly: kind === 'announcement' || everyoneDenies(channel, PERM.send),
+    slowmode: readSlowmode({ seconds: channel.rate_limit_per_user }),
   };
 };
 
@@ -255,6 +259,13 @@ export const runImport = async (
         type: 'm.room.encryption',
         state_key: '',
         content: { algorithm: 'm.megolm.v1.aes-sha2' },
+      });
+    }
+    if (channel.slowmode > 0) {
+      state.push({
+        type: StateEvent.AngaaraSlowmode,
+        state_key: '',
+        content: { seconds: channel.slowmode },
       });
     }
     const voice = channel.kind === 'voice';

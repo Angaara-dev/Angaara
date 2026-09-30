@@ -8,3 +8,4 @@ export * from './RoomUpgrade';
 export * from './RoomCommands';
 export * from './RoomHiddenProfile';
 export * from './RoomPrivateReactions';
+export * from './RoomSlowmode';

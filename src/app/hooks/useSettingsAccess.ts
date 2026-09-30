@@ -13,5 +13,6 @@ export const useSettingsAccess = (room: Room) => {
     roles,
     permissions: roles || permissions.stateEvent(StateEvent.RoomPowerLevels, me),
     emojis: permissions.stateEvent(StateEvent.PoniesRoomEmotes, me),
+    automod: permissions.stateEvent(StateEvent.AngaaraAutoMod, me),
   };
 };

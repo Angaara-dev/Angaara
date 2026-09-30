@@ -130,6 +130,15 @@ import { usePowerLevelTags } from '../../hooks/usePowerLevelTags';
 import { useComposingCheck } from '../../hooks/useComposingCheck';
 import { findMathsError } from '../../components/math';
 import { useHideActivity } from '../../hooks/useActivityStatus';
+import { getRoomPermissionsAPI } from '../../hooks/useRoomPermissions';
+import {
+  AutoModNotice,
+  checkMessage,
+  SlowmodeStatus,
+  useAutoModRules,
+  useSlowmode,
+  useSlowmodeCooldown,
+} from '../automod';
 
 interface RoomInputProps {
   editor: Editor;
@@ -180,6 +189,15 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
 
     const [uploadBoard, setUploadBoard] = useState(true);
     const [mathsError, setMathsError] = useState<string>();
+    const [blocked, setBlocked] = useState<{ message: string; preview: string }>();
+    const autoMod = useAutoModRules(room);
+    const slowmode = useSlowmode(room);
+    // Mods and admins are never held back.
+    const exempt = getRoomPermissionsAPI(creators, powerLevels).action(
+      'redact',
+      mx.getSafeUserId()
+    );
+    const cooldown = useSlowmodeCooldown(room, slowmode, exempt);
     const [selectedFiles, setSelectedFiles] = useAtom(roomIdToUploadItemsAtomFamily(draftKey));
     const uploadFamilyObserverAtom = createUploadFamilyObserverAtom(
       roomUploadAtomFamily,
@@ -342,7 +360,20 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       setMathsError(latexError);
       if (latexError) return;
 
+      // Server rules are checked before anything leaves the device; the draft stays to fix.
+      const sending = plainText !== '' || selectedFiles.length > 0;
+      if (sending && !exempt) {
+        if (cooldown.secondsLeft() > 0) return;
+        const violation = autoMod && checkMessage(autoMod, plainText);
+        if (violation) {
+          setBlocked({ message: violation.message, preview: plainText });
+          return;
+        }
+      }
+      setBlocked(undefined);
+
       uploadBoardHandlers.current?.handleSend();
+      if (selectedFiles.length > 0) cooldown.markSent();
       let msgType = MsgType.Text;
 
       if (commandName) {
@@ -426,11 +457,16 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         }
       }
       mx.sendMessage(roomId, content as any);
+      cooldown.markSent();
       resetEditor(editor);
       resetEditorHistory(editor);
       setReplyDraft(undefined);
       sendTypingStatus(false);
     }, [
+      exempt,
+      cooldown,
+      autoMod,
+      selectedFiles.length,
       mx,
       roomId,
       editor,
@@ -611,6 +647,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             requestClose={handleCloseAutocomplete}
           />
         )}
+        {cooldown.active && <SlowmodeStatus seconds={slowmode} remaining={cooldown.remaining} />}
         <CustomEditor
           editableName="RoomInput"
           editor={editor}
@@ -620,6 +657,13 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
           onPaste={handlePaste}
           top={
             <>
+              {blocked && (
+                <AutoModNotice
+                  message={blocked.message}
+                  preview={blocked.preview}
+                  onDismiss={() => setBlocked(undefined)}
+                />
+              )}
               {mathsError && (
                 <Box
                   alignItems="Center"
