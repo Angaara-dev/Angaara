@@ -3,11 +3,12 @@ import { useClientConfig } from './useClientConfig';
 import { useUserXp } from './useUserXp';
 import { EARLY_EMBER_MEMBERS } from '../../client/xp';
 
-export type BadgeId = 'founder' | 'developer' | 'staff' | 'supporter' | 'earlyEmber';
+export type BadgeId = 'founder' | 'team' | 'developer' | 'staff' | 'supporter' | 'earlyEmber';
 export type BadgeInfo = { id: BadgeId; label: string; icon: IconSrc; color: string };
 
 export const BADGES: Record<BadgeId, BadgeInfo> = {
   founder: { id: 'founder', label: 'Angaara Founder', icon: Icons.Star, color: '#FF8A3D' },
+  team: { id: 'team', label: 'Angaara Team', icon: Icons.Shield, color: '#FF6B3D' },
   developer: { id: 'developer', label: 'Developer', icon: Icons.Terminal, color: '#5EC8FF' },
   staff: { id: 'staff', label: 'Staff', icon: Icons.ShieldUser, color: '#A78BFA' },
   supporter: { id: 'supporter', label: 'Supporter', icon: Icons.Heart, color: '#F472B6' },

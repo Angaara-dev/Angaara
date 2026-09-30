@@ -2,7 +2,7 @@
   "defaultHomeserver": 1,
   "homeserverList": ["converser.eu", "matrix.org", "mozilla.org", "unredacted.org", "xmr.se"],
   "allowCustomHomeservers": true,
-  "angaaraBot": "",
+  "angaaraBot": "https://bot.angaara.app",
 
   "featuredCommunities": {
     "openAsDefault": false,
@@ -65,7 +65,8 @@
   },
 
   "badges": {
-    "@trigodil:matrix.org": ["founder", "developer"]
+    "@trigodil:matrix.org": ["founder", "developer"],
+    "@angaara-automod:matrix.org": ["team"]
   },
 
   "fullAccessSpaces": [],
