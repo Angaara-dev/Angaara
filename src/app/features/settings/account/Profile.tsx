@@ -416,8 +416,8 @@ function ProfileImage({
       </Box>
       {!gifUnlocked && (
         <Text size="T200" style={{ color: color.Critical.Main }}>
-          You can add a GIF here, but other people using {BRAND_NAME} won&apos;t see it animate
-          until you reach the required level ({XP_PERKS[gifPerk].toLocaleString()} XP).
+          You can add a GIF here, but {BRAND_NAME} shows your plain banner colour instead until you
+          reach the required level ({XP_PERKS[gifPerk].toLocaleString()} XP).
         </Text>
       )}
       {error && (
@@ -436,7 +436,7 @@ function ProfileBanner({ userId }: { userId: string }) {
       title="Banner"
       description={`Shown at the top of your profile. Best at ${cropSizeLabel(
         PROFILE_BANNER_CROP
-      )}. GIFs animate at ${XP_PERKS.bannerGif.toLocaleString()} XP, up to ${MAX_BANNER_LABEL}.`}
+      )}. GIFs show at ${XP_PERKS.bannerGif.toLocaleString()} XP, up to ${MAX_BANNER_LABEL}.`}
       imageUrl={useUserBannerUrl(userId)}
       profileKey={BANNER_PROFILE_KEY}
       clearKeys={BANNER_CLEAR_KEYS}
@@ -524,7 +524,7 @@ function ProfilePanelBackground({ userId }: { userId: string }) {
       title="Panel Background"
       description={`Behind your name at the bottom of the sidebar. Best at ${cropSizeLabel(
         PANEL_BG_CROP
-      )}. GIFs animate at ${XP_PERKS.panelGif.toLocaleString()} XP.`}
+      )}. GIFs show at ${XP_PERKS.panelGif.toLocaleString()} XP.`}
       imageUrl={useUserPanelBgUrl(userId)}
       profileKey={PANEL_BG_PROFILE_KEY}
       clearKeys={LEGACY_PANEL_BG_KEYS}

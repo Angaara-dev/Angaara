@@ -42,7 +42,7 @@ export type SpaceLevel = {
   granted?: boolean;
 };
 
-// Set from config.json at startup: listed spaces, and spaces founders created, skip levelling.
+// Set from config.json at startup: listed spaces, and spaces founders or the team created, skip levelling.
 let grantedSpaces = new Set<string>();
 let founders = new Set<string>();
 export const setGrantedSpaces = (spaces: string[] = [], founderIds: string[] = []) => {

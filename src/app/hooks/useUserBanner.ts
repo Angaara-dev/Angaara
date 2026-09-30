@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MatrixClient } from 'matrix-js-sdk';
 import { useMatrixClient } from './useMatrixClient';
@@ -5,6 +6,8 @@ import { useMediaAuthentication } from './useMediaAuthentication';
 import { mxcUrlToHttp } from '../utils/matrix';
 import { useStillImage } from './useStillImage';
 import { useXpPerk } from './useXpPerk';
+import { XpPerk } from '../../client/xp';
+import { isAnimatedImage } from '../utils/isAnimatedImage';
 
 // MSC4427 profile banners: write the unstable key until m.banner_url is in the spec.
 export const BANNER_PROFILE_KEY = 'chat.commet.profile_banner';
@@ -73,18 +76,48 @@ export const useProfileImageUrl = (
   return mxc ? mxcUrlToHttp(mx, mxc, useAuthentication) ?? undefined : undefined;
 };
 
-// GIFs stay on their first frame until the owner earns the XP for them.
-// XP is only looked up for people who actually have an image, not for every member row.
-export const useUserBannerUrl = (userId: string): string | undefined => {
-  const url = useProfileImageUrl(userId, BANNER_READ_KEYS);
-  return useStillImage(url, !useXpPerk(userId, 'bannerGif', !!url));
+const useAnimated = (url: string | undefined): boolean | undefined => {
+  const [known, setKnown] = useState<{ url: string; animated?: boolean }>();
+  useEffect(() => {
+    if (!url) return undefined;
+    let alive = true;
+    isAnimatedImage(url).then((animated) => {
+      if (alive) setKnown({ url, animated });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [url]);
+  return url && known?.url === url ? known.animated : undefined;
 };
 
-// Pass enabled=false to skip fetching, e.g. for member rows that scrolled past.
-export const useUserPanelBgUrl = (userId: string, enabled = true): string | undefined => {
-  const url = useProfileImageUrl(userId, [PANEL_BG_PROFILE_KEY, ...LEGACY_PANEL_BG_KEYS], enabled);
-  return useStillImage(url, !useXpPerk(userId, 'panelGif', enabled && !!url));
+// Animated images only show once their owner has the XP; until then the plain banner colour does.
+// Unlocked ones load straight from the file, since server thumbnails of GIFs are re-encoded badly.
+const useXpImage = (
+  userId: string,
+  url: string | undefined,
+  perk: XpPerk,
+  enabled: boolean
+): string | undefined => {
+  const unlocked = useXpPerk(userId, perk, enabled && !!url);
+  const animated = useAnimated(enabled ? url : undefined);
+  const still = useStillImage(animated === false ? url : undefined, false);
+  if (animated === false) return still;
+  return animated && unlocked ? url : undefined;
 };
+
+// XP is only looked up for people who actually have an image, not for every member row.
+export const useUserBannerUrl = (userId: string): string | undefined =>
+  useXpImage(userId, useProfileImageUrl(userId, BANNER_READ_KEYS), 'bannerGif', true);
+
+// Pass enabled=false to skip fetching, e.g. for member rows that scrolled past.
+export const useUserPanelBgUrl = (userId: string, enabled = true): string | undefined =>
+  useXpImage(
+    userId,
+    useProfileImageUrl(userId, [PANEL_BG_PROFILE_KEY, ...LEGACY_PANEL_BG_KEYS], enabled),
+    'panelGif',
+    enabled
+  );
 
 // First non-empty string among the keys, so a new key wins over its legacy one.
 export const readProfileString = (

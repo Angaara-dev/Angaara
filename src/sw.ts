@@ -171,7 +171,15 @@ self.addEventListener('fetch', (event: FetchEvent) => {
   const session = sessions.get(clientId);
   if (session) {
     if (validMediaRequest(url, session.baseUrl)) {
-      event.respondWith(cachedMediaFetch(event, url, session.accessToken));
+      const range = event.request.headers.get('Range');
+      // Partial reads skip the cache, so peeking at a file's header doesn't download all of it.
+      event.respondWith(
+        range
+          ? fetch(url, {
+              headers: { Authorization: `Bearer ${session.accessToken}`, Range: range },
+            })
+          : cachedMediaFetch(event, url, session.accessToken)
+      );
     }
     return;
   }

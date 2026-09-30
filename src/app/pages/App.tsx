@@ -43,7 +43,7 @@ function App() {
                     setGrantedSpaces(
                       clientConfig.fullAccessSpaces,
                       Object.keys(clientConfig.badges ?? {}).filter((id) =>
-                        clientConfig.badges?.[id].includes('founder')
+                        ['founder', 'team'].some((b) => clientConfig.badges?.[id].includes(b))
                       )
                     );
                     return (
