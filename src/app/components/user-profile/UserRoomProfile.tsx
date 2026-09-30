@@ -25,6 +25,8 @@ import {
   useProfileTheme,
 } from '../../hooks/useProfileTheme';
 import { ThemeKind, useTheme } from '../../hooks/useTheme';
+import { useProfileEffect } from '../../hooks/useProfileEffect';
+import { ProfileEffect } from '../profile-effect';
 import { themeStop } from '../../utils/accent';
 import { UserInviteAlert, UserBanAlert, UserModeration, UserKickAlert } from './UserModeration';
 import { useIgnoredUsers } from '../../hooks/useIgnoredUsers';
@@ -84,6 +86,7 @@ export function UserRoomProfile({ userId, onViewFull }: UserRoomProfileProps) {
   const activity = useActivityStatus(userId);
   const status = useUserStatus(userId);
   const profileTheme = useProfileTheme(userId);
+  const profileEffect = useProfileEffect(userId);
   const dark = useTheme().kind === ThemeKind.Dark;
 
   const setUserSettingsPage = useSetAtom(userSettingsPageAtom);
@@ -117,13 +120,14 @@ export function UserRoomProfile({ userId, onViewFull }: UserRoomProfileProps) {
   return (
     <Box
       direction="Column"
-      style={
-        profileTheme && {
+      style={{
+        position: 'relative',
+        ...(profileTheme && {
           ...profileThemeVars(profileTheme, dark),
           background: profileThemeBackground(profileTheme, dark),
           ['--angaara-profile-ring' as string]: themeStop(profileTheme.top, dark),
-        }
-      }
+        }),
+      }}
     >
       <UserHero
         userId={userId}
@@ -274,6 +278,7 @@ export function UserRoomProfile({ userId, onViewFull }: UserRoomProfileProps) {
           </>
         )}
       </Box>
+      {profileEffect && <ProfileEffect effect={profileEffect} />}
     </Box>
   );
 }

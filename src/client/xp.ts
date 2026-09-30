@@ -7,7 +7,7 @@ export const XP_LEVEL_REWARDS = [
   'Animated panel background',
   'Animated profile banner',
   'Profile colours',
-  'More perks soon',
+  'Profile effects',
   'Full access',
 ];
 
@@ -15,6 +15,7 @@ export const XP_PERKS = {
   panelGif: XP_LEVELS[0],
   bannerGif: XP_LEVELS[1],
   profileTheme: XP_LEVELS[2],
+  profileEffect: XP_LEVELS[3],
 };
 export type XpPerk = keyof typeof XP_PERKS;
 export const xpLevel = (xp: number) => XP_LEVELS.filter((need) => xp >= need).length;

@@ -470,7 +470,7 @@
                 /></svg
               >Trigodil</a
             >
-            <time datetime="2026-09-28">September 28, 2026</time>
+            <time datetime="2026-09-30">September 30, 2026</time>
           </div>
           <span class="eyebrow">📜 Terms</span>
           <h1>Angaara™ Terms</h1>
@@ -493,8 +493,8 @@
         <div class="note">
           <p>
             <b
-              >Nobody can recover your encryption keys or encrypted messages for you. Not Angaara,
-              not your homeserver, not anyone.</b
+              >Nobody can recover your encryption keys or encrypted messages for you. That includes
+              Angaara and your homeserver.</b
             >
           </p>
         </div>
@@ -528,16 +528,15 @@
         <ul>
           <li>
             <b>XP:</b> your Matrix user ID, your XP and your member number (the order you joined in,
-            used for the Early Ember badge and launch boosts). To count XP, the app sends the IDs
-            and send times of your own messages, never their content. You can turn this off in
-            Settings, under Account, then Experience.
+            used for the Early Ember badge and launch boosts). To count XP, the app sends only the
+            IDs and send times of your own messages. You can turn this off in Settings, under
+            Account, then Experience.
           </li>
           <li>
             <b>Angaara account (optional):</b> your Angaara username, the public keys of your
             passkeys, which Matrix accounts you linked (up to 3), and whether you're a Supporter,
             with its start and end dates. Passkeys never leave your device, and we never have a
-            password. Others can only see that you're a Supporter, not your username or your other
-            accounts.
+            password. Others can only see that you're a Supporter.
           </li>
           <li>
             <b>Supporter page:</b> opening it from the app creates a one-use ticket, kept only as a
@@ -545,23 +544,23 @@
           </li>
           <li>
             <b>Link and File Checks:</b> a hash of your Matrix user ID and how many checks you've
-            used, for the limit (20 every two months, 300 for Supporters). Never the links you
-            check. Files are scanned on your device, and only their fingerprint is looked up, on
-            MalwareBazaar and CIRCL's list of known software. Your list of scanned files is kept in
-            your Matrix account, encrypted so only you can read it.
+            used, for the limit (20 every two months, 300 for Supporters). The links you check
+            aren't stored. Files are scanned on your device, and only their fingerprint is looked
+            up, on MalwareBazaar and CIRCL's list of known software. Your list of scanned files is
+            kept in your Matrix account, encrypted so only you can read it.
           </li>
           <li>
             <b>Crash and bug reports:</b> only what you choose to send. A bug report has its type,
             title and description. A crash report has the error, where in the app it happened (with
             room, user and message IDs removed) and your note, if you add one. Both also include the
             time, the app build, and your browser's user agent (your browser, its version and your
-            operating system), but never your account, user ID or rooms. Only Angaara's developers
-            can read them, and a hash of your IP address is kept to limit how many can be sent per
-            hour.
+            operating system). They don't include your account, user ID or rooms. Only Angaara's
+            developers can read them, and a hash of your IP address is kept to limit how many can be
+            sent per hour.
           </li>
           <li>
             <b>GitHub sign-in:</b> if you link GitHub, the sign-in passes through our server once
-            and the token is stored in your browser, not by us.
+            and the token is stored in your browser.
           </li>
           <li>
             Everything else (settings, drafts, caches) is stored in your browser on your own device.
