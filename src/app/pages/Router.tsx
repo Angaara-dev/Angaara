@@ -8,6 +8,7 @@ import {
   redirect,
 } from 'react-router-dom';
 
+import { NavProgress } from '../components/nav-progress';
 import { ClientConfig } from '../hooks/useClientConfig';
 import { AuthLayout, Login, Register, ResetPassword } from './auth';
 import {
@@ -86,7 +87,15 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
   const mobile = screenSize === ScreenSize.Mobile;
 
   const routes = createRoutesFromElements(
-    <Route errorElement={<RouteCrashScreen />}>
+    <Route
+      errorElement={<RouteCrashScreen />}
+      element={
+        <>
+          <NavProgress />
+          <Outlet />
+        </>
+      }
+    >
       <Route
         index
         loader={() => {

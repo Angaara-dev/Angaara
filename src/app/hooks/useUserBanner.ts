@@ -74,15 +74,17 @@ export const useProfileImageUrl = (
 };
 
 // GIFs stay on their first frame until the owner earns the XP for them.
-export const useUserBannerUrl = (userId: string): string | undefined =>
-  useStillImage(useProfileImageUrl(userId, BANNER_READ_KEYS), !useXpPerk(userId, 'bannerGif'));
+// XP is only looked up for people who actually have an image, not for every member row.
+export const useUserBannerUrl = (userId: string): string | undefined => {
+  const url = useProfileImageUrl(userId, BANNER_READ_KEYS);
+  return useStillImage(url, !useXpPerk(userId, 'bannerGif', !!url));
+};
 
 // Pass enabled=false to skip fetching, e.g. for member rows that scrolled past.
-export const useUserPanelBgUrl = (userId: string, enabled = true): string | undefined =>
-  useStillImage(
-    useProfileImageUrl(userId, [PANEL_BG_PROFILE_KEY, ...LEGACY_PANEL_BG_KEYS], enabled),
-    !useXpPerk(userId, 'panelGif', enabled)
-  );
+export const useUserPanelBgUrl = (userId: string, enabled = true): string | undefined => {
+  const url = useProfileImageUrl(userId, [PANEL_BG_PROFILE_KEY, ...LEGACY_PANEL_BG_KEYS], enabled);
+  return useStillImage(url, !useXpPerk(userId, 'panelGif', enabled && !!url));
+};
 
 // First non-empty string among the keys, so a new key wins over its legacy one.
 export const readProfileString = (

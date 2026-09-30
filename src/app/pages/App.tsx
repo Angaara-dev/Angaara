@@ -50,7 +50,10 @@ function App() {
                       <ClientConfigProvider value={clientConfig}>
                         <QueryClientProvider client={queryClient}>
                           <JotaiProvider>
-                            <RouterProvider router={createRouter(clientConfig, screenSize)} />
+                            <RouterProvider
+                              router={createRouter(clientConfig, screenSize)}
+                              future={{ v7_startTransition: true }}
+                            />
                           </JotaiProvider>
                           <ReactQueryDevtools initialIsOpen={false} />
                         </QueryClientProvider>

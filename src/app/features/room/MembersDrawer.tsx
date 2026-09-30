@@ -2,6 +2,7 @@ import React, {
   ChangeEventHandler,
   MouseEventHandler,
   ReactNode,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -157,7 +158,8 @@ function MemberItem({
   // Only fetch statuses for rows that stay on screen, so fast scrolling doesn't flood the server.
   const [settled, setSettled] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setSettled(true), 300);
+    // A transition, so a screenful of rows filling in doesn't freeze the app.
+    const timer = setTimeout(() => startTransition(() => setSettled(true)), 300);
     return () => clearTimeout(timer);
   }, []);
   const status = useUserStatus(member.userId, settled);
