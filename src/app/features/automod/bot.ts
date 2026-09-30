@@ -5,10 +5,27 @@ import { isPrivateMode, PRIVATE_MODE_MESSAGE } from '../../utils/privateMode';
 
 const trim = (url: string) => url.replace(/\/+$/, '');
 
-export const getBotUserId = async (botUrl: string): Promise<string | undefined> => {
-  const res = await fetch(`${trim(botUrl)}/api/status`).catch(() => undefined);
+const botIds = new Map<string, string>();
+
+// The bot only answers signed-in Matrix users, so strangers opening its URL get a 403.
+export const getBotUserId = async (
+  mx: MatrixClient,
+  botUrl: string
+): Promise<string | undefined> => {
+  if (isPrivateMode()) return undefined;
+  const cached = botIds.get(botUrl);
+  if (cached) return cached;
+  const openid = await mx.getOpenIdToken().catch(() => undefined);
+  if (!openid) return undefined;
+  const res = await fetch(`${trim(botUrl)}/api/status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ openid }),
+  }).catch(() => undefined);
   const data = await res?.json().catch(() => undefined);
-  return typeof data?.bot === 'string' ? data.bot : undefined;
+  if (typeof data?.bot !== 'string') return undefined;
+  botIds.set(botUrl, data.bot);
+  return data.bot;
 };
 
 export const serverRooms = (mx: MatrixClient, space: Room): Room[] => {
@@ -48,7 +65,7 @@ export const enableBot = async (
   roomToParents: RoomToParents
 ): Promise<BotResult> => {
   if (isPrivateMode()) throw new Error(PRIVATE_MODE_MESSAGE);
-  const botId = await getBotUserId(botUrl);
+  const botId = await getBotUserId(mx, botUrl);
   if (!botId) throw new Error("The Angaara Bot isn't reachable right now.");
   const rooms = serverRooms(mx, space);
   const me = mx.getSafeUserId();

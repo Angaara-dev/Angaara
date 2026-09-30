@@ -89,8 +89,8 @@ function BotSetting({ enabled, canEdit }: { enabled: boolean; canEdit: boolean }
   const roomToParents = useAtomValue(roomToParentsAtom);
   const [botId, setBotId] = useState<string>();
   useEffect(() => {
-    if (botUrl) getBotUserId(botUrl).then(setBotId);
-  }, [botUrl]);
+    if (botUrl) getBotUserId(mx, botUrl).then(setBotId);
+  }, [mx, botUrl]);
 
   const rooms = serverRooms(mx, room);
   const watching = botId
