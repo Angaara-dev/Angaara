@@ -28,7 +28,6 @@ const merge = (all: AutoModRules[]): AutoModRules | undefined => {
   };
 };
 
-// Rules set on this channel's server (or any space above it). Undefined outside servers.
 export const useAutoModRules = (room: Room): AutoModRules | undefined => {
   const roomToParents = useAtomValue(roomToParentsAtom);
   const [updateCount, forceUpdate] = useForceUpdate();

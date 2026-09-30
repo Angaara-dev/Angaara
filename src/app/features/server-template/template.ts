@@ -166,7 +166,6 @@ export const planImport = (template: ServerTemplate): ImportPlan => {
   };
 };
 
-// Waits out the homeserver's rate limit instead of failing halfway through.
 const withRetry = async <T>(action: () => Promise<T>, onWait: (ms: number) => void): Promise<T> => {
   for (let attempt = 0; ; attempt += 1) {
     try {
@@ -286,7 +285,6 @@ export const runImport = async (
   };
 
   let order = 0;
-  // Categories run in order so the channel list matches the original.
   // eslint-disable-next-line no-restricted-syntax
   for (const category of plan.categories) {
     let parentId = spaceId;

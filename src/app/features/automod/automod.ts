@@ -44,7 +44,6 @@ const listRule = (v: unknown, fallback: string, clean: (s: string) => string) =>
   };
 };
 
-// State content is written by admins but read by everyone, so it's never trusted as-is.
 export const readAutoMod = (content: unknown): AutoModRules => {
   const c = (content && typeof content === 'object' ? content : {}) as Record<string, unknown>;
   const inv = (c.invites && typeof c.invites === 'object' ? c.invites : {}) as Record<
@@ -69,7 +68,6 @@ export const readSlowmode = (content: unknown): number => {
     : 0;
 };
 
-// Folds look-alike letters and digits so "b4dw0rd" still matches "badword".
 const fold = (text: string) =>
   text
     .normalize('NFKD')

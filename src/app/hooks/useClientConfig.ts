@@ -25,6 +25,8 @@ export type ClientConfig = {
     interests?: { id: string; label: string; emoji: string; rooms: string[] }[];
   };
 
+  // Where the Angaara Bot Worker runs, for AutoMod on every app. Empty turns it off.
+  angaaraBot?: string;
   // Profile badges by user ID, e.g. { "@you:matrix.org": ["developer"] }.
   badges?: Record<string, string[]>;
   // Space IDs or aliases given every server level perk, on top of spaces founders created.

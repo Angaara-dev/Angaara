@@ -2,7 +2,6 @@ import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'rea
 import {
   Box,
   Button,
-  Chip,
   color,
   config,
   Icon,
@@ -15,6 +14,7 @@ import {
   Text,
   TextArea,
 } from 'folds';
+import { useAtomValue } from 'jotai';
 import { Page, PageContent, PageHeader } from '../../../components/page';
 import { SequenceCard } from '../../../components/sequence-card';
 import { SettingTile } from '../../../components/setting-tile';
@@ -27,7 +27,17 @@ import { useRoomCreators } from '../../../hooks/useRoomCreators';
 import { useRoomPermissions } from '../../../hooks/useRoomPermissions';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { StateEvent } from '../../../../types/matrix/room';
-import { AutoModRules, MAX_LIST, readAutoMod } from '../../automod';
+import {
+  AutoModRules,
+  disableBot,
+  enableBot,
+  getBotUserId,
+  MAX_LIST,
+  readAutoMod,
+  serverRooms,
+} from '../../automod';
+import { useClientConfig } from '../../../hooks/useClientConfig';
+import { roomToParentsAtom } from '../../../state/room/roomToParents';
 
 const toText = (list: string[]) => list.join('\n');
 const fromText = (text: string) =>
@@ -69,6 +79,121 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <Text size="L400">{label}</Text>
       {children}
     </Box>
+  );
+}
+
+function BotSetting({ enabled, canEdit }: { enabled: boolean; canEdit: boolean }) {
+  const mx = useMatrixClient();
+  const room = useRoom();
+  const botUrl = useClientConfig().angaaraBot;
+  const roomToParents = useAtomValue(roomToParentsAtom);
+  const [botId, setBotId] = useState<string>();
+  useEffect(() => {
+    if (botUrl) getBotUserId(botUrl).then(setBotId);
+  }, [botUrl]);
+
+  const rooms = serverRooms(mx, room);
+  const watching = botId
+    ? rooms.filter((r) => r.getMember(botId)?.membership === 'join').length
+    : 0;
+
+  const [state, run] = useAsyncCallback(
+    useCallback(
+      async (on: boolean) => {
+        if (!botUrl) return undefined;
+        const content = room.currentState
+          .getStateEvents(StateEvent.AngaaraAutoMod, '')
+          ?.getContent();
+        if (on) {
+          const result = await enableBot(mx, botUrl, room, roomToParents);
+          await mx.sendStateEvent(
+            room.roomId,
+            StateEvent.AngaaraAutoMod as never,
+            {
+              ...readAutoMod(content),
+              bot: true,
+            } as never
+          );
+          return result.failed.length;
+        }
+        await disableBot(mx, botUrl, room);
+        await mx.sendStateEvent(
+          room.roomId,
+          StateEvent.AngaaraAutoMod as never,
+          {
+            ...readAutoMod(content),
+            bot: false,
+          } as never
+        );
+        return 0;
+      },
+      [mx, botUrl, room, roomToParents]
+    )
+  );
+  const busy = state.status === AsyncStatus.Loading;
+
+  let status = '';
+  if (!botUrl) status = "This copy of Angaara hasn't set up the Angaara Bot.";
+  else if (enabled) status = `Watching ${watching} of ${rooms.length} channels and categories.`;
+
+  return (
+    <SequenceCard
+      className={SequenceCardStyle}
+      variant="SurfaceVariant"
+      direction="Column"
+      gap="300"
+    >
+      <SettingTile
+        title="Enforce for Every App"
+        description="AutoMod runs inside Angaara, so someone on another Matrix app could skip it. The Angaara Bot joins your server and removes messages that break the rules from any app: slowmode in every channel, and word, link and invite rules in unencrypted channels. It gets moderator power in each channel but only ever uses it to remove messages, and it can't read encrypted ones."
+        after={
+          busy ? (
+            <Spinner variant="Secondary" />
+          ) : (
+            <Switch
+              variant="Primary"
+              value={enabled}
+              onChange={(on: boolean) => run(on)}
+              disabled={!canEdit || !botUrl}
+            />
+          )
+        }
+      />
+      {status && (
+        <Text size="T200" priority="300">
+          {status}
+        </Text>
+      )}
+      {enabled && botUrl && canEdit && (
+        <Box direction="Column" gap="100">
+          <Text size="T200" priority="300">
+            Added channels since turning it on? Add the bot to them too.
+          </Text>
+          <Box>
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              radii="300"
+              disabled={busy}
+              onClick={() => run(true)}
+            >
+              <Text size="B300">Add Bot to New Channels</Text>
+            </Button>
+          </Box>
+        </Box>
+      )}
+      {state.status === AsyncStatus.Success && !!state.data && (
+        <Text size="T200" style={{ color: color.Warning.Main }}>
+          The bot couldn&apos;t join {state.data} of them. Check it was invited and try again.
+        </Text>
+      )}
+      {state.status === AsyncStatus.Error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {(state.error as { message?: string }).message}
+        </Text>
+      )}
+    </SequenceCard>
   );
 }
 
@@ -234,21 +359,7 @@ export function AutoMod({ requestClose }: { requestClose: () => void }) {
 
               <Box direction="Column" gap="100">
                 <Text size="L400">Angaara Bot</Text>
-                <SequenceCard
-                  className={SequenceCardStyle}
-                  variant="SurfaceVariant"
-                  direction="Column"
-                >
-                  <SettingTile
-                    title="Enforce for Every App"
-                    description="AutoMod runs inside Angaara, so someone on another Matrix app could skip it. The Angaara Bot joins your server and removes messages that break the rules from any app: slowmode in every channel, and word, link and invite rules in unencrypted channels. It can't read encrypted messages and has no other powers."
-                    after={
-                      <Chip variant="Secondary" radii="Pill" outlined>
-                        <Text size="L400">Coming Soon</Text>
-                      </Chip>
-                    }
-                  />
-                </SequenceCard>
+                <BotSetting enabled={saved.bot} canEdit={canEdit} />
               </Box>
 
               {canEdit && (

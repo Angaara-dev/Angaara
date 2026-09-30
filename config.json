@@ -2,6 +2,7 @@
   "defaultHomeserver": 1,
   "homeserverList": ["converser.eu", "matrix.org", "mozilla.org", "unredacted.org", "xmr.se"],
   "allowCustomHomeservers": true,
+  "angaaraBot": "",
 
   "featuredCommunities": {
     "openAsDefault": false,

@@ -1,7 +1,6 @@
 import { keyframes, style } from '@vanilla-extract/css';
 import { color, toRem } from 'folds';
 
-// Fades in after a moment, so quick switches never flash it.
 const appear = keyframes({
   from: { opacity: 0 },
   to: { opacity: 1 },

@@ -192,7 +192,6 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     const [blocked, setBlocked] = useState<{ message: string; preview: string }>();
     const autoMod = useAutoModRules(room);
     const slowmode = useSlowmode(room);
-    // Mods and admins are never held back.
     const exempt = getRoomPermissionsAPI(creators, powerLevels).action(
       'redact',
       mx.getSafeUserId()
@@ -360,7 +359,6 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       setMathsError(latexError);
       if (latexError) return;
 
-      // Server rules are checked before anything leaves the device; the draft stays to fix.
       const sending = plainText !== '' || selectedFiles.length > 0;
       if (sending && !exempt) {
         if (cooldown.secondsLeft() > 0) return;

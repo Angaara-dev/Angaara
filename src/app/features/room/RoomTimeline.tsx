@@ -138,6 +138,7 @@ import { sendReaction } from '../../../client/privateReactions';
 import { useSwipeToReply } from '../../hooks/useSwipeToReply';
 import { usePhone } from '../../hooks/useScreenSize';
 import { useHideActivity } from '../../hooks/useActivityStatus';
+import { AutoModRemovedNotice, isRemovalDismissed, readAutoModRemoval } from '../automod';
 
 const TimelineFloat = as<'div', css.TimelineFloatVariants>(
   ({ position, className, ...props }, ref) => (
@@ -446,6 +447,15 @@ const getRoomUnreadInfo = (room: Room, scrollTo = false) => {
     scrollTo,
   };
 };
+
+function RedactedOrRemoved({ mEvent, mine }: { mEvent: MatrixEvent; mine: boolean }) {
+  const removal = readAutoModRemoval(mEvent);
+  const eventId = mEvent.getId();
+  if (mine && removal && eventId) {
+    return <AutoModRemovedNotice eventId={eventId} message={removal.message} />;
+  }
+  return <RedactedContent reason={mEvent.getUnsigned().redacted_because?.content.reason} />;
+}
 
 export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimelineProps) {
   const mx = useMatrixClient();
@@ -1195,7 +1205,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             dateFormatString={dateFormatString}
           >
             {mEvent.isRedacted() ? (
-              <RedactedContent reason={mEvent.getUnsigned().redacted_because?.content.reason} />
+              <RedactedOrRemoved mEvent={mEvent} mine={mEvent.getSender() === mx.getUserId()} />
             ) : (
               <RenderMessageContent
                 displayName={senderDisplayName}
@@ -1399,7 +1409,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             dateFormatString={dateFormatString}
           >
             {mEvent.isRedacted() ? (
-              <RedactedContent reason={mEvent.getUnsigned().redacted_because?.content.reason} />
+              <RedactedOrRemoved mEvent={mEvent} mine={mEvent.getSender() === mx.getUserId()} />
             ) : (
               <MSticker
                 content={mEvent.getContent()}
@@ -1757,7 +1767,11 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     if (eventSender && ignoredUsersSet.has(eventSender)) {
       return null;
     }
-    if (mEvent.isRedacted() && !showHiddenEvents) {
+    const ownRemoval =
+      eventSender === mx.getUserId() &&
+      !!readAutoModRemoval(mEvent) &&
+      !isRemovalDismissed(mEventId);
+    if (mEvent.isRedacted() && !showHiddenEvents && !ownRemoval) {
       return null;
     }
 

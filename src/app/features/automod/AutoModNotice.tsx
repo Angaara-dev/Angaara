@@ -64,7 +64,6 @@ export function AutoModNotice({ message, preview, onDismiss }: AutoModNoticeProp
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-// Right-aligned like a stopwatch: the countdown while waiting, just the icon otherwise.
 export function SlowmodeStatus({ seconds, remaining }: { seconds: number; remaining: number }) {
   const label =
     remaining > 0
