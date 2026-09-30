@@ -13,6 +13,7 @@ import {
 import { parseProfileTheme, PROFILE_THEME_KEY } from '../../../hooks/useProfileTheme';
 import { useXpPerk } from '../../../hooks/useXpPerk';
 import { XP_PERKS } from '../../../../client/xp';
+import { describeError } from '../../../utils/describeError';
 
 const DEFAULT_TOP = '#000000';
 const DEFAULT_BOTTOM = '#662a00';
@@ -49,7 +50,7 @@ export function ProfileThemeSetting({ userId }: { userId: string }) {
   const hasChanges = !saved || top !== savedTop || bottom !== savedBottom;
   const run = (value?: string) => {
     setError(undefined);
-    save(value).catch(() => setError("Couldn't save your profile colours."));
+    save(value).catch((e) => setError(describeError(e, "Couldn't save your profile colours.")));
   };
 
   return (

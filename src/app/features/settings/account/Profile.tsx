@@ -45,6 +45,7 @@ import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
 import { UserAvatar } from '../../../components/user-avatar';
 import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { nameInitials } from '../../../utils/common';
+import { describeError, tooBigMessage } from '../../../utils/describeError';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useFilePicker } from '../../../hooks/useFilePicker';
 import { useObjectURL } from '../../../hooks/useObjectURL';
@@ -94,6 +95,7 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
   const useAuthentication = useMediaAuthentication();
   const capabilities = useCapabilities();
   const [alertRemove, setAlertRemove] = useState(false);
+  const [avatarError, setAvatarError] = useState<string>();
   const disableSetAvatar = capabilities['m.set_avatar_url']?.enabled === false;
 
   const defaultDisplayName = profile.displayName ?? getMxIdLocalPart(userId) ?? userId;
@@ -118,14 +120,20 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
   const handleUploaded = useCallback(
     (upload: UploadSuccess) => {
       const { mxc } = upload;
-      mx.setAvatarUrl(mxc);
+      setAvatarError(undefined);
+      mx.setAvatarUrl(mxc).catch((e: unknown) =>
+        setAvatarError(describeError(e, "Couldn't set your avatar."))
+      );
       handleRemoveUpload();
     },
     [mx, handleRemoveUpload]
   );
 
   const handleRemoveAvatar = () => {
-    mx.setAvatarUrl('');
+    setAvatarError(undefined);
+    mx.setAvatarUrl('').catch((e: unknown) =>
+      setAvatarError(describeError(e, "Couldn't remove your avatar."))
+    );
     setAlertRemove(false);
   };
 
@@ -180,6 +188,11 @@ function ProfileAvatar({ profile, userId }: ProfileProps) {
             </Button>
           )}
         </Box>
+      )}
+      {avatarError && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {avatarError}
+        </Text>
       )}
 
       {imageFileURL && (
@@ -306,11 +319,11 @@ function ProfileImage({
         return;
       }
       if (file.size > MAX_BANNER_BYTES) {
-        setError(`${title} must be under ${MAX_BANNER_LABEL}.`);
+        setError(tooBigMessage(title, file.size, MAX_BANNER_BYTES));
         return;
       }
       setError(undefined);
-      saveImage(file).catch(() => setError(`Failed to save ${label}. Please try again.`));
+      saveImage(file).catch((e) => setError(describeError(e, `Couldn't save your ${label}.`)));
     },
     [saveImage, title, label]
   );
@@ -394,7 +407,7 @@ function ProfileImage({
             radii="300"
             disabled={saving}
             onClick={() =>
-              saveImage().catch(() => setError(`Failed to remove ${label}. Please try again.`))
+              saveImage().catch((e) => setError(describeError(e, `Couldn't remove your ${label}.`)))
             }
           >
             <Text size="B300">Remove</Text>
@@ -441,6 +454,7 @@ function ProfileBannerColor({ userId }: { userId: string }) {
   const supported = useExtendedProfileSupport();
   const saved = useUserBannerColor(userId);
   const [picked, setPicked] = useState<string | null>();
+  const [error, setError] = useState<string>();
   const shown = picked === undefined ? saved : picked ?? undefined;
 
   // The picker fires on every drag, so only save once it settles.
@@ -450,8 +464,9 @@ function ProfileBannerColor({ userId }: { userId: string }) {
       try {
         if (picked) await mx.setExtendedProfileProperty(BANNER_COLOR_PROFILE_KEY, picked);
         else await mx.deleteExtendedProfileProperty(BANNER_COLOR_PROFILE_KEY);
-      } catch {
-        // Kept locally; the next change tries again.
+        setError(undefined);
+      } catch (e) {
+        setError(describeError(e, "Couldn't save your banner colour."));
       }
       await queryClient.invalidateQueries({ queryKey: extendedProfileQueryKey(userId) });
     }, 600);
@@ -493,7 +508,13 @@ function ProfileBannerColor({ userId }: { userId: string }) {
           )}
         </HexColorPickerPopOut>
       }
-    />
+    >
+      {error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {error}
+        </Text>
+      )}
+    </SettingTile>
   );
 }
 
@@ -609,6 +630,11 @@ function ProfileDisplayName({ profile, userId }: ProfileProps) {
           </Button>
         </Box>
       </Box>
+      {changeState.status === AsyncStatus.Error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {describeError(changeState.error, "Couldn't change your display name.")}
+        </Text>
+      )}
     </SettingTile>
   );
 }
@@ -644,7 +670,7 @@ function ProfileBio({ userId }: { userId: string }) {
     evt.preventDefault();
     if (!hasChanges || saving) return;
     setError(undefined);
-    saveBio(bio.trim()).catch(() => setError('Failed to save your bio. Please try again.'));
+    saveBio(bio.trim()).catch((e) => setError(describeError(e, "Couldn't save your bio.")));
   };
 
   return (

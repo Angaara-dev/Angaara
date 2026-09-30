@@ -13,6 +13,7 @@ import { cleanServerTag, MAX_SERVER_TAG_LENGTH } from '../../../hooks/useServerT
 import { ACCENT_PRESETS, isHexColor } from '../../../utils/accent';
 import { StateEvent } from '../../../../types/matrix/room';
 import { GradientEditor } from '../../../components/gradient-editor';
+import { describeError } from '../../../utils/describeError';
 
 type PerkProps = {
   permissions: RoomPermissionsAPI;
@@ -51,7 +52,9 @@ export function SpaceTagSetting({ permissions }: PerkProps) {
     if (!hasChanges || saving) return;
     setError(undefined);
     const clean = cleanServerTag(tag);
-    save(clean ? { tag: clean } : {}).catch(() => setError('Failed to save the tag.'));
+    save(clean ? { tag: clean } : {}).catch((e) =>
+      setError(describeError(e, "Couldn't save the tag."))
+    );
   };
 
   let description = `A short tag of up to ${MAX_SERVER_TAG_LENGTH} characters that members can show next to their name.`;
@@ -218,7 +221,7 @@ export function SpaceThemeSetting({ permissions }: PerkProps) {
   const hasChanges = !saved || top !== savedTop || bottom !== savedBottom;
   const run = (patch: Record<string, string | undefined>) => {
     setError(undefined);
-    update(patch).catch(() => setError('Failed to save the theme.'));
+    update(patch).catch((e) => setError(describeError(e, "Couldn't save the theme.")));
   };
 
   return (
@@ -333,8 +336,8 @@ export function SpaceAccentSetting({ permissions }: PerkProps) {
             saving={saving}
             onSave={() => {
               setError(undefined);
-              update({ accent: accent || undefined }).catch(() =>
-                setError('Failed to save the accent.')
+              update({ accent: accent || undefined }).catch((e) =>
+                setError(describeError(e, "Couldn't save the accent."))
               );
             }}
           />

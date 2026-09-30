@@ -19,6 +19,7 @@ import { RoomPermissionsAPI } from '../../../hooks/useRoomPermissions';
 import { StateEvent } from '../../../../types/matrix/room';
 import { LEVEL_ANIMATED_BANNER, useSpaceLevel } from '../../../hooks/useSpaceLevel';
 import { useStillImage } from '../../../hooks/useStillImage';
+import { describeError, tooBigMessage } from '../../../utils/describeError';
 
 type SpaceBannerProps = {
   permissions: RoomPermissionsAPI;
@@ -50,11 +51,11 @@ export function SpaceBanner({ permissions }: SpaceBannerProps) {
       return;
     }
     if (file.size > MAX_BANNER_BYTES) {
-      setError(`Banner must be under ${MAX_BANNER_LABEL}.`);
+      setError(tooBigMessage('Banner', file.size, MAX_BANNER_BYTES));
       return;
     }
     setError(undefined);
-    save(file).catch(() => setError('Failed to save banner. Please try again.'));
+    save(file).catch((e) => setError(describeError(e, "Couldn't save the banner.")));
   };
   const { open: cropBanner, cropper } = useImageCropper(SPACE_BANNER_CROP, handleFile);
 
@@ -93,7 +94,7 @@ export function SpaceBanner({ permissions }: SpaceBannerProps) {
               radii="300"
               disabled={saving}
               onClick={() =>
-                save().catch(() => setError('Failed to remove banner. Please try again.'))
+                save().catch((e) => setError(describeError(e, "Couldn't remove the banner.")))
               }
             >
               <Text size="B300">Remove</Text>

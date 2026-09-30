@@ -15,6 +15,7 @@ import {
   useExtendedProfileSupport,
 } from '../../../hooks/useUserBanner';
 import { getRoomAvatarUrl } from '../../../utils/room';
+import { describeError } from '../../../utils/describeError';
 
 export function ProfileServerTag({ userId }: { userId: string }) {
   const mx = useMatrixClient();
@@ -46,7 +47,7 @@ export function ProfileServerTag({ userId }: { userId: string }) {
 
   const pick = (value?: string) => {
     setError(undefined);
-    save(value).catch(() => setError("Couldn't save your server tag. Please try again."));
+    save(value).catch((e) => setError(describeError(e, "Couldn't save your server tag.")));
   };
 
   let description = 'Show a server tag next to your name. Servers unlock tags at Level 2.';

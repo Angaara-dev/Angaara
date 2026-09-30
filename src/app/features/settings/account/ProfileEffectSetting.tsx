@@ -18,6 +18,7 @@ import {
 } from '../../../components/profile-effect';
 import { useXpPerk } from '../../../hooks/useXpPerk';
 import { XP_PERKS } from '../../../../client/xp';
+import { describeError } from '../../../utils/describeError';
 
 type EffectChoiceProps = {
   effect?: ProfileEffectId;
@@ -137,7 +138,9 @@ export function ProfileEffectSetting({ userId }: { userId: string }) {
               disabled={!hasChanges || saving}
               onClick={() => {
                 setError(undefined);
-                save(choice).catch(() => setError("Couldn't save your profile effect."));
+                save(choice).catch((e) =>
+                  setError(describeError(e, "Couldn't save your profile effect."))
+                );
               }}
               before={saving && <Spinner variant="Success" fill="Solid" size="100" />}
             >
