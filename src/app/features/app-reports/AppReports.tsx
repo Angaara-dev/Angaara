@@ -22,6 +22,8 @@ import {
   listBugReports,
   listReports,
   archiveBugReport,
+  exportBugReports,
+  exportCrashReports,
   reopenBugReport,
   resolveReport,
 } from './reports';
@@ -151,6 +153,16 @@ export function AppReports() {
             ? 'No reports. Nothing has crashed, or nobody has told us yet.'
             : `${data.length} report${data.length === 1 ? '' : 's'}`}
         </Text>
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          radii="300"
+          disabled={data.length === 0}
+          onClick={() => exportCrashReports(data)}
+        >
+          <Text size="B300">Export JSON</Text>
+        </Button>
         <Button
           size="300"
           variant="Secondary"
@@ -375,6 +387,16 @@ export function UserBugReports() {
             ? 'No open bug reports right now.'
             : `${active.length} open bug report${active.length === 1 ? '' : 's'}`}
         </Text>
+        <Button
+          size="300"
+          variant="Secondary"
+          fill="Soft"
+          radii="300"
+          disabled={active.length === 0}
+          onClick={() => exportBugReports(active)}
+        >
+          <Text size="B300">Export JSON</Text>
+        </Button>
         <Button
           size="300"
           variant="Secondary"

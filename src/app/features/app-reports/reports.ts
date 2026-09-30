@@ -1,4 +1,6 @@
 import { MatrixClient } from 'matrix-js-sdk';
+import FileSaver from 'file-saver';
+import { UAParser } from 'ua-parser-js';
 
 // Crash and bug reports go to the Worker and are read by accounts with the developer badge.
 const reportsApi = (path = '') => `${window.location.origin}/api/reports${path}`;
@@ -124,3 +126,55 @@ export const reopenBugReport = async (mx: MatrixClient, id: number): Promise<voi
   const data = await asDev(mx, '/bugs/reopen', { id });
   if (data?.archived !== false) throw new Error("Couldn't reopen it.");
 };
+
+const deviceOf = (ua: string | null) => {
+  if (!ua) return null;
+  const { browser, os, device } = UAParser(ua);
+  return {
+    browser: browser.name ?? null,
+    browserVersion: browser.version ?? null,
+    os: os.name ?? null,
+    osVersion: os.version ?? null,
+    device: device.type ?? 'desktop',
+  };
+};
+
+const iso = (at: number) => new Date(at).toISOString();
+
+const saveJson = (name: string, reports: unknown[]) => {
+  const file = { exportedAt: new Date().toISOString(), count: reports.length, reports };
+  const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+  FileSaver.saveAs(blob, `angaara-${name}-${new Date().toISOString().slice(0, 10)}.json`);
+};
+
+export const exportBugReports = (reports: BugReport[]) =>
+  saveJson(
+    'bug-reports',
+    reports.map((r) => ({
+      id: r.id,
+      reportedAt: iso(r.at),
+      type: r.type,
+      typeLabel: bugTypeLabel(r.type),
+      title: r.title,
+      body: r.body,
+      build: r.build,
+      ...deviceOf(r.ua),
+      userAgent: r.ua,
+    }))
+  );
+
+export const exportCrashReports = (reports: AppReport[]) =>
+  saveJson(
+    'crash-reports',
+    reports.map((r) => ({
+      id: r.id,
+      reportedAt: iso(r.at),
+      message: r.message,
+      note: r.note,
+      page: r.path,
+      build: r.build,
+      ...deviceOf(r.ua),
+      userAgent: r.ua,
+      stack: r.stack,
+    }))
+  );
