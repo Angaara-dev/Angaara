@@ -65,6 +65,10 @@ export const clearCacheAndReload = async (mx: MatrixClient) => {
   window.location.reload();
 };
 
+// Reloading the room you were in would save it as where to go after the next login, which could
+// be someone else's account; the start page doesn't.
+const reloadAtStart = () => window.location.replace(import.meta.env.BASE_URL);
+
 // The service worker keeps downloaded media; it's private, so it goes on logout.
 const clearMediaCache = () => window.caches?.delete('angaara-media-v1').catch(() => false);
 
@@ -81,7 +85,7 @@ export const logoutClient = async (mx: MatrixClient) => {
   await forgetStoreKeys();
   await clearMediaCache();
   window.localStorage.clear();
-  window.location.reload();
+  reloadAtStart();
 };
 
 export const clearLoginData = async () => {
@@ -97,5 +101,5 @@ export const clearLoginData = async () => {
   });
 
   window.localStorage.clear();
-  window.location.reload();
+  reloadAtStart();
 };

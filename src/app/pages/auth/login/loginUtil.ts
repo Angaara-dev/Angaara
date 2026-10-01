@@ -11,7 +11,7 @@ import {
 } from '../../afterLoginRedirectPath';
 import { getHomePath } from '../../pathUtils';
 import { setFallbackSession } from '../../../state/sessions';
-import { markNewAccount, takeSignupStarted } from '../../../utils/newAccount';
+import { markMaybeNewAccount, markNewAccount, takeSsoStarted } from '../../../utils/newAccount';
 
 export enum GetBaseUrlError {
   NotAllow = 'NotAllow',
@@ -115,7 +115,9 @@ export const useLoginComplete = (data?: CustomLoginResponse) => {
   useEffect(() => {
     if (data) {
       const { response: loginRes, baseUrl: loginBaseUrl } = data;
-      if (takeSignupStarted()) markNewAccount(loginRes.user_id);
+      const sso = takeSsoStarted();
+      if (sso === 'register') markNewAccount(loginRes.user_id);
+      else if (sso === 'login') markMaybeNewAccount(loginRes.user_id);
       setFallbackSession(loginRes.access_token, loginRes.device_id, loginRes.user_id, loginBaseUrl);
       const afterLoginRedirectUrl = getAfterLoginRedirectPath();
       deleteAfterLoginRedirectPath();

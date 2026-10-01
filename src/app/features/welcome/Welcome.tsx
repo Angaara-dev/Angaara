@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import FocusTrap from 'focus-trap-react';
+import { MatrixClient } from 'matrix-js-sdk';
 import {
   Avatar,
   Box,
@@ -26,10 +27,28 @@ import { mxcUrlToHttp, getMxIdLocalPart } from '../../utils/matrix';
 import { millify } from '../../plugins/millify';
 import { requestWelcomeDm } from '../../../client/xp';
 import { BRAND_NAME } from '../../brand';
-import { clearNewAccount, isNewAccount } from '../../utils/newAccount';
+import {
+  clearNewAccount,
+  isNewAccount,
+  markNewAccount,
+  takeMaybeNewAccount,
+} from '../../utils/newAccount';
 
 // Stored in account data so the welcome only shows once per account.
 const WELCOME_KEY = 'io.angaara.welcome';
+
+// An account fresh from signing up: no rooms, no other devices, and encryption never set up.
+const isBrandNew = async (mx: MatrixClient): Promise<boolean> => {
+  if (mx.getRooms().some((r) => r.getMyMembership() === 'join')) return false;
+  const { devices } = await mx.getDevices();
+  if (devices.length > 1) return false;
+  const keys = await Promise.all(
+    ['m.secret_storage.default_key', 'm.cross_signing.master'].map((type) =>
+      mx.getAccountDataFromServer(type as never).catch(() => null)
+    )
+  );
+  return keys.every((k) => !k);
+};
 
 type Step = 'hello' | 'interests' | 'servers' | 'done';
 const STEPS: Step[] = ['hello', 'interests', 'servers', 'done'];
@@ -138,7 +157,18 @@ export function Welcome() {
   const [dmSent, setDmSent] = useState(false);
   const userId = mx.getSafeUserId();
   // Only for new sign-ups (here or through single sign-on), never for logging in.
-  const open = isNewAccount(userId) && !seen && !closed;
+  const [isNew, setIsNew] = useState(() => isNewAccount(userId));
+  useEffect(() => {
+    if (isNew || !takeMaybeNewAccount(userId)) return;
+    isBrandNew(mx)
+      .then((fresh) => {
+        if (!fresh) return;
+        markNewAccount(userId);
+        setIsNew(true);
+      })
+      .catch(() => undefined);
+  }, [mx, userId, isNew]);
+  const open = isNew && !seen && !closed;
 
   // Without a display name set, Matrix hands back the full ID; the username reads nicer.
   const displayName = mx.getUser(userId)?.displayName;

@@ -2,7 +2,7 @@ import { Avatar, AvatarImage, Box, Button, Text } from 'folds';
 import { IIdentityProvider, SSOAction, createClient } from 'matrix-js-sdk';
 import React, { useMemo } from 'react';
 import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
-import { markSignupStarted } from '../../utils/newAccount';
+import { markSsoStarted } from '../../utils/newAccount';
 
 type SSOLoginProps = {
   providers?: IIdentityProvider[];
@@ -18,7 +18,7 @@ export function SSOLogin({ providers, redirectUrl, action, saveScreenSpace }: SS
   const getSSOIdUrl = (ssoId?: string): string =>
     mx.getSsoLoginUrl(redirectUrl, 'sso', ssoId, action);
   // Signing up finishes elsewhere and returns as a login, so note it for the welcome panel.
-  const onStart = action === SSOAction.REGISTER ? markSignupStarted : undefined;
+  const onStart = () => markSsoStarted(action === SSOAction.REGISTER ? 'register' : 'login');
 
   const withoutIcon = providers
     ? providers.find(
