@@ -19,6 +19,7 @@ import {
 import { useDirectSelected } from '../../../hooks/router/useDirectSelected';
 import { UnreadBadge } from '../../../components/unread-badge';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
+import { roomPathStillHere } from './activePath';
 import { useNavToActivePathAtom } from '../../../state/hooks/navToActivePath';
 import { useDirectRooms } from '../direct/useDirectRooms';
 import { markAsRead } from '../../../utils/notifications';
@@ -74,7 +75,11 @@ export function DirectTab() {
 
   const handleDirectClick = () => {
     const activePath = navToActivePath.get('direct');
-    if (activePath && screenSize !== ScreenSize.Mobile) {
+    if (
+      activePath &&
+      screenSize !== ScreenSize.Mobile &&
+      roomPathStillHere(mx, activePath, directs)
+    ) {
       navigate(joinPathComponent(activePath));
       return;
     }

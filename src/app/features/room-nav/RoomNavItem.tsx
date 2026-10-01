@@ -331,7 +331,7 @@ export function RoomNavItem({
   const callPref = useAtomValue(useCallPreferencesAtom());
   const autoDiscoveryInfo = useAutoDiscoveryInfo();
 
-  const handleStartCall: MouseEventHandler<HTMLAnchorElement> = (evt) => {
+  const canJoinCall = () => {
     const powerLevelsEvent = getStateEvent(room, StateEvent.RoomPowerLevels);
     const powerLevels = getPowersLevelFromMatrixEvent(powerLevelsEvent);
     const creators = getRoomCreatorsForRoomId(mx, room.roomId);
@@ -342,15 +342,14 @@ export function RoomNavItem({
       mx.getSafeUserId()
     );
 
-    // Do not join if missing permissions or no livekit support or no webRTC support
-    if (!hasCallPermission || !livekitSupport(autoDiscoveryInfo) || !webRTCSupported()) {
-      return;
-    }
+    // Not without permission, livekit and webRTC, and not while already in a call.
+    return (
+      hasCallPermission && livekitSupport(autoDiscoveryInfo) && webRTCSupported() && !callEmbed
+    );
+  };
 
-    // Do not join if already in call
-    if (callEmbed) {
-      return;
-    }
+  const handleStartCall: MouseEventHandler<HTMLAnchorElement> = (evt) => {
+    if (!canJoinCall()) return;
     // Start call in second click
     if (selected) {
       evt.preventDefault();
@@ -513,7 +512,14 @@ export function RoomNavItem({
               radii="400"
               aria-selected={selected && callViewRoom === room.roomId}
             >
-              <NavLink to={linkPath} onClick={() => setCallViewRoom(room.roomId)}>
+              <NavLink
+                to={linkPath}
+                onClick={() => {
+                  setCallViewRoom(room.roomId);
+                  // Tapping the call joins it, unless you're already in one.
+                  if (canJoinCall()) startCall(room, callPref);
+                }}
+              >
                 <NavItemContent>
                   <Box as="span" grow="Yes" alignItems="Center" gap="200">
                     <Icon size="100" src={Icons.VolumeHigh} />

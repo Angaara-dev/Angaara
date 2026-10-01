@@ -21,6 +21,7 @@ import { useHomeSelected } from '../../../hooks/router/useHomeSelected';
 import { UnreadBadge } from '../../../components/unread-badge';
 import { useNewBugReports } from '../../../features/app-reports/bugPing';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
+import { roomPathStillHere } from './activePath';
 import { useNavToActivePathAtom } from '../../../state/hooks/navToActivePath';
 import { useHomeRooms } from '../home/useHomeRooms';
 import { markAsRead } from '../../../utils/notifications';
@@ -78,7 +79,11 @@ export function HomeTab() {
 
   const handleHomeClick = () => {
     const activePath = navToActivePath.get('home');
-    if (activePath && screenSize !== ScreenSize.Mobile) {
+    if (
+      activePath &&
+      screenSize !== ScreenSize.Mobile &&
+      roomPathStillHere(mx, activePath, orphanRooms)
+    ) {
       navigate(joinPathComponent(activePath));
       return;
     }
