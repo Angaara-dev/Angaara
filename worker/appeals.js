@@ -120,7 +120,12 @@ export async function handleAppeals(request, env, url, ctx) {
   if (url.pathname === '/api/appeals/join' && request.method === 'POST') return join(request, env);
   if (url.pathname === '/api/appeals/bot' && request.method === 'GET') return botId(env);
   if (url.pathname.startsWith('/api/appeals/settings/') && request.method === 'GET') {
-    const roomId = decodeURIComponent(url.pathname.slice('/api/appeals/settings/'.length));
+    let roomId;
+    try {
+      roomId = decodeURIComponent(url.pathname.slice('/api/appeals/settings/'.length));
+    } catch {
+      return json({ error: 'bad room' }, 400);
+    }
     if (!ROOM_RE.test(roomId)) return json({ error: 'bad room' }, 400);
     return settings(env, roomId, ctx);
   }

@@ -2,6 +2,7 @@
 // and this counts at most 1 XP per minute. Needs a D1 binding named XP_DB; see docs/XP.md.
 import { verifyOpenId } from './perks.js';
 import { isAngaaraSupporter } from './angaara-id.js';
+import { takeIpLimit } from './ipLimit.js';
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
@@ -240,6 +241,12 @@ async function spotCheck(env, userId, events) {
   return (await Promise.all(picks.map(check))).every(Boolean);
 }
 
+// New members get member numbers (Early Ember) and a bot DM, so a self-run homeserver
+// minting IDs could drain both; each network gets a few new members a day.
+const NEW_MEMBERS_PER_IP = 10;
+const newMemberAllowed = (env, request) =>
+  takeIpLimit(env, request, 'xp-new', NEW_MEMBERS_PER_IP, DAY);
+
 async function report(request, env) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);
@@ -248,6 +255,7 @@ async function report(request, env) {
   const now = Date.now();
   const row = await env.XP_DB.prepare('SELECT * FROM xp WHERE user_id = ?').bind(userId).first();
   if (row && now - row.last_report < MIN_REPORT_GAP) return json({ error: 'too soon' }, 429);
+  if (!row && !(await newMemberAllowed(env, request))) return json({ error: 'too many' }, 429);
   if (row && row.paused_until > now) {
     return json({ error: 'paused', until: row.paused_until }, 403);
   }
@@ -384,6 +392,8 @@ async function welcome(request, env) {
   const ownRoom =
     typeof body?.dm_room === 'string' && ROOM_RE.test(body.dm_room) ? body.dm_room : undefined;
 
+  const known = await env.XP_DB.prepare('SELECT 1 FROM xp WHERE user_id = ?').bind(userId).first();
+  if (!known && !(await newMemberAllowed(env, request))) return json({ error: 'too many' }, 429);
   await env.XP_DB.prepare(
     'INSERT INTO xp (user_id, first_seen) VALUES (?1, ?2) ON CONFLICT DO NOTHING'
   )

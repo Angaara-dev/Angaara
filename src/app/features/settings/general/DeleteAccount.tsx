@@ -28,6 +28,8 @@ import { stopPropagation } from '../../../utils/keyboard';
 import { useAuthMetadata } from '../../../hooks/useAuthMetadata';
 import { useAccountManagementActions } from '../../../hooks/useAccountManagement';
 import { withSearchParam } from '../../../pages/pathUtils';
+import { deleteServerData, getDeleteCheck } from '../../../utils/privateMode';
+import { cancelled } from '../../angaara-id/angaaraId';
 
 function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const mx = useMatrixClient();
@@ -38,6 +40,28 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<AsyncState<void, MatrixError>>({
     status: AsyncStatus.Idle,
   });
+  // Angaara's data goes first: once the Matrix account is gone, we can't prove who's asking.
+  const angaaraGone = useRef(false);
+  const [angaaraState, setAngaaraState] = useState<{ busy?: boolean; error?: string }>({});
+  const deleteAngaara = async (): Promise<boolean> => {
+    if (angaaraGone.current) return true;
+    setAngaaraState({ busy: true });
+    try {
+      const check = await getDeleteCheck(mx);
+      // A build without Angaara's server (self-hosted) has nothing of ours to delete.
+      if (check?.username) await deleteServerData(mx, check.username, check);
+      angaaraGone.current = true;
+      setAngaaraState({});
+      return true;
+    } catch (e) {
+      setAngaaraState({
+        error: cancelled(e)
+          ? 'Your passkey is needed to delete your Angaara account.'
+          : `Couldn't delete your Angaara data: ${e instanceof Error ? e.message : e}`,
+      });
+      return false;
+    }
+  };
   // matrix.org only deletes accounts on its own site; other servers get our own flow first.
   const authMetadata = useAuthMetadata();
   const actions = useAccountManagementActions();
@@ -46,8 +70,8 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const canDeactivate = !!authMetadata?.account_management_actions_supported?.includes(
     actions.accountDeactivate
   );
-  const openAccountSite = () => {
-    if (!accountUrl) return;
+  const openAccountSite = async () => {
+    if (!accountUrl || !(await deleteAngaara())) return;
     window.open(
       canDeactivate
         ? withSearchParam(accountUrl, { action: actions.accountDeactivate })
@@ -79,6 +103,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const refused = error?.httpStatus === 404 || error?.errcode === 'M_UNRECOGNIZED';
   const external = !!accountUrl && (server === 'matrix.org' || refused);
   const busy =
+    !!angaaraState.busy ||
     state.status === AsyncStatus.Loading ||
     state.status === AsyncStatus.Success ||
     authData !== undefined;
@@ -122,6 +147,10 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                 <Text as="li" size="T300">
                   Encrypted messages and keys are lost for good.
                 </Text>
+                <Text as="li" size="T300">
+                  Your Angaara account, Supporter status and XP are deleted too. If you have an
+                  Angaara account, you&apos;ll confirm with its passkey first.
+                </Text>
               </Box>
               {external && (
                 <Text size="T300" priority="300">
@@ -152,6 +181,11 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                 />
                 <Text size="T300">I understand this is permanent</Text>
               </Box>
+              {angaaraState.error && (
+                <Text size="T200" style={{ color: color.Critical.Main }}>
+                  <b>{angaaraState.error}</b>
+                </Text>
+              )}
               {error && !external && (
                 <Text size="T200" style={{ color: color.Critical.Main }}>
                   <b>{error.message || "Couldn't delete your account."}</b>
@@ -182,7 +216,10 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
                   variant="Critical"
                   radii="400"
                   disabled={!understood || busy}
-                  onClick={() => (external ? openAccountSite() : deactivate())}
+                  onClick={async () => {
+                    if (external) openAccountSite();
+                    else if (await deleteAngaara()) deactivate();
+                  }}
                   before={busy && <Spinner size="100" variant="Critical" fill="Solid" />}
                 >
                   <Text size="B400">

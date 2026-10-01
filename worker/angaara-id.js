@@ -8,6 +8,7 @@ import {
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
 import { verifyOpenId } from './perks.js';
+import { DAY, takeIpLimit } from './ipLimit.js';
 
 const MINUTE = 60 * 1000;
 const CHALLENGE_TTL = 5 * MINUTE;
@@ -126,17 +127,10 @@ const removeAccount = (db, accountId) =>
     db.prepare('DELETE FROM angaara_accounts WHERE id = ?').bind(accountId),
   ]);
 
-// Unlink just this Matrix account; the Angaara account goes too if nothing else is linked.
+// Unlink just this Matrix account. The Angaara account stays even with no links left, so a
+// stolen Matrix session can't delete it (and Supporter) without the passkey.
 async function unlinkAccount(env, userId) {
-  const db = env.XP_DB;
-  const account = await accountOf(db, userId);
-  await db.prepare('DELETE FROM angaara_links WHERE user_id = ?').bind(userId).run();
-  if (!account) return;
-  const left = await db
-    .prepare('SELECT COUNT(*) AS n FROM angaara_links WHERE account_id = ?')
-    .bind(account.id)
-    .first();
-  if ((left?.n ?? 0) === 0) await removeAccount(db, account.id);
+  await env.XP_DB.prepare('DELETE FROM angaara_links WHERE user_id = ?').bind(userId).run();
 }
 
 // Delete My Data: the whole Angaara account (Supporter, passkeys, every link). Returns all the
@@ -228,6 +222,9 @@ async function handle(request, env, url, userId, body) {
         .bind(username)
         .first();
       if (taken) return json({ error: 'That username is taken.' }, 409);
+      if (!(await takeIpLimit(env, request, 'id-new', 5, DAY))) {
+        return json({ error: 'Too many new accounts from your network today.' }, 429);
+      }
     }
     const existing = account
       ? await db

@@ -4,6 +4,7 @@
 import { verifyOpenId } from './perks.js';
 import { badgeHolders } from './badges.js';
 import { isAngaaraSupporter } from './angaara-id.js';
+import { HOUR, takeIpLimit } from './ipLimit.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 // Checks per account every two months; supporters help pay for them, so they get more.
@@ -61,6 +62,14 @@ const SECOND_LEVELS = new Set(['co', 'com', 'net', 'org', 'gov', 'ac', 'edu']);
 const DOWNLOADS = /\.(exe|msi|scr|bat|cmd|ps1|vbs|js|jar|apk|dmg|pkg|app|iso|img|lnk|hta|dll)$/i;
 const DOWNLOAD_TYPES =
   /(x-msdownload|x-msi|x-dosexec|java-archive|android\.package|x-apple-diskimage)/i;
+
+const safeDecode = (text) => {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+};
 
 const registrable = (host) => {
   const parts = host.split('.');
@@ -277,10 +286,7 @@ async function check(env, input) {
     const disposition = res.headers.get('Content-Disposition') ?? '';
     const file = /filename\*?=(?:UTF-8'')?"?([^";]+)/i.exec(disposition)?.[1] ?? url.pathname;
     if (DOWNLOADS.test(file) || DOWNLOAD_TYPES.test(type)) {
-      add(
-        'bad',
-        `It downloads a program or script (${decodeURIComponent(file.split('/').pop() ?? '')}).`
-      );
+      add('bad', `It downloads a program or script (${safeDecode(file.split('/').pop() ?? '')}).`);
     } else if (/text\/html/i.test(type)) {
       const html = await readSome(res).catch(() => '');
       title = /<title[^>]*>([^<]{1,200})/i.exec(html)?.[1]?.trim();
@@ -414,6 +420,10 @@ export async function handleLinks(request, env, url) {
   const body = await request.json().catch(() => undefined);
   const userId = await verifyOpenId(body?.openid);
   if (!userId) return json({ error: 'not signed in' }, 401);
+  // Per-account quotas alone don't stop someone minting accounts on their own homeserver.
+  if (!(await takeIpLimit(env, request, 'links', 60, HOUR))) {
+    return json({ error: 'Too many checks from your network. Try again in an hour.' }, 429);
+  }
 
   if (isFile) {
     const sha256 = String(body?.sha256 ?? '').toLowerCase();
