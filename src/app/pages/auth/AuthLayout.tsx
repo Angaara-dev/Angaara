@@ -45,10 +45,14 @@ const currentAuthPath = (pathname: string): string => {
   return LOGIN_PATH;
 };
 
+// Picked once per page load, so it stays put while the form re-renders.
+const GREETINGS = ['Welcome!', 'Greetings!', 'Salutations!', 'Hey there!', 'Howdy!', 'Ahoy!'];
+const GREETING = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+
 const HEADINGS: Record<string, { title: string; subtitle?: string }> = {
   [LOGIN_PATH]: {
-    title: 'Welcome back!',
-    subtitle: 'Good to see you again. Your chats are right where you left them.',
+    title: GREETING,
+    subtitle: 'Sign in with any Matrix account to get started.',
   },
   [REGISTER_PATH]: {
     title: 'Create an account',
