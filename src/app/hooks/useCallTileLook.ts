@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { MatrixClient } from 'matrix-js-sdk';
 import { useAtomValue } from 'jotai';
-import { CallEmbed } from '../plugins/call';
+import { CallEmbed, useCallControlState } from '../plugins/call';
 import { settingsAtom } from '../state/settings';
 import { useMatrixClient } from './useMatrixClient';
 import { useMediaAuthentication } from './useMediaAuthentication';
@@ -11,6 +11,8 @@ import { cssColorMXID } from '../../util/colorMXID';
 
 const TILE = '[data-angaara-user]';
 const STREAM = '[data-angaara-spotlight="screen share"]';
+// While you share, full screen is off: a full-screen view of your own stream films itself forever.
+const SHARING = '[data-angaara-sharing]';
 const SIZES = [2160, 1440, 1080, 720, 480, 360];
 // Focus view (Element Call's landscape spotlight): stream on top, everyone in a row under it.
 // The class is from this Element Call build; a newer one just falls back to its side column.
@@ -83,6 +85,8 @@ const STYLE = `${TILE}[style*="--angaara-tint"] { background: var(--angaara-tint
     display: grid; place-items: center; opacity: 0; transition: opacity 120ms; }
   ${TILE}:hover .angaara-focus, .angaara-focus:focus-visible { opacity: 1; }
   ${STREAM} { cursor: pointer; }
+  ${SHARING} .angaara-focus, ${SHARING} [data-angaara-spotlight] [class*="_expand_"] {
+    display: none !important; }
   ${FOCUS_LAYER} { grid-template-columns: 1fr !important; grid-template-rows: minmax(0, 1fr) auto !important;
     padding-block: 12px; box-sizing: border-box; }
   ${FOCUS_LAYER.replace(
@@ -110,7 +114,10 @@ const streamQuality = (video: HTMLVideoElement | null): string => {
   const frames = video.getVideoPlaybackQuality?.().totalVideoFrames;
   const before = lastFrames.get(video);
   if (frames !== undefined) lastFrames.set(video, frames);
-  const fps = frames !== undefined && before !== undefined ? frames - before : undefined;
+  // Some browsers don't count frames of live video; the stream's own setting is the fallback.
+  const counted = frames !== undefined && before !== undefined ? frames - before : undefined;
+  const track = (video.srcObject as MediaStream | null)?.getVideoTracks?.()[0];
+  const fps = counted || Math.round(track?.getSettings().frameRate ?? 0) || undefined;
   return fps ? `${size}P ${fps}FPS` : `${size}P`;
 };
 
@@ -124,6 +131,14 @@ export const useCallTileLook = (embed: CallEmbed) => {
   const auth = useMediaAuthentication();
   const colored = useAtomValue(settingsAtom).callTileColors;
   const joined = useCallJoined(embed);
+  const { screenshare } = useCallControlState(embed.control);
+
+  useEffect(() => {
+    const doc = embed.document;
+    if (!joined || !doc) return;
+    doc.documentElement.toggleAttribute('data-angaara-sharing', screenshare);
+    if (screenshare && doc.fullscreenElement) doc.exitFullscreen().catch(() => undefined);
+  }, [embed, joined, screenshare]);
 
   useEffect(() => {
     const doc = embed.document;
@@ -137,6 +152,7 @@ export const useCallTileLook = (embed: CallEmbed) => {
       if (doc.fullscreenElement) doc.exitFullscreen().catch(() => undefined);
       else tile.requestFullscreen().catch(() => undefined);
     };
+    let focusedByStream = false;
     const dress = () => {
       doc.querySelectorAll<HTMLElement>(TILE).forEach((tile) => {
         if (!tile.querySelector('.angaara-focus')) {
@@ -161,6 +177,17 @@ export const useCallTileLook = (embed: CallEmbed) => {
           if (tint && colored) tile.style.setProperty('--angaara-tint', tint);
         });
       });
+      // A tile that stopped being a stream (it gets reused) loses its stream extras.
+      doc
+        .querySelectorAll(`[data-angaara-spotlight]:not(${STREAM})`)
+        .forEach((tile) =>
+          tile.querySelectorAll('.angaara-live, .angaara-grid-back').forEach((el) => el.remove())
+        );
+      // Focus view opened from a stream goes back to the grid once that stream ends.
+      if (focusedByStream && !doc.querySelector(STREAM)) {
+        focusedByStream = false;
+        if (embed.control.spotlight) embed.control.toggleSpotlight();
+      }
       doc.querySelectorAll<HTMLElement>(STREAM).forEach((stream) => {
         if (!stream.querySelector('.angaara-live')) {
           const badge = doc.createElement('div');
@@ -202,9 +229,12 @@ export const useCallTileLook = (embed: CallEmbed) => {
     const onClick = (evt: MouseEvent) => {
       const target = evt.target as Element | null;
       if (target?.closest?.('button') || !target?.closest?.(STREAM)) return;
-      if (!embed.control.spotlight) embed.control.toggleSpotlight();
+      if (embed.control.spotlight) return;
+      focusedByStream = true;
+      embed.control.toggleSpotlight();
     };
     const onDouble = (evt: MouseEvent) => {
+      if (doc.documentElement.matches(SHARING)) return;
       const tile = (evt.target as Element | null)?.closest?.(TILE);
       if (tile) toggleFull(tile);
     };
