@@ -270,7 +270,7 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
         <AudioDevicesPopout embed={embed}>
           {(toggle, open) => (
             <Tile
-              label="Audio Devices"
+              label="Call Settings"
               icon={Icons.Setting}
               tone={open ? 'on' : undefined}
               onClick={toggle}

@@ -59,6 +59,7 @@ export interface Settings {
   callTileColors: boolean;
   // Resolution your screen shares go out at (720, 1080 or 1440).
   screenShareQuality: 720 | 1080 | 1440;
+  screenShareFps: 15 | 30 | 60;
 
   hour24Clock: boolean;
   dateFormatString: string;
@@ -102,6 +103,7 @@ const defaultSettings: Settings = {
   soundboardMuted: false,
   callTileColors: true,
   screenShareQuality: 1080,
+  screenShareFps: 30,
 
   hour24Clock: false,
   dateFormatString: 'D MMM YYYY',

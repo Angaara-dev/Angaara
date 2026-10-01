@@ -379,10 +379,10 @@ function CallUtils({ embed, containerRef }: CallUtilsProps) {
   useCallThemeSync(embed);
   useCallTileLook(embed);
   const joined = useCallJoined(embed);
-  const shareQuality = useAtomValue(settingsAtom).screenShareQuality;
+  const { screenShareQuality, screenShareFps } = useAtomValue(settingsAtom);
   useEffect(() => {
-    if (joined) applyShareQuality(embed, shareQuality);
-  }, [embed, joined, shareQuality]);
+    if (joined) applyShareQuality(embed, screenShareQuality, screenShareFps);
+  }, [embed, joined, screenShareQuality, screenShareFps]);
   // A camera that isn't there (or got unplugged) can't stay on.
   const hasCamera = useHasCamera();
   const { video } = useCallControlState(embed.control);

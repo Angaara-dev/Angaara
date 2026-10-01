@@ -1,6 +1,18 @@
 import React, { MouseEvent, ReactNode, useCallback, useEffect, useState } from 'react';
 import FocusTrap from 'focus-trap-react';
-import { Box, config, Icon, Icons, Menu, MenuItem, PopOut, RectCords, Text, toRem } from 'folds';
+import {
+  Box,
+  Button,
+  config,
+  Icon,
+  Icons,
+  Menu,
+  MenuItem,
+  PopOut,
+  RectCords,
+  Text,
+  toRem,
+} from 'folds';
 import { CallEmbed } from '../../plugins/call/CallEmbed';
 import {
   AudioDeviceKind,
@@ -10,6 +22,7 @@ import {
   setAudioDevice,
 } from '../../plugins/call/devices';
 import { stopPropagation } from '../../utils/keyboard';
+import { ShareFpsPicker, ShareResolutionPicker } from './ShareQualityPicker';
 
 type DeviceListProps = {
   title: string;
@@ -58,6 +71,8 @@ function AudioDevicesMenu({ embed }: { embed?: CallEmbed }) {
     output: getAudioDevice('output', embed),
   }));
 
+  const [reload, setReload] = useState(0);
+  const [denied, setDenied] = useState(false);
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -70,7 +85,18 @@ function AudioDevicesMenu({ embed }: { embed?: CallEmbed }) {
       alive = false;
       navigator.mediaDevices?.removeEventListener('devicechange', load);
     };
-  }, [embed]);
+  }, [embed, reload]);
+
+  // Browsers hide device names until the mic is allowed, so the list comes back empty.
+  const allowMic = () =>
+    navigator.mediaDevices
+      ?.getUserMedia({ audio: true })
+      .then((stream) => {
+        stream.getTracks().forEach((t) => t.stop());
+        setReload((n) => n + 1);
+      })
+      .catch(() => setDenied(true));
+  const hidden = devices !== undefined && devices.input.length === 0;
 
   const select = useCallback(
     (kind: AudioDeviceKind, id: string) => {
@@ -81,8 +107,22 @@ function AudioDevicesMenu({ embed }: { embed?: CallEmbed }) {
   );
 
   return (
-    <Menu style={{ width: toRem(280), maxWidth: '90vw' }}>
+    <Menu style={{ width: toRem(280), maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }}>
       <Box direction="Column" gap="300" style={{ padding: config.space.S200 }}>
+        {hidden && (
+          <Box direction="Column" gap="200" style={{ padding: `0 ${config.space.S200}` }}>
+            <Text size="T200" priority="300">
+              {denied
+                ? "Microphone access is blocked or no microphone is plugged in. Allow it in your browser's site settings."
+                : 'Allow microphone access to see your devices.'}
+            </Text>
+            {!denied && (
+              <Button type="button" size="300" radii="300" variant="Primary" onClick={allowMic}>
+                <Text size="B300">Allow Microphone</Text>
+              </Button>
+            )}
+          </Box>
+        )}
         <DeviceList
           title="Input Device"
           kind="input"
@@ -103,6 +143,19 @@ function AudioDevicesMenu({ embed }: { embed?: CallEmbed }) {
             This browser picks the output device itself.
           </Text>
         )}
+        <Box direction="Column" gap="200" style={{ padding: `0 ${config.space.S200}` }}>
+          <Text size="L400" priority="300">
+            Screen Share Resolution
+          </Text>
+          <ShareResolutionPicker />
+          <Text size="L400" priority="300">
+            Screen Share Frame Rate
+          </Text>
+          <ShareFpsPicker />
+          <Text size="T200" priority="300">
+            Changes apply the next time you share.
+          </Text>
+        </Box>
       </Box>
     </Menu>
   );

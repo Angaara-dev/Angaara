@@ -108,6 +108,8 @@ const STYLE = `${TILE}[style*="--angaara-tint"] { background: var(--angaara-tint
     background: rgba(0,0,0,0.6); color: #fff; font: 600 13px sans-serif; }`;
 // Like "720P 30FPS", from what the stream is really sending; frame counts come a second apart.
 const lastFrames = new WeakMap<HTMLVideoElement, number>();
+const bestFps = new WeakMap<HTMLVideoElement, number>();
+const FPS_STEPS = [60, 30, 15];
 const streamQuality = (video: HTMLVideoElement | null): string => {
   if (!video?.videoHeight) return '';
   const size = SIZES.find((s) => video.videoHeight >= s * 0.9) ?? video.videoHeight;
@@ -115,9 +117,14 @@ const streamQuality = (video: HTMLVideoElement | null): string => {
   const before = lastFrames.get(video);
   if (frames !== undefined) lastFrames.set(video, frames);
   // Some browsers don't count frames of live video; the stream's own setting is the fallback.
-  const counted = frames !== undefined && before !== undefined ? frames - before : undefined;
+  const counted = frames !== undefined && before !== undefined ? frames - before : 0;
+  // A still screen sends few frames, so the best rate seen is snapped to the nearest setting.
+  const best = Math.max(bestFps.get(video) ?? 0, counted);
+  bestFps.set(video, best);
   const track = (video.srcObject as MediaStream | null)?.getVideoTracks?.()[0];
-  const fps = counted || Math.round(track?.getSettings().frameRate ?? 0) || undefined;
+  const set = Math.round(track?.getSettings().frameRate ?? 0);
+  const snapped = FPS_STEPS.find((f) => best >= f * 0.75);
+  const fps = set || snapped || undefined;
   return fps ? `${size}P ${fps}FPS` : `${size}P`;
 };
 

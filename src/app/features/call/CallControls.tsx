@@ -117,8 +117,8 @@ export function CallControls({ callEmbed }: CallControlsProps) {
                   radii="400"
                   size="400"
                   outlined
-                  aria-label="Audio Devices"
-                  title="Audio Devices"
+                  aria-label="Call Settings"
+                  title="Call Settings"
                   aria-pressed={open}
                   onClick={toggle}
                 >
