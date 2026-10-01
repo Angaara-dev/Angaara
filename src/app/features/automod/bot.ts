@@ -124,6 +124,25 @@ const askToJoin = async (
   };
 };
 
+// The invite can take a moment to reach the bot's homeserver, so rooms that failed get one more go.
+const joinWithRetry = async (
+  mx: MatrixClient,
+  botUrl: string,
+  rooms: { id: string; parents: string[] }[]
+): Promise<BotResult> => {
+  const first = await askToJoin(mx, botUrl, rooms);
+  if (first.failed.length === 0) return first;
+  await new Promise((resolve) => {
+    setTimeout(resolve, 3000);
+  });
+  const again = await askToJoin(
+    mx,
+    botUrl,
+    rooms.filter((r) => first.failed.includes(r.id))
+  );
+  return { joined: [...first.joined, ...again.joined], failed: again.failed };
+};
+
 export const enableBot = async (
   mx: MatrixClient,
   botUrl: string,
@@ -149,7 +168,7 @@ export const enableBot = async (
   }
 
   const ids = new Set(rooms.map((r) => r.roomId));
-  return askToJoin(
+  return joinWithRetry(
     mx,
     botUrl,
     rooms.map((r) => ({
@@ -175,15 +194,7 @@ export const addBotToNewRoom = async (
   if (!botId) return;
   await mx.invite(roomId, botId);
   await setBotPower(mx, roomId, botId, space, settings.commands);
-  const rooms = [{ id: roomId, parents: [parent.roomId] }];
-  const { failed } = await askToJoin(mx, botUrl, rooms);
-  // The invite can take a moment to reach the bot's homeserver.
-  if (failed.length > 0) {
-    await new Promise((resolve) => {
-      setTimeout(resolve, 3000);
-    });
-    await askToJoin(mx, botUrl, rooms);
-  }
+  await joinWithRetry(mx, botUrl, [{ id: roomId, parents: [parent.roomId] }]);
 };
 
 export const disableBot = async (mx: MatrixClient, botUrl: string, space: Room): Promise<void> => {
