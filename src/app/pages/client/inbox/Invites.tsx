@@ -691,7 +691,8 @@ function SpamInvites({
   );
 }
 
-export function Invites() {
+// The invite list on its own, so the inbox page and the inbox pop-out share it.
+export function InvitesFeed({ onOpen }: { onOpen?: () => void }) {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const { navigateRoom, navigateSpace } = useRoomNavigate();
@@ -732,7 +733,6 @@ export function Invites() {
     useCallback(() => containerRef.current, []),
     useCallback((width) => setCompact(width <= COMPACT_CARD_WIDTH), [])
   );
-  const screenSize = useScreenSizeContext();
 
   const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
   const [dateFormatString] = useSetting(settingsAtom, 'dateFormatString');
@@ -740,11 +740,68 @@ export function Invites() {
   const handleNavigate = (roomId: string, space: boolean) => {
     if (space) {
       navigateSpace(roomId);
-      return;
+    } else {
+      navigateRoom(roomId);
     }
-    navigateRoom(roomId);
+    onOpen?.();
   };
 
+  return (
+    <Box grow="Yes">
+      <Scroll hideTrack visibility="Hover">
+        <PageContent>
+          <PageContentCenter>
+            <Box ref={containerRef} direction="Column" gap="600">
+              <Box direction="Column" gap="100">
+                <span data-spacing-node />
+                <Text size="L400">Filter</Text>
+                <InviteFilters
+                  filter={filter}
+                  onFilter={setFilter}
+                  knownInvites={knownInvites}
+                  unknownInvites={unknownInvites}
+                  spamInvites={spamInvites}
+                />
+              </Box>
+              {filter === InviteFilter.Known && (
+                <KnownInvites
+                  invites={knownInvites}
+                  compact={compact}
+                  hour24Clock={hour24Clock}
+                  dateFormatString={dateFormatString}
+                  handleNavigate={handleNavigate}
+                />
+              )}
+
+              {filter === InviteFilter.Unknown && (
+                <UnknownInvites
+                  invites={unknownInvites}
+                  compact={compact}
+                  hour24Clock={hour24Clock}
+                  dateFormatString={dateFormatString}
+                  handleNavigate={handleNavigate}
+                />
+              )}
+
+              {filter === InviteFilter.Spam && (
+                <SpamInvites
+                  invites={spamInvites}
+                  compact={compact}
+                  hour24Clock={hour24Clock}
+                  dateFormatString={dateFormatString}
+                  handleNavigate={handleNavigate}
+                />
+              )}
+            </Box>
+          </PageContentCenter>
+        </PageContent>
+      </Scroll>
+    </Box>
+  );
+}
+
+export function Invites() {
+  const screenSize = useScreenSizeContext();
   return (
     <Page>
       <PageHeader balance>
@@ -769,56 +826,7 @@ export function Invites() {
           <Box grow="Yes" basis="No" />
         </Box>
       </PageHeader>
-      <Box grow="Yes">
-        <Scroll hideTrack visibility="Hover">
-          <PageContent>
-            <PageContentCenter>
-              <Box ref={containerRef} direction="Column" gap="600">
-                <Box direction="Column" gap="100">
-                  <span data-spacing-node />
-                  <Text size="L400">Filter</Text>
-                  <InviteFilters
-                    filter={filter}
-                    onFilter={setFilter}
-                    knownInvites={knownInvites}
-                    unknownInvites={unknownInvites}
-                    spamInvites={spamInvites}
-                  />
-                </Box>
-                {filter === InviteFilter.Known && (
-                  <KnownInvites
-                    invites={knownInvites}
-                    compact={compact}
-                    hour24Clock={hour24Clock}
-                    dateFormatString={dateFormatString}
-                    handleNavigate={handleNavigate}
-                  />
-                )}
-
-                {filter === InviteFilter.Unknown && (
-                  <UnknownInvites
-                    invites={unknownInvites}
-                    compact={compact}
-                    hour24Clock={hour24Clock}
-                    dateFormatString={dateFormatString}
-                    handleNavigate={handleNavigate}
-                  />
-                )}
-
-                {filter === InviteFilter.Spam && (
-                  <SpamInvites
-                    invites={spamInvites}
-                    compact={compact}
-                    hour24Clock={hour24Clock}
-                    dateFormatString={dateFormatString}
-                    handleNavigate={handleNavigate}
-                  />
-                )}
-              </Box>
-            </PageContentCenter>
-          </PageContent>
-        </Scroll>
-      </Box>
+      <InvitesFeed />
     </Page>
   );
 }

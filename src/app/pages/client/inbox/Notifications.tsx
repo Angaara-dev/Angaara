@@ -562,7 +562,18 @@ const useNotificationsSearchParams = (
 
 const DEFAULT_REFRESH_MS = 7000;
 
-export function Notifications() {
+type NotificationsFeedProps = {
+  onlyHighlight: boolean;
+  setOnlyHighlighted: (highlight: boolean) => void;
+  onOpen?: () => void;
+};
+
+// The list on its own, so the inbox page and the inbox pop-out share it.
+export function NotificationsFeed({
+  onlyHighlight,
+  setOnlyHighlighted,
+  onOpen,
+}: NotificationsFeedProps) {
   const mx = useMatrixClient();
   const hideActivity = useHideActivity();
   const [mediaAutoLoad] = useSetting(settingsAtom, 'mediaAutoLoad');
@@ -570,28 +581,12 @@ export function Notifications() {
   const [legacyUsernameColor] = useSetting(settingsAtom, 'legacyUsernameColor');
   const [hour24Clock] = useSetting(settingsAtom, 'hour24Clock');
   const [dateFormatString] = useSetting(settingsAtom, 'dateFormatString');
-  const screenSize = useScreenSizeContext();
   const mDirects = useAtomValue(mDirectAtom);
 
   const { navigateRoom } = useRoomNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const notificationsSearchParams = useNotificationsSearchParams(searchParams);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollTopAnchorRef = useRef<HTMLDivElement>(null);
   const [refreshIntervalTime, setRefreshIntervalTime] = useState(DEFAULT_REFRESH_MS);
-
-  const onlyHighlight = notificationsSearchParams.only === 'highlight';
-  const setOnlyHighlighted = (highlight: boolean) => {
-    if (highlight) {
-      setSearchParams(
-        new URLSearchParams({
-          only: 'highlight',
-        })
-      );
-      return;
-    }
-    setSearchParams();
-  };
 
   const [notificationTimeline, _loadTimeline, silentReloadTimeline] = useNotificationTimeline(
     24,
@@ -636,6 +631,154 @@ export function Notifications() {
   }, [timelineState, notificationTimeline, lastVItemIndex, loadTimeline]);
 
   return (
+    <Box style={{ position: 'relative' }} grow="Yes">
+      <Scroll ref={scrollRef} hideTrack visibility="Hover">
+        <PageContent>
+          <PageContentCenter>
+            <Box direction="Column" gap="200">
+              <Box ref={scrollTopAnchorRef} direction="Column" gap="100">
+                <span data-spacing-node />
+                <Text size="L400">Filter</Text>
+                <Box gap="200">
+                  <Chip
+                    onClick={() => setOnlyHighlighted(false)}
+                    variant={!onlyHighlight ? 'Success' : 'Surface'}
+                    aria-pressed={!onlyHighlight}
+                    before={!onlyHighlight && <Icon size="100" src={Icons.Check} />}
+                    outlined
+                  >
+                    <Text size="T200">All Notifications</Text>
+                  </Chip>
+                  <Chip
+                    onClick={() => setOnlyHighlighted(true)}
+                    variant={onlyHighlight ? 'Success' : 'Surface'}
+                    aria-pressed={onlyHighlight}
+                    before={onlyHighlight && <Icon size="100" src={Icons.Check} />}
+                    outlined
+                  >
+                    <Text size="T200">Highlighted</Text>
+                  </Chip>
+                </Box>
+              </Box>
+              <ScrollTopContainer
+                scrollRef={scrollRef}
+                anchorRef={scrollTopAnchorRef}
+                onVisibilityChange={handleScrollTopVisibility}
+              >
+                <IconButton
+                  onClick={() => virtualizer.scrollToOffset(0)}
+                  variant="SurfaceVariant"
+                  radii="Pill"
+                  outlined
+                  size="300"
+                  aria-label="Scroll to Top"
+                >
+                  <Icon src={Icons.ChevronTop} size="300" />
+                </IconButton>
+              </ScrollTopContainer>
+              <div
+                style={{
+                  position: 'relative',
+                  height: virtualizer.getTotalSize(),
+                }}
+              >
+                {vItems.map((vItem) => {
+                  const group = notificationTimeline.groups[vItem.index];
+                  if (!group) return null;
+                  const groupRoom = mx.getRoom(group.roomId);
+                  if (!groupRoom) return null;
+
+                  return (
+                    <VirtualTile
+                      virtualItem={vItem}
+                      style={{ paddingTop: config.space.S500 }}
+                      ref={virtualizer.measureElement}
+                      key={vItem.index}
+                    >
+                      <RoomNotificationsGroupComp
+                        room={groupRoom}
+                        notifications={group.notifications}
+                        mediaAutoLoad={mediaAutoLoad}
+                        urlPreview={urlPreview}
+                        hideActivity={hideActivity}
+                        onOpen={(roomId, eventId) => {
+                          navigateRoom(roomId, eventId);
+                          onOpen?.();
+                        }}
+                        legacyUsernameColor={legacyUsernameColor || mDirects.has(groupRoom.roomId)}
+                        hour24Clock={hour24Clock}
+                        dateFormatString={dateFormatString}
+                      />
+                    </VirtualTile>
+                  );
+                })}
+              </div>
+
+              {timelineState.status === AsyncStatus.Success &&
+                notificationTimeline.groups.length === 0 && (
+                  <Box
+                    className={ContainerColor({ variant: 'SurfaceVariant' })}
+                    style={{
+                      padding: config.space.S300,
+                      borderRadius: config.radii.R400,
+                    }}
+                    direction="Column"
+                    gap="200"
+                  >
+                    <Text>No Notifications</Text>
+                    <Text size="T200">
+                      You don&apos;t have any new notifications to display yet.
+                    </Text>
+                  </Box>
+                )}
+
+              {timelineState.status === AsyncStatus.Loading && (
+                <Box direction="Column" gap="100">
+                  {[...Array(8).keys()].map((key) => (
+                    <SequenceCard
+                      variant="SurfaceVariant"
+                      key={key}
+                      style={{ minHeight: toRem(80) }}
+                    />
+                  ))}
+                </Box>
+              )}
+              {timelineState.status === AsyncStatus.Error && (
+                <Box
+                  className={ContainerColor({ variant: 'Critical' })}
+                  style={{
+                    padding: config.space.S300,
+                    borderRadius: config.radii.R400,
+                  }}
+                  direction="Column"
+                  gap="200"
+                >
+                  <Text size="L400">{(timelineState.error as Error).name}</Text>
+                  <Text size="T300">{(timelineState.error as Error).message}</Text>
+                </Box>
+              )}
+            </Box>
+          </PageContentCenter>
+        </PageContent>
+      </Scroll>
+    </Box>
+  );
+}
+
+export function Notifications() {
+  const screenSize = useScreenSizeContext();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const notificationsSearchParams = useNotificationsSearchParams(searchParams);
+  const onlyHighlight = notificationsSearchParams.only === 'highlight';
+  const setOnlyHighlighted = (highlight: boolean) => {
+    if (highlight) {
+      setSearchParams(new URLSearchParams({ only: 'highlight' }));
+      return;
+    }
+    setSearchParams();
+  };
+
+  return (
     <Page>
       <PageHeader balance>
         <Box grow="Yes" gap="200">
@@ -659,137 +802,7 @@ export function Notifications() {
           <Box grow="Yes" basis="No" />
         </Box>
       </PageHeader>
-
-      <Box style={{ position: 'relative' }} grow="Yes">
-        <Scroll ref={scrollRef} hideTrack visibility="Hover">
-          <PageContent>
-            <PageContentCenter>
-              <Box direction="Column" gap="200">
-                <Box ref={scrollTopAnchorRef} direction="Column" gap="100">
-                  <span data-spacing-node />
-                  <Text size="L400">Filter</Text>
-                  <Box gap="200">
-                    <Chip
-                      onClick={() => setOnlyHighlighted(false)}
-                      variant={!onlyHighlight ? 'Success' : 'Surface'}
-                      aria-pressed={!onlyHighlight}
-                      before={!onlyHighlight && <Icon size="100" src={Icons.Check} />}
-                      outlined
-                    >
-                      <Text size="T200">All Notifications</Text>
-                    </Chip>
-                    <Chip
-                      onClick={() => setOnlyHighlighted(true)}
-                      variant={onlyHighlight ? 'Success' : 'Surface'}
-                      aria-pressed={onlyHighlight}
-                      before={onlyHighlight && <Icon size="100" src={Icons.Check} />}
-                      outlined
-                    >
-                      <Text size="T200">Highlighted</Text>
-                    </Chip>
-                  </Box>
-                </Box>
-                <ScrollTopContainer
-                  scrollRef={scrollRef}
-                  anchorRef={scrollTopAnchorRef}
-                  onVisibilityChange={handleScrollTopVisibility}
-                >
-                  <IconButton
-                    onClick={() => virtualizer.scrollToOffset(0)}
-                    variant="SurfaceVariant"
-                    radii="Pill"
-                    outlined
-                    size="300"
-                    aria-label="Scroll to Top"
-                  >
-                    <Icon src={Icons.ChevronTop} size="300" />
-                  </IconButton>
-                </ScrollTopContainer>
-                <div
-                  style={{
-                    position: 'relative',
-                    height: virtualizer.getTotalSize(),
-                  }}
-                >
-                  {vItems.map((vItem) => {
-                    const group = notificationTimeline.groups[vItem.index];
-                    if (!group) return null;
-                    const groupRoom = mx.getRoom(group.roomId);
-                    if (!groupRoom) return null;
-
-                    return (
-                      <VirtualTile
-                        virtualItem={vItem}
-                        style={{ paddingTop: config.space.S500 }}
-                        ref={virtualizer.measureElement}
-                        key={vItem.index}
-                      >
-                        <RoomNotificationsGroupComp
-                          room={groupRoom}
-                          notifications={group.notifications}
-                          mediaAutoLoad={mediaAutoLoad}
-                          urlPreview={urlPreview}
-                          hideActivity={hideActivity}
-                          onOpen={navigateRoom}
-                          legacyUsernameColor={
-                            legacyUsernameColor || mDirects.has(groupRoom.roomId)
-                          }
-                          hour24Clock={hour24Clock}
-                          dateFormatString={dateFormatString}
-                        />
-                      </VirtualTile>
-                    );
-                  })}
-                </div>
-
-                {timelineState.status === AsyncStatus.Success &&
-                  notificationTimeline.groups.length === 0 && (
-                    <Box
-                      className={ContainerColor({ variant: 'SurfaceVariant' })}
-                      style={{
-                        padding: config.space.S300,
-                        borderRadius: config.radii.R400,
-                      }}
-                      direction="Column"
-                      gap="200"
-                    >
-                      <Text>No Notifications</Text>
-                      <Text size="T200">
-                        You don&apos;t have any new notifications to display yet.
-                      </Text>
-                    </Box>
-                  )}
-
-                {timelineState.status === AsyncStatus.Loading && (
-                  <Box direction="Column" gap="100">
-                    {[...Array(8).keys()].map((key) => (
-                      <SequenceCard
-                        variant="SurfaceVariant"
-                        key={key}
-                        style={{ minHeight: toRem(80) }}
-                      />
-                    ))}
-                  </Box>
-                )}
-                {timelineState.status === AsyncStatus.Error && (
-                  <Box
-                    className={ContainerColor({ variant: 'Critical' })}
-                    style={{
-                      padding: config.space.S300,
-                      borderRadius: config.radii.R400,
-                    }}
-                    direction="Column"
-                    gap="200"
-                  >
-                    <Text size="L400">{(timelineState.error as Error).name}</Text>
-                    <Text size="T300">{(timelineState.error as Error).message}</Text>
-                  </Box>
-                )}
-              </Box>
-            </PageContentCenter>
-          </PageContent>
-        </Scroll>
-      </Box>
+      <NotificationsFeed onlyHighlight={onlyHighlight} setOnlyHighlighted={setOnlyHighlighted} />
     </Page>
   );
 }

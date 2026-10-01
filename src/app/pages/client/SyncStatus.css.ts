@@ -9,7 +9,7 @@ const drop = keyframes({
 export const Toast = style({
   position: 'fixed',
   // Just under the top bar, so the title stays readable.
-  top: toRem(44),
+  top: toRem(36),
   left: '50%',
   transform: 'translate(-50%, 0)',
   zIndex: 9999,
