@@ -62,6 +62,7 @@ const FACTS: ReactNode[] = [
   </>,
 ];
 
+const FIRST_LINE_MS = 1500;
 const LINE_MS = 5500;
 
 type Line = { key: number; label?: 'TIP' | 'FACT'; text: ReactNode };
@@ -97,9 +98,13 @@ export function SplashLoading({ label, signedIn = false }: { label?: string; sig
   const [line, setLine] = useState<Line>({ key: 0, text: FIRST_QUIP });
   useEffect(() => {
     if (label) return undefined;
-    const timer = window.setInterval(() => setLine((l) => nextLine(l, signedIn)), LINE_MS);
-    return () => window.clearInterval(timer);
-  }, [label, signedIn]);
+    // The first tip comes quickly, since most loads finish within a few seconds.
+    const timer = window.setTimeout(
+      () => setLine((l) => nextLine(l, signedIn)),
+      line.key === 0 ? FIRST_LINE_MS : LINE_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [label, signedIn, line.key]);
 
   return (
     <Box

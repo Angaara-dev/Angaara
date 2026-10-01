@@ -53,6 +53,13 @@ const STATUS_OPTIONS: { value: ChosenStatus; label: string; hint?: string }[] = 
   },
 ];
 
+const STATUS_LABELS: Record<ChosenStatus, string> = {
+  online: 'Online',
+  idle: 'Idle',
+  dnd: 'Do Not Disturb',
+  invisible: 'Invisible',
+};
+
 export function UserPanel() {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
@@ -260,9 +267,14 @@ export function UserPanel() {
             <Text size="T300" truncate style={{ fontWeight: 600 }}>
               {displayName}
             </Text>
-            <Text size="T200" priority="300" truncate>
-              {status ?? getMxIdLocalPart(userId)}
-            </Text>
+            <span className={css.Swap}>
+              <Text className={css.SwapFront} size="T200" priority="300" truncate>
+                {status ?? STATUS_LABELS[chosen]}
+              </Text>
+              <Text className={css.SwapBack} size="T200" priority="300" truncate aria-hidden>
+                {getMxIdLocalPart(userId)}
+              </Text>
+            </span>
           </Box>
         </button>
       </PopOut>

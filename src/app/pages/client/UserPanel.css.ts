@@ -87,6 +87,35 @@ export const MeText = style({
   },
 });
 
+// Both lines share one grid cell; hovering slides the status up and the username in from below.
+export const Swap = style({
+  display: 'grid',
+  overflow: 'hidden',
+});
+
+const SwapLine = {
+  gridArea: '1 / 1',
+  minWidth: 0,
+  transition: `transform 260ms ${Spring}, opacity 200ms ease`,
+  '@media': NoMotion,
+};
+
+export const SwapFront = style({
+  ...SwapLine,
+  selectors: {
+    [Pop]: { transform: 'translateY(-100%)', opacity: 0 },
+  },
+});
+
+export const SwapBack = style({
+  ...SwapLine,
+  transform: 'translateY(100%)',
+  opacity: 0,
+  selectors: {
+    [Pop]: { transform: 'translateY(0)', opacity: 1 },
+  },
+});
+
 export const OnlineDot = style({
   position: 'absolute',
   right: toRem(-3),
