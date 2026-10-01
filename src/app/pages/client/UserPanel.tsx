@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, useRef, useState } from 'react';
+import React, { memo, MouseEventHandler, useRef, useState } from 'react';
 import FocusTrap from 'focus-trap-react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { isKeyHotkey } from 'is-hotkey';
@@ -63,7 +63,7 @@ const STATUS_LABELS: Record<ChosenStatus, string> = {
   invisible: 'Invisible',
 };
 
-export function UserPanel() {
+export const UserPanel = memo(() => {
   const mx = useMatrixClient();
   const useAuthentication = useMediaAuthentication();
   const userId = mx.getSafeUserId();
@@ -313,4 +313,4 @@ export function UserPanel() {
       </Box>
     </>
   );
-}
+});

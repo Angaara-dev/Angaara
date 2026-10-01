@@ -1,5 +1,6 @@
 import React, {
   ChangeEventHandler,
+  memo,
   MouseEventHandler,
   ReactNode,
   startTransition,
@@ -125,7 +126,6 @@ function MemberDrawerHeader({ room }: MemberDrawerHeaderProps) {
 type MemberItemProps = {
   mx: MatrixClient;
   useAuthentication: boolean;
-  room: Room;
   member: RoomMember;
   onClick: MouseEventHandler<HTMLButtonElement>;
   onContextMenu: MouseEventHandler<HTMLButtonElement>;
@@ -134,116 +134,119 @@ type MemberItemProps = {
   large?: boolean;
   nameColor?: string;
   nameGradient?: string;
+  // Passed in because the member object changes in place, which memo can't see.
+  name: string;
+  avatarMxc?: string;
 };
-function MemberItem({
-  mx,
-  useAuthentication,
-  room,
-  member,
-  onClick,
-  onContextMenu,
-  pressed,
-  typing,
-  large,
-  nameColor,
-  nameGradient,
-}: MemberItemProps) {
-  const name =
-    getMemberDisplayName(room, member.userId) ?? getMxIdLocalPart(member.userId) ?? member.userId;
-  const avatarMxcUrl = member.getMxcAvatarUrl();
-  const avatarUrl = avatarMxcUrl
-    ? mx.mxcUrlToHttp(avatarMxcUrl, 100, 100, 'crop', undefined, false, useAuthentication)
-    : undefined;
+const MemberItem = memo(
+  ({
+    mx,
+    useAuthentication,
+    member,
+    onClick,
+    onContextMenu,
+    pressed,
+    typing,
+    large,
+    nameColor,
+    nameGradient,
+    name,
+    avatarMxc,
+  }: MemberItemProps) => {
+    const avatarUrl = avatarMxc
+      ? mx.mxcUrlToHttp(avatarMxc, 100, 100, 'crop', undefined, false, useAuthentication)
+      : undefined;
 
-  // Only fetch statuses for rows that stay on screen, so fast scrolling doesn't flood the server.
-  const [settled, setSettled] = useState(false);
-  useEffect(() => {
-    // A transition, so a screenful of rows filling in doesn't freeze the app.
-    const timer = setTimeout(() => startTransition(() => setSettled(true)), 300);
-    return () => clearTimeout(timer);
-  }, []);
-  const status = useUserStatus(member.userId, settled);
-  const panelBg = useUserPanelBgUrl(member.userId, settled);
-  const activity = useActivityStatus(member.userId, settled);
-  const offline = activity === 'offline';
+    // Only fetch statuses for rows that stay on screen, so fast scrolling doesn't flood the server.
+    const [settled, setSettled] = useState(false);
+    useEffect(() => {
+      // A transition, so a screenful of rows filling in doesn't freeze the app.
+      const timer = setTimeout(() => startTransition(() => setSettled(true)), 300);
+      return () => clearTimeout(timer);
+    }, []);
+    const status = useUserStatus(member.userId, settled);
+    const panelBg = useUserPanelBgUrl(member.userId, settled);
+    const activity = useActivityStatus(member.userId, settled);
+    const offline = activity === 'offline';
 
-  return (
-    <MenuItem
-      className={css.MemberRow}
-      style={{
-        padding: `0 ${large ? config.space.S400 : config.space.S200}`,
-        minHeight: toRem(large ? 60 : 40),
-        opacity: offline && !pressed ? 0.45 : undefined,
-      }}
-      radii={large ? '0' : '400'}
-      aria-pressed={pressed}
-      data-user-id={member.userId}
-      data-has-bg={!!panelBg}
-      variant={large ? 'Surface' : 'Background'}
-      onClick={onClick}
-      onContextMenu={onContextMenu}
-      before={
-        <AvatarPresence
-          variant={large ? 'Surface' : 'Background'}
-          badge={activity && <StatusIcon status={activity} size={large ? 12 : 10} />}
-        >
-          <Avatar
-            size={large ? '400' : '300'}
-            radii="Pill"
-            style={large ? { width: toRem(34), height: toRem(34) } : undefined}
+    return (
+      <MenuItem
+        className={css.MemberRow}
+        style={{
+          padding: `0 ${large ? config.space.S400 : config.space.S200}`,
+          minHeight: toRem(large ? 60 : 40),
+          opacity: offline && !pressed ? 0.45 : undefined,
+        }}
+        radii={large ? '0' : '400'}
+        aria-pressed={pressed}
+        data-user-id={member.userId}
+        data-has-bg={!!panelBg}
+        variant={large ? 'Surface' : 'Background'}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+        before={
+          <AvatarPresence
+            variant={large ? 'Surface' : 'Background'}
+            badge={activity && <StatusIcon status={activity} size={large ? 12 : 10} />}
           >
-            <UserAvatar
-              userId={member.userId}
-              src={avatarUrl ?? undefined}
-              alt={name}
-              renderFallback={() => <Icon size="100" src={Icons.User} filled />}
+            <Avatar
+              size={large ? '400' : '300'}
+              radii="Pill"
+              style={large ? { width: toRem(34), height: toRem(34) } : undefined}
+            >
+              <UserAvatar
+                userId={member.userId}
+                src={avatarUrl ?? undefined}
+                alt={name}
+                renderFallback={() => <Icon size="100" src={Icons.User} filled />}
+              />
+            </Avatar>
+          </AvatarPresence>
+        }
+        after={
+          typing && (
+            <Badge size="300" variant="Secondary" fill="Soft" radii="Pill" outlined>
+              <TypingIndicator size="300" />
+            </Badge>
+          )
+        }
+      >
+        <Box grow="Yes" direction="Column" style={{ minWidth: 0 }}>
+          {panelBg && (
+            <img
+              className={css.MemberBg}
+              src={panelBg}
+              alt=""
+              onError={(evt) => {
+                // eslint-disable-next-line no-param-reassign
+                evt.currentTarget.style.display = 'none';
+              }}
             />
-          </Avatar>
-        </AvatarPresence>
-      }
-      after={
-        typing && (
-          <Badge size="300" variant="Secondary" fill="Soft" radii="Pill" outlined>
-            <TypingIndicator size="300" />
-          </Badge>
-        )
-      }
-    >
-      <Box grow="Yes" direction="Column" style={{ minWidth: 0 }}>
-        {panelBg && (
-          <img
-            className={css.MemberBg}
-            src={panelBg}
-            alt=""
-            onError={(evt) => {
-              // eslint-disable-next-line no-param-reassign
-              evt.currentTarget.style.display = 'none';
-            }}
-          />
-        )}
-        <Box alignItems="Center" gap="100">
-          <Text
-            size={large ? 'T400' : 'T300'}
-            truncate
-            style={{
-              ...roleNameStyle(nameColor, nameGradient),
-              fontWeight: nameColor ? 500 : undefined,
-            }}
-          >
-            {name}
-          </Text>
-          <ServerTagBadge userId={member.userId} enabled={settled} />
-          <UserBadges userId={member.userId} size="small" />
+          )}
+          <Box alignItems="Center" gap="100">
+            <Text
+              size={large ? 'T400' : 'T300'}
+              truncate
+              style={{
+                ...roleNameStyle(nameColor, nameGradient),
+                fontWeight: nameColor ? 500 : undefined,
+              }}
+            >
+              {name}
+            </Text>
+            <ServerTagBadge userId={member.userId} enabled={settled} />
+            <UserBadges userId={member.userId} size="small" />
+          </Box>
+          {status && (
+            <Text size="T200" priority="300" truncate>
+              {status}
+            </Text>
+          )}
         </Box>
-        {status && (
-          <Text size="T200" priority="300" truncate>
-            {status}
-          </Text>
-        )}
-      </Box>
-    </MenuItem>
-  );
-}
+      </MenuItem>
+    );
+  }
+);
 
 const SEARCH_OPTIONS: UseAsyncSearchOptions = {
   limit: 1000,
@@ -367,20 +370,24 @@ export function MembersDrawer({ room, members, pageHeader }: MembersDrawerProps)
     { wait: 200 }
   );
 
-  const handleMemberClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    const btn = evt.currentTarget as HTMLButtonElement;
-    const userId = btn.getAttribute('data-user-id');
-    if (!userId) return;
-    openUserRoomProfile(room.roomId, space?.roomId, userId, btn.getBoundingClientRect(), 'Left');
-  };
+  const spaceId = space?.roomId;
+  const handleMemberClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (evt) => {
+      const btn = evt.currentTarget as HTMLButtonElement;
+      const userId = btn.getAttribute('data-user-id');
+      if (!userId) return;
+      openUserRoomProfile(room.roomId, spaceId, userId, btn.getBoundingClientRect(), 'Left');
+    },
+    [openUserRoomProfile, room.roomId, spaceId]
+  );
 
   const [memberMenu, setMemberMenu] = useState<{ userId: string; anchor: RectCords }>();
-  const handleMemberContextMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
+  const handleMemberContextMenu: MouseEventHandler<HTMLButtonElement> = useCallback((evt) => {
     const userId = evt.currentTarget.getAttribute('data-user-id');
     if (!userId) return;
     evt.preventDefault();
     setMemberMenu({ userId, anchor: { x: evt.clientX, y: evt.clientY, width: 0, height: 0 } });
-  };
+  }, []);
 
   return (
     <Box
@@ -583,8 +590,13 @@ export function MembersDrawer({ room, members, pageHeader }: MembersDrawerProps)
                       <MemberItem
                         mx={mx}
                         useAuthentication={useAuthentication}
-                        room={room}
                         member={tagOrMember}
+                        name={
+                          getMemberDisplayName(room, tagOrMember.userId) ??
+                          getMxIdLocalPart(tagOrMember.userId) ??
+                          tagOrMember.userId
+                        }
+                        avatarMxc={tagOrMember.getMxcAvatarUrl()}
                         onClick={handleMemberClick}
                         onContextMenu={handleMemberContextMenu}
                         pressed={openProfileUserId === tagOrMember.userId}

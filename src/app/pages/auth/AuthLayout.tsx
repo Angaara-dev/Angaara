@@ -11,6 +11,7 @@ import {
 import classNames from 'classnames';
 
 import { AuthFooter } from './AuthFooter';
+import { AuthHeading } from './AuthHeading';
 import * as css from './styles.css';
 import {
   clientAllowedServer,
@@ -29,7 +30,7 @@ import { AuthFlowsLoader } from '../../components/AuthFlowsLoader';
 import { AuthFlowsProvider } from '../../hooks/useAuthFlows';
 import { AuthServerProvider } from '../../hooks/useAuthServer';
 import { tryDecodeURIComponent } from '../../utils/dom';
-import { BRAND_NAME } from '../../brand';
+import { BRAND_NAME, HOMEPAGE_URL } from '../../brand';
 
 const currentAuthPath = (pathname: string): string => {
   if (matchPath(LOGIN_PATH, pathname)) {
@@ -42,6 +43,18 @@ const currentAuthPath = (pathname: string): string => {
     return REGISTER_PATH;
   }
   return LOGIN_PATH;
+};
+
+const HEADINGS: Record<string, { title: string; subtitle?: string }> = {
+  [LOGIN_PATH]: {
+    title: 'Welcome back!',
+    subtitle: 'Good to see you again. Your chats are right where you left them.',
+  },
+  [REGISTER_PATH]: {
+    title: 'Create an account',
+    subtitle: "It's free, and your DMs are encrypted from the very first message.",
+  },
+  [RESET_PASSWORD_PATH]: { title: 'Reset your password' },
 };
 
 // Fixed positions so the embers don't jump around on re-render.
@@ -73,6 +86,26 @@ function Embers() {
         />
       ))}
     </div>
+  );
+}
+
+function AuthSide() {
+  return (
+    <Box className={css.AuthSide} direction="Column" justifyContent="Center" gap="400">
+      <AngaaraLogo size={84} animated />
+      <Text as="h3" className={css.AuthSideTitle}>
+        Your chats, locked tight
+      </Text>
+      <ul className={css.AuthSideList}>
+        <li>End-to-end encrypted DMs</li>
+        <li>Verify every device</li>
+        <li>Check files before you open them</li>
+        <li>Open source, no trackers</li>
+      </ul>
+      <Text as="a" size="T300" className={css.AuthSideLink} href={HOMEPAGE_URL} target="_blank">
+        {`What's ${BRAND_NAME}?`}
+      </Text>
+    </Box>
   );
 }
 
@@ -164,15 +197,18 @@ export function AuthLayout() {
         gap="400"
       >
         <Embers />
-        <Box direction="Column" alignItems="Center" gap="600" style={{ width: '100%' }}>
-          <Box className={css.AuthHero} direction="Column" alignItems="Center" gap="300">
-            <AngaaraLogo size={76} animated />
-            <Text as="h1" className={css.AuthTitle}>
+        <Box as="header" className={css.AuthTopBar}>
+          <a className={css.AuthBrand} href={HOMEPAGE_URL} target="_blank" rel="noreferrer">
+            <AngaaraLogo size={36} />
+            <Text as="span" className={css.AuthTitle}>
               {BRAND_NAME}
             </Text>
-          </Box>
-          <Box direction="Column" className={css.AuthCard}>
+          </a>
+        </Box>
+        <Box className={css.AuthMain} justifyContent="Center" alignItems="Center">
+          <div className={css.AuthCard}>
             <Box className={css.AuthCardContent} direction="Column">
+              <AuthHeading {...HEADINGS[currentAuthPath(location.pathname)]} />
               <Box direction="Column" gap="100">
                 <Text as="label" size="L400" priority="300">
                   Homeserver
@@ -235,7 +271,8 @@ export function AuthLayout() {
                 </AuthServerProvider>
               )}
             </Box>
-          </Box>
+            <AuthSide />
+          </div>
         </Box>
         <AuthFooter />
       </Box>

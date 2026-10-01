@@ -1,13 +1,13 @@
-import { keyframes, style } from '@vanilla-extract/css';
+import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
 
 export const AuthLayout = style({
   minHeight: '100%',
-  backgroundColor: color.Background.Container,
+  backgroundColor: '#120c1f',
   backgroundImage: [
-    'radial-gradient(ellipse 70% 45% at 50% 110%, rgba(255, 107, 61, 0.32), transparent 70%)',
-    'radial-gradient(ellipse 40% 30% at 50% 100%, rgba(255, 154, 92, 0.22), transparent 70%)',
-    'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 107, 61, 0.06), transparent 70%)',
+    'radial-gradient(ellipse 70% 50% at 70% 110%, rgba(240, 68, 30, 0.5), transparent 70%)',
+    'radial-gradient(ellipse 50% 40% at 0% 0%, rgba(126, 58, 242, 0.3), transparent 70%)',
+    'linear-gradient(180deg, #120c1f 0%, #2b1347 70%, #4a1730 100%)',
   ].join(', '),
   color: color.Background.OnContainer,
   padding: config.space.S400,
@@ -55,31 +55,43 @@ export const Ember = style({
   animationIterationCount: 'infinite',
 });
 
-export const AuthHero = style({
-  marginTop: '4vh',
-  textAlign: 'center',
+export const AuthTopBar = style({
+  width: '100%',
+  maxWidth: toRem(1200),
+  padding: `${config.space.S200} ${config.space.S300}`,
+});
+
+export const AuthBrand = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: config.space.S200,
+  textDecoration: 'none',
 });
 
 export const AuthTitle = style({
-  fontSize: toRem(40),
-  lineHeight: 1.1,
+  fontSize: toRem(24),
+  lineHeight: 1,
   fontWeight: 800,
   letterSpacing: '-0.02em',
-  background: 'linear-gradient(180deg, #FFFFFF 30%, #FFC8A3 100%)',
-  WebkitBackgroundClip: 'text',
-  backgroundClip: 'text',
-  color: 'transparent',
+  color: '#FFFFFF',
+});
+
+export const AuthMain = style({
+  width: '100%',
+  flexGrow: 1,
 });
 
 export const AuthCard = style({
-  maxWidth: toRem(440),
+  maxWidth: toRem(860),
   width: '100%',
-  backgroundColor: 'rgba(21, 21, 23, 0.82)',
-  backdropFilter: 'blur(12px)',
+  display: 'grid',
+  gridTemplateColumns: `minmax(0, 1fr) ${toRem(320)}`,
+  backgroundColor: 'rgba(21, 18, 28, 0.86)',
+  backdropFilter: 'blur(14px)',
   color: color.Surface.OnContainer,
-  borderRadius: config.radii.R400,
-  boxShadow: '0 24px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.04)',
-  border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
+  borderRadius: toRem(12),
+  boxShadow: '0 40px 100px -20px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+  border: `${config.borderWidth.B300} solid rgba(255, 255, 255, 0.08)`,
   overflow: 'hidden',
   position: 'relative',
   selectors: {
@@ -93,6 +105,62 @@ export const AuthCard = style({
       background: 'linear-gradient(90deg, transparent, #FF9A5C, #F0441E, transparent)',
     },
   },
+  '@media': {
+    'screen and (max-width: 860px)': { gridTemplateColumns: '1fr', maxWidth: toRem(480) },
+  },
+});
+
+export const AuthSide = style({
+  padding: toRem(36),
+  textAlign: 'center',
+  alignItems: 'center',
+  color: '#FFF7F2',
+  background: [
+    'radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 154, 92, 0.28), transparent 70%)',
+    'linear-gradient(160deg, #3a1a2e, #24122f)',
+  ].join(', '),
+  borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
+  '@media': {
+    'screen and (max-width: 860px)': { display: 'none' },
+  },
+});
+
+export const AuthSideTitle = style({
+  fontSize: toRem(24),
+  lineHeight: 1.15,
+  fontWeight: 800,
+  letterSpacing: '-0.01em',
+  margin: 0,
+});
+
+export const AuthSideList = style({
+  listStyle: 'none',
+  margin: 0,
+  padding: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: config.space.S200,
+  textAlign: 'left',
+  fontSize: toRem(14),
+});
+globalStyle(`${AuthSideList} li::before`, {
+  content: '"✓  "',
+  color: '#3CCF7A',
+  fontWeight: 700,
+});
+
+export const AuthSideLink = style({
+  color: '#FF9A5C',
+  fontWeight: 600,
+});
+
+export const AuthHeadingTitle = style({
+  fontSize: toRem(28),
+  lineHeight: 1.2,
+  fontWeight: 800,
+  letterSpacing: '-0.01em',
+  textAlign: 'center',
+  margin: 0,
 });
 
 export const AuthLogo = style([
@@ -105,13 +173,12 @@ export const AuthLogo = style([
 ]);
 
 export const AuthCardContent = style({
-  maxWidth: toRem(402),
   width: '100%',
-  margin: 'auto',
-  padding: config.space.S400,
-  paddingTop: config.space.S600,
-  paddingBottom: toRem(40),
-  gap: toRem(36),
+  padding: toRem(36),
+  gap: toRem(28),
+  '@media': {
+    'screen and (max-width: 600px)': { padding: config.space.S400 },
+  },
 });
 
 export const AuthFooter = style({

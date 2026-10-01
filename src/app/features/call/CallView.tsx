@@ -199,7 +199,7 @@ function CallJoined({ joined, containerRef }: CallJoinedProps) {
       </Box>
       {callEmbed && joined && (
         <div className={css.CallOverlay} data-shown={hover} onMouseEnter={show} onMouseLeave={hide}>
-          <CallEncryption room={callEmbed.room} keySize={callEmbed.keySize} />
+          <CallEncryption room={callEmbed.room} warningOnly />
           <CallControls callEmbed={callEmbed} />
         </div>
       )}

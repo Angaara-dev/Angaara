@@ -160,6 +160,7 @@ export const useCallTileLook = (embed: CallEmbed) => {
       else tile.requestFullscreen().catch(() => undefined);
     };
     let focusedByStream = false;
+    const tinted = new WeakMap<HTMLElement, string>();
     const dress = () => {
       doc.querySelectorAll<HTMLElement>(TILE).forEach((tile) => {
         if (!tile.querySelector('.angaara-focus')) {
@@ -180,6 +181,8 @@ export const useCallTileLook = (embed: CallEmbed) => {
           tile.style.removeProperty('--angaara-tint');
           return;
         }
+        if (tinted.get(tile) === userId) return;
+        tinted.set(tile, userId);
         tintFor(mx, userId, embed.room, auth).then((tint) => {
           if (tint && colored) tile.style.setProperty('--angaara-tint', tint);
         });
@@ -218,14 +221,18 @@ export const useCallTileLook = (embed: CallEmbed) => {
     };
     // The stream's layer leaves room for the call's own (hidden) footer and the strip's doesn't.
     // Measured all the time, so focus view is laid out right the moment it opens.
+    let stripRow = '';
     const alignFocus = () => {
       const fixed = doc.querySelector<HTMLElement>('[class*="_fixedGrid_"]');
       const scrolling = doc.querySelector<HTMLElement>('[class*="_scrollingGrid_"]');
       if (!fixed || !scrolling) return;
       const row = `${Math.max(0, 124 - (scrolling.clientHeight - fixed.clientHeight))}px`;
+      if (row === stripRow) return;
+      stripRow = row;
       doc.documentElement.style.setProperty('--angaara-strip-row', row);
     };
     const showQuality = () =>
+      !document.hidden &&
       doc.querySelectorAll<HTMLElement>(STREAM).forEach((stream) => {
         const label = stream.querySelector<HTMLElement>('.angaara-live .q');
         if (!label) return;

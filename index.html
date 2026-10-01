@@ -28,7 +28,7 @@
          screens so the embers never restart. The app hides it once it's ready. -->
     <style>
       html:has(body[data-loading]) {
-        background-color: #0e0e10;
+        background-color: #120c1f;
       }
       body[data-loading] {
         margin: 0;
@@ -41,8 +41,9 @@
         z-index: -1;
         overflow: hidden;
         pointer-events: none;
-        background: radial-gradient(120% 45% at 50% 100%, rgba(255, 107, 61, 0.22), transparent 70%)
-          #0e0e10;
+        background: radial-gradient(90% 45% at 50% 112%, rgba(240, 68, 30, 0.42), transparent 75%),
+          radial-gradient(50% 40% at 0% 0%, rgba(126, 58, 242, 0.3), transparent 70%),
+          linear-gradient(180deg, #120c1f 0%, #2b1347 70%, #4a1730 100%);
       }
       body[data-loading] #boot-embers,
       body[data-splash] #boot-embers {
@@ -181,10 +182,12 @@
         border-radius: 50%;
         background: radial-gradient(
           circle,
-          rgba(255, 120, 60, 0.5),
-          rgba(255, 90, 40, 0.12) 45%,
-          transparent 68%
+          rgba(255, 140, 80, 0.45),
+          rgba(255, 110, 60, 0.18) 30%,
+          rgba(255, 90, 40, 0.06) 50%,
+          transparent 70%
         );
+        mix-blend-mode: screen;
         animation: boot-halo 3s ease-in-out infinite;
       }
       .boot-logo svg {

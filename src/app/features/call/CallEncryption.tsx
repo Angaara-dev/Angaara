@@ -10,10 +10,11 @@ type CallEncryptionProps = {
   room: Room;
   // The key size of the call this device is in, when it's in one here.
   keySize?: KeySize;
+  warningOnly?: boolean;
 };
 
 // Says plainly whether a call is end-to-end encrypted, and with what.
-export function CallEncryption({ room, keySize }: CallEncryptionProps) {
+export function CallEncryption({ room, keySize, warningOnly }: CallEncryptionProps) {
   const mx = useMatrixClient();
   const encrypted = !!useStateEvent(room, StateEvent.RoomEncryption);
   const canEncrypt = room.currentState.maySendStateEvent(
@@ -39,6 +40,7 @@ export function CallEncryption({ room, keySize }: CallEncryptionProps) {
   };
 
   if (encrypted) {
+    if (warningOnly) return null;
     return (
       <Box alignItems="Center" justifyContent="Center" gap="100">
         <Icon size="50" src={Icons.Lock} style={{ color: color.Success.Main }} />

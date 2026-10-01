@@ -23,9 +23,6 @@ export function ResetPassword() {
 
   return (
     <Box direction="Column" gap="500">
-      <Text size="H2" priority="400">
-        Reset Password
-      </Text>
       <PasswordResetForm defaultEmail={resetPasswordSearchParams.email} />
       <span data-spacing-node />
 
