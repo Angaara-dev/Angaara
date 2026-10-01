@@ -29,6 +29,8 @@ import { CallEmbed, useCallControlState } from '../../plugins/call';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
 import { stopPropagation } from '../../utils/keyboard';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { SoundboardPopout } from '../soundboard/SoundboardPopout';
+import { SoundboardIcon } from '../soundboard/SoundboardIcon';
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
@@ -110,6 +112,23 @@ export function CallControls({ callEmbed }: CallControlsProps) {
               enabled={screenshare}
               onToggle={() => callEmbed.control.toggleScreenshare()}
             />
+            <SoundboardPopout embed={callEmbed}>
+              {(toggle, open) => (
+                <IconButton
+                  variant={open ? 'Primary' : 'Surface'}
+                  fill="Soft"
+                  radii="400"
+                  size="400"
+                  outlined
+                  aria-label="Soundboard"
+                  title="Soundboard"
+                  aria-pressed={open}
+                  onClick={toggle}
+                >
+                  <Icon size="400" src={SoundboardIcon} filled={open} />
+                </IconButton>
+              )}
+            </SoundboardPopout>
           </Box>
         </Box>
         {!compact && <ControlDivider />}

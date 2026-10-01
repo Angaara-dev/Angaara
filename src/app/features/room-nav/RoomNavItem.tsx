@@ -15,6 +15,7 @@ import {
   Line,
   RectCords,
   Badge,
+  color,
   Spinner,
 } from 'folds';
 import { useFocusWithin, useHover } from 'react-aria';
@@ -375,7 +376,7 @@ export function RoomNavItem({
         variant="Background"
         radii="400"
         highlight={unread !== undefined}
-        aria-selected={selected}
+        aria-selected={selected && !(chatCall && callViewRoom === room.roomId)}
         data-hover={!!menuAnchor}
         onContextMenu={handleContextMenu}
         {...hoverProps}
@@ -510,7 +511,12 @@ export function RoomNavItem({
             <NavItem
               variant="Background"
               radii="400"
-              aria-selected={selected && callViewRoom === room.roomId}
+              // Open calls get a light highlight rather than the selection marker.
+              style={
+                selected && callViewRoom === room.roomId
+                  ? { backgroundColor: color.Background.ContainerHover }
+                  : undefined
+              }
             >
               <NavLink
                 to={linkPath}

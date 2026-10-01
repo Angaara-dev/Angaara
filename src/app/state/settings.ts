@@ -52,6 +52,9 @@ export interface Settings {
   notificationSounds: boolean;
   // Count XP from the IDs and times of messages you send; off stops all reporting.
   earnXp: boolean;
+  // How loud other people's soundboard sounds play for you, 0 to 100.
+  soundboardVolume: number;
+  soundboardMuted: boolean;
 
   hour24Clock: boolean;
   dateFormatString: string;
@@ -91,6 +94,8 @@ const defaultSettings: Settings = {
   showNotifications: true,
   notificationSounds: false,
   earnXp: true,
+  soundboardVolume: 70,
+  soundboardMuted: false,
 
   hour24Clock: false,
   dateFormatString: 'D MMM YYYY',

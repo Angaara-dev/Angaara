@@ -12,7 +12,9 @@ export const VoicePanel = style({
 
 export const Channel = style({
   display: 'block',
+  width: '100%',
   minWidth: 0,
+  overflow: 'hidden',
   padding: 0,
   border: 'none',
   background: 'transparent',
@@ -36,7 +38,7 @@ export const Badge = style({
 
 export const Tiles = style({
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, 1fr)',
+  gridTemplateColumns: 'repeat(5, 1fr)',
   gap: config.space.S100,
 });
 

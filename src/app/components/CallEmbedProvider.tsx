@@ -63,6 +63,7 @@ import { useLivekitSupport } from '../hooks/useLivekitSupport';
 import { CallAvatarAnimation } from '../styles/Animations.css';
 import { webRTCSupported } from '../utils/rtc';
 import { CallKeyGuard, CallKeyNotice } from './CallKeyGuard';
+import { useSoundboardReceiver } from '../features/soundboard/useSoundboardReceiver';
 
 type IncomingCallInfo = {
   room: Room;
@@ -369,6 +370,7 @@ function CallUtils({ embed, containerRef }: CallUtilsProps) {
   }, [speakers, setSpeakers]);
   useEffect(() => () => setSpeakers(new Set()), [setSpeakers]);
   useCallThemeSync(embed);
+  useSoundboardReceiver(embed);
   useCallHangupEvent(
     embed,
     useCallback(() => {

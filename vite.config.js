@@ -13,6 +13,31 @@ import buildConfig from './build.config';
 
 // Lets Element Call use AES-256 frame keys when the app asks for it (angaaraKeySize=256 in the
 // widget URL). Fails the build if the bundle changed, so calls never quietly stay on AES-128.
+// Runs first in the call frame: mixes soundboard audio into the mic so people on other apps
+// hear it (plain mic if the mixer can't start), and keeps the call's connections for ping stats.
+const MIC_MIX = `(()=>{try{const md=navigator.mediaDevices;if(!md||!md.getUserMedia)return;
+const real=md.getUserMedia.bind(md);let ctx;let dest;
+globalThis.__angaaraMix={ready:()=>!!(ctx&&dest&&ctx.state==='running'),
+play:async(bytes)=>{if(!ctx||!dest||ctx.state!=='running')return false;
+const src=ctx.createBufferSource();src.buffer=await ctx.decodeAudioData(bytes);
+src.connect(dest);src.start();src.stop(ctx.currentTime+10);return true;}};
+md.getUserMedia=async(c)=>{const s=await real(c);if(!c||!c.audio)return s;
+try{const mic=s.getAudioTracks()[0];if(!mic)return s;ctx=ctx||new AudioContext();
+if(ctx.state!=='running')await Promise.race([ctx.resume(),new Promise((r)=>setTimeout(r,300))]);
+if(ctx.state!=='running')return s;const d=ctx.createMediaStreamDestination();
+ctx.createMediaStreamSource(new MediaStream([mic])).connect(d);const out=d.stream.getAudioTracks()[0];
+const stop=out.stop.bind(out);out.stop=()=>{stop();mic.stop();};
+out.getSettings=()=>mic.getSettings();out.getConstraints=()=>mic.getConstraints();
+out.getCapabilities=()=>(mic.getCapabilities?mic.getCapabilities():{});
+out.applyConstraints=(x)=>mic.applyConstraints(x);
+Object.defineProperty(out,'label',{get:()=>mic.label});
+mic.addEventListener('ended',()=>{stop();out.dispatchEvent(new Event('ended'));});
+dest=d;return new MediaStream([out,...s.getVideoTracks()]);}catch(e){return s;}};}catch(e){}})();
+(()=>{try{const PC=globalThis.RTCPeerConnection;if(!PC)return;const pcs=[];globalThis.__angaaraPcs=pcs;
+globalThis.RTCPeerConnection=new Proxy(PC,{construct(t,a){const pc=new t(...a);pcs.push(pc);
+pc.addEventListener('connectionstatechange',()=>{if(pc.connectionState==='closed'){const i=pcs.indexOf(pc);if(i>=0)pcs.splice(i,1);}});
+return pc;}});}catch(e){}})();`;
+
 function patchElementCallKeySize() {
   return {
     name: 'patch-element-call-key-size',
@@ -31,7 +56,7 @@ function patchElementCallKeySize() {
         if (defaults < 0 || (workerAt >= 0 && defaults > workerAt) || !keyGen.test(code)) return;
         code = `${code.slice(0, defaults)}keySize:(${keySize})}${code.slice(defaults + 12)}`;
         code = code.replace(keyGen, `generateRandomKey(){var $1=new Uint8Array((${keySize})/8)`);
-        code = `globalThis.__angaaraKeySize=new URLSearchParams(location.search).get('angaaraKeySize')==='256'?256:128;${code}`;
+        code = `${MIC_MIX}globalThis.__angaaraKeySize=new URLSearchParams(location.search).get('angaaraKeySize')==='256'?256:128;${code}`;
         fs.writeFileSync(target, code);
         patched += 1;
       });

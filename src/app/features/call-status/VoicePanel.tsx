@@ -28,6 +28,9 @@ import { roomToParentsAtom } from '../../state/room/roomToParents';
 import { getOrphanParents } from '../../utils/room';
 import { useResizeObserver } from '../../hooks/useResizeObserver';
 import { stopPropagation } from '../../utils/keyboard';
+import { SoundboardPopout } from '../soundboard/SoundboardPopout';
+import { ConnectionPanel } from './ConnectionPanel';
+import { SoundboardIcon } from '../soundboard/SoundboardIcon';
 import * as css from './VoicePanel.css';
 
 type ControlProps = {
@@ -130,6 +133,8 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
     useCallback(() => panelRef.current, [])
   );
   const [menuCords, setMenuCords] = useState<RectCords>();
+  const [infoCords, setInfoCords] = useState<RectCords>();
+  const infoRef = useRef<HTMLDivElement>(null);
   const runMenu = (action: () => void) => () => {
     setMenuCords(undefined);
     action();
@@ -142,13 +147,46 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
           <Icon size="200" src={Icons.VolumeHighLock} />
         </span>
         <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
-          <Text size="T300" style={{ color: tone, fontWeight: 600 }} truncate>
-            {joined ? 'Voice Connected' : 'Connecting...'}
-          </Text>
+          <PopOut
+            anchor={infoCords}
+            position="Top"
+            align="Start"
+            offset={8}
+            content={
+              <FocusTrap
+                focusTrapOptions={{
+                  initialFocus: false,
+                  // The panel is only text, so the trap needs somewhere to put focus.
+                  fallbackFocus: () => infoRef.current ?? document.body,
+                  onDeactivate: () => setInfoCords(undefined),
+                  clickOutsideDeactivates: true,
+                  escapeDeactivates: stopPropagation,
+                }}
+              >
+                <div ref={infoRef} tabIndex={-1} style={{ outline: 'none' }}>
+                  <ConnectionPanel embed={embed} />
+                </div>
+              </FocusTrap>
+            }
+          >
+            <button
+              type="button"
+              className={css.Channel}
+              aria-label="Connection details"
+              aria-expanded={!!infoCords}
+              onClick={(evt) =>
+                setInfoCords(infoCords ? undefined : evt.currentTarget.getBoundingClientRect())
+              }
+            >
+              <Text size="T300" style={{ color: tone, fontWeight: 600, display: 'block' }} truncate>
+                {joined ? 'Voice Connected' : 'Connecting...'}
+              </Text>
+            </button>
+          </PopOut>
           <button type="button" className={css.Channel} onClick={openCall}>
-            <Text as="span" size="T200" priority="300" truncate>
+            <Text as="span" size="T200" priority="300" truncate style={{ display: 'block' }}>
               {serverName ? `${serverName} / ${name}` : name}
-              {embed.room.hasEncryptionStateEvent() && ` · 🔒 AES-${embed.keySize}`}
+              {embed.room.hasEncryptionStateEvent() && ` · AES-${embed.keySize}`}
             </Text>
           </button>
         </Box>
@@ -237,6 +275,17 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
           disabled={!joined}
           onClick={() => embed.control.toggleScreenshare()}
         />
+        <SoundboardPopout embed={embed}>
+          {(toggle, open) => (
+            <Tile
+              label="Soundboard"
+              icon={SoundboardIcon}
+              tone={open ? 'on' : undefined}
+              disabled={!joined}
+              onClick={toggle}
+            />
+          )}
+        </SoundboardPopout>
       </div>
     </Box>
   );
