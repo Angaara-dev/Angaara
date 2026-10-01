@@ -520,11 +520,8 @@ export function RoomNavItem({
             >
               <NavLink
                 to={linkPath}
-                onClick={() => {
-                  setCallViewRoom(room.roomId);
-                  // Tapping the call joins it, unless you're already in one.
-                  if (canJoinCall()) startCall(room, callPref);
-                }}
+                // Opens the call screen; joining is its own button there.
+                onClick={() => setCallViewRoom(room.roomId)}
               >
                 <NavItemContent>
                   <Box as="span" grow="Yes" alignItems="Center" gap="200">

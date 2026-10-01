@@ -64,6 +64,7 @@ import { CallAvatarAnimation } from '../styles/Animations.css';
 import { webRTCSupported } from '../utils/rtc';
 import { CallKeyGuard, CallKeyNotice } from './CallKeyGuard';
 import { useSoundboardReceiver } from '../features/soundboard/useSoundboardReceiver';
+import { useStaleCallCleanup } from '../hooks/useStaleCallCleanup';
 
 type IncomingCallInfo = {
   room: Room;
@@ -388,6 +389,7 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
   const callEmbed = useAtomValue(callEmbedAtom);
   const callEmbedRef = useRef<HTMLDivElement>(null);
   const joined = useCallJoined(callEmbed);
+  useStaleCallCleanup(callEmbed);
 
   const selectedRoom = useSelectedRoom();
   const chat = useAtomValue(callChatAtom);

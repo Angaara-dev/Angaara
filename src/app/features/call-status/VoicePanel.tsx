@@ -31,6 +31,7 @@ import { stopPropagation } from '../../utils/keyboard';
 import { SoundboardPopout } from '../soundboard/SoundboardPopout';
 import { ConnectionPanel } from './ConnectionPanel';
 import { SoundboardIcon } from '../soundboard/SoundboardIcon';
+import { AudioDevicesPopout } from './AudioDevices';
 import * as css from './VoicePanel.css';
 
 type ControlProps = {
@@ -261,6 +262,16 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
           disabled={!joined}
           onClick={() => embed.control.toggleSound()}
         />
+        <AudioDevicesPopout embed={embed}>
+          {(toggle, open) => (
+            <Tile
+              label="Audio Devices"
+              icon={Icons.Setting}
+              tone={open ? 'on' : undefined}
+              onClick={toggle}
+            />
+          )}
+        </AudioDevicesPopout>
         <Tile
           label={video ? 'Turn Off Camera' : 'Turn On Camera'}
           icon={video ? Icons.VideoCamera : Icons.VideoCameraMute}

@@ -38,7 +38,7 @@ export const Badge = style({
 
 export const Tiles = style({
   display: 'grid',
-  gridTemplateColumns: 'repeat(5, 1fr)',
+  gridTemplateColumns: 'repeat(6, 1fr)',
   gap: config.space.S100,
 });
 

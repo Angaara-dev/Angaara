@@ -31,6 +31,7 @@ import { stopPropagation } from '../../utils/keyboard';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { SoundboardPopout } from '../soundboard/SoundboardPopout';
 import { SoundboardIcon } from '../soundboard/SoundboardIcon';
+import { AudioDevicesPopout } from '../call-status/AudioDevices';
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
@@ -73,7 +74,10 @@ export function CallControls({ callEmbed }: CallControlsProps) {
     setCords(undefined);
   };
 
-  const handleMicrophoneToggle = useCallback(() => callEmbed.control.toggleMicrophone(), [callEmbed]);
+  const handleMicrophoneToggle = useCallback(
+    () => callEmbed.control.toggleMicrophone(),
+    [callEmbed]
+  );
   const handleVideoToggle = useCallback(() => callEmbed.control.toggleVideo(), [callEmbed]);
 
   const [hangupState, hangup] = useAsyncCallback(
@@ -99,11 +103,25 @@ export function CallControls({ callEmbed }: CallControlsProps) {
       >
         <Box alignItems="Center" gap="Inherit" grow="Yes" direction={compact ? 'Column' : 'Row'}>
           <Box shrink="No" alignItems="Inherit" justifyContent="Inherit" gap="200">
-            <MicrophoneButton
-              enabled={microphone}
-              onToggle={handleMicrophoneToggle}
-            />
+            <MicrophoneButton enabled={microphone} onToggle={handleMicrophoneToggle} />
             <SoundButton enabled={sound} onToggle={() => callEmbed.control.toggleSound()} />
+            <AudioDevicesPopout embed={callEmbed}>
+              {(toggle, open) => (
+                <IconButton
+                  variant={open ? 'Primary' : 'Surface'}
+                  fill="Soft"
+                  radii="400"
+                  size="400"
+                  outlined
+                  aria-label="Audio Devices"
+                  title="Audio Devices"
+                  aria-pressed={open}
+                  onClick={toggle}
+                >
+                  <Icon size="400" src={Icons.Setting} filled={open} />
+                </IconButton>
+              )}
+            </AudioDevicesPopout>
           </Box>
           {!compact && <ControlDivider />}
           <Box shrink="No" alignItems="Inherit" justifyContent="Inherit" gap="200">

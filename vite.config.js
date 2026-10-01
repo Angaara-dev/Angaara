@@ -36,7 +36,34 @@ dest=d;return new MediaStream([out,...s.getVideoTracks()]);}catch(e){return s;}}
 (()=>{try{const PC=globalThis.RTCPeerConnection;if(!PC)return;const pcs=[];globalThis.__angaaraPcs=pcs;
 globalThis.RTCPeerConnection=new Proxy(PC,{construct(t,a){const pc=new t(...a);pcs.push(pc);
 pc.addEventListener('connectionstatechange',()=>{if(pc.connectionState==='closed'){const i=pcs.indexOf(pc);if(i>=0)pcs.splice(i,1);}});
-return pc;}});}catch(e){}})();`;
+return pc;}});}catch(e){}})();
+globalThis.__angaaraOnePerUser=(ms,me)=>{try{const live=(m)=>{const p=m.participant&&m.participant.value$&&m.participant.value$.value;
+return p?(p.isCameraEnabled||p.isScreenShareEnabled?2:1):0;};const best=new Map();ms.forEach((m)=>{if(me&&m.userId===me.userId)return;
+const b=best.get(m.userId);if(!b||live(m)>=live(b))best.set(m.userId,m);});return ms.filter((m)=>best.get(m.userId)===m);}catch(e){return ms;}};`;
+
+// One tile per person: a user's other devices fold into the tile of the one sending media.
+function patchOneTilePerUser(code) {
+  const at = code.search(/`CallViewModel userMedia\$`,function\*\(\[\w+,/);
+  if (at < 0) return undefined;
+  const local = code.slice(at).match(/function\*\(\[(\w+),/)[1];
+  const head = code.slice(at, at + 400);
+  const filter = /(\w+)=(\w+\.value\.filter\((\w+)=>\w+\(\3\)!==\w+\))/;
+  if (!filter.test(head)) return undefined;
+  return (
+    code.slice(0, at) +
+    head.replace(filter, `$1=__angaaraOnePerUser($2,${local})`) +
+    code.slice(at + 400)
+  );
+}
+
+// Hands the app Element Call's mic/speaker settings so it can switch them mid-call.
+function exposeDeviceSettings(code) {
+  const m = code.match(
+    /(\w+)=new (\w+)\(`audio-input`,void 0\),(\w+)=new \2\(`audio-output`,void 0\)/
+  );
+  if (!m) return undefined;
+  return `${code}\n;globalThis.__angaaraDevices={input:${m[1]},output:${m[3]}};`;
+}
 
 function patchElementCallKeySize() {
   return {
@@ -56,6 +83,13 @@ function patchElementCallKeySize() {
         if (defaults < 0 || (workerAt >= 0 && defaults > workerAt) || !keyGen.test(code)) return;
         code = `${code.slice(0, defaults)}keySize:(${keySize})}${code.slice(defaults + 12)}`;
         code = code.replace(keyGen, `generateRandomKey(){var $1=new Uint8Array((${keySize})/8)`);
+        const merged = patchOneTilePerUser(code);
+        if (merged) code = merged;
+        else
+          console.warn('Element Call tile merge patch did not apply; devices get their own tiles');
+        const devices = exposeDeviceSettings(code);
+        if (devices) code = devices;
+        else console.warn('Element Call device patch did not apply; device changes need a rejoin');
         code = `${MIC_MIX}globalThis.__angaaraKeySize=new URLSearchParams(location.search).get('angaaraKeySize')==='256'?256:128;${code}`;
         fs.writeFileSync(target, code);
         patched += 1;
