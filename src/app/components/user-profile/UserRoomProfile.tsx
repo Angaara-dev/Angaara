@@ -8,7 +8,7 @@ import { getMemberAvatarMxc, getMemberDisplayName } from '../../utils/room';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { usePowerLevels } from '../../hooks/usePowerLevels';
-import { useRoom } from '../../hooks/useRoom';
+import { useIsDirectRoom, useRoom } from '../../hooks/useRoom';
 import { useSpaceOptionally } from '../../hooks/useSpace';
 import { useUserXp } from '../../hooks/useUserXp';
 import { AngaaraLogo } from '../angaara-logo';
@@ -114,6 +114,7 @@ export function UserRoomProfile({ userId, onViewFull }: UserRoomProfileProps) {
       : undefined;
   const angaaraSince = useUserXp(userId)?.since;
   const compact = !!onViewFull;
+  const direct = useIsDirectRoom();
   const cardBackground = profileTheme
     ? 'rgba(0, 0, 0, 0.28)'
     : `color-mix(in srgb, ${color.SurfaceVariant.Container} 80%, transparent)`;
@@ -159,6 +160,14 @@ export function UserRoomProfile({ userId, onViewFull }: UserRoomProfileProps) {
             </Text>
           )}
         </Box>
+        {compact && !direct && (
+          <Box direction="Column" gap="100">
+            <Text size="L400">Roles</Text>
+            <Box alignItems="Center" gap="200" wrap="Wrap">
+              {creator ? <CreatorChip /> : <PowerChip userId={userId} />}
+            </Box>
+          </Box>
+        )}
         <Box direction="Column" gap="200">
           {userId !== myUserId ? (
             <Button
