@@ -253,7 +253,8 @@ export const runImport = async (
         state_key: '',
         content: { join_rule: 'invite' },
       };
-    if (channel.private || encryptAll) {
+    // Voice channels are always end-to-end encrypted.
+    if (channel.private || encryptAll || channel.kind === 'voice') {
       state.push({
         type: 'm.room.encryption',
         state_key: '',

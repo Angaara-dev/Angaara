@@ -35,7 +35,8 @@ import {
   useCallMemberSoundSync,
   useCallStart,
 } from '../hooks/useCallEmbed';
-import { callChatAtom, callEmbedAtom } from '../state/callEmbed';
+import { callChatAtom, callEmbedAtom, callSpeakersAtom } from '../state/callEmbed';
+import { useCallSpeakers } from '../hooks/useCallSpeakers';
 import { CallEmbed } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
@@ -56,6 +57,7 @@ import { getRoomPermissionsAPI } from '../hooks/useRoomPermissions';
 import { useLivekitSupport } from '../hooks/useLivekitSupport';
 import { CallAvatarAnimation } from '../styles/Animations.css';
 import { webRTCSupported } from '../utils/rtc';
+import { CallKeyGuard, CallKeyNotice } from './CallKeyGuard';
 
 type IncomingCallInfo = {
   room: Room;
@@ -350,10 +352,17 @@ function IncomingCallListener({ callEmbed, joined }: IncomingCallListenerProps) 
   ) : null;
 }
 
-function CallUtils({ embed }: { embed: CallEmbed }) {
+type CallUtilsProps = { embed: CallEmbed; containerRef: React.RefObject<HTMLDivElement> };
+function CallUtils({ embed, containerRef }: CallUtilsProps) {
   const setCallEmbed = useSetAtom(callEmbedAtom);
 
   useCallMemberSoundSync(embed);
+  const speakers = useCallSpeakers(embed);
+  const setSpeakers = useSetAtom(callSpeakersAtom);
+  useEffect(() => {
+    setSpeakers(speakers);
+  }, [speakers, setSpeakers]);
+  useEffect(() => () => setSpeakers(new Set()), [setSpeakers]);
   useCallThemeSync(embed);
   useCallHangupEvent(
     embed,
@@ -362,7 +371,7 @@ function CallUtils({ embed }: { embed: CallEmbed }) {
     }, [setCallEmbed])
   );
 
-  return null;
+  return <CallKeyGuard embed={embed} containerRef={containerRef} />;
 }
 
 type CallEmbedProviderProps = {
@@ -383,7 +392,8 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
 
   return (
     <CallEmbedContextProvider value={callEmbed}>
-      {callEmbed && <CallUtils embed={callEmbed} />}
+      {callEmbed && <CallUtils embed={callEmbed} containerRef={callEmbedRef} />}
+      <CallKeyNotice />
       <CallEmbedRefContextProvider value={callEmbedRef}>
         <IncomingCallListener callEmbed={callEmbed} joined={joined} />
         {children}

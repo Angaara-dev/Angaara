@@ -25,6 +25,8 @@ import { ThreadDrawer } from './thread';
 import { markRoomOpen } from '../../utils/timelineTrim';
 import { canDecide, getAppeal, getAppellant } from '../removed-notice/appeals';
 import { useHideActivity } from '../../hooks/useActivityStatus';
+import { mDirectAtom } from '../../state/mDirectList';
+import { canUseStrongKeys, markThisDevice } from '../../plugins/call/keySize';
 
 export function Room() {
   const { eventId } = useParams();
@@ -44,6 +46,13 @@ export function Room() {
   const openThread = useAtomValue(openThreadAtom);
 
   useEffect(() => markRoomOpen(room.roomId), [room.roomId]);
+
+  // Lets the other side know this device can do AES-256 calls, before anyone calls.
+  const directs = useAtomValue(mDirectAtom);
+  const dm = directs.has(room.roomId);
+  useEffect(() => {
+    if (dm && canUseStrongKeys(mx, room, dm)) markThisDevice(mx, room).catch(() => undefined);
+  }, [mx, room, dm]);
 
   useKeyDown(
     window,

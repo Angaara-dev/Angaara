@@ -11,6 +11,36 @@ import fs from 'fs';
 import path from 'path';
 import buildConfig from './build.config';
 
+// Lets Element Call use AES-256 frame keys when the app asks for it (angaaraKeySize=256 in the
+// widget URL). Fails the build if the bundle changed, so calls never quietly stay on AES-128.
+function patchElementCallKeySize() {
+  return {
+    name: 'patch-element-call-key-size',
+    apply: 'build',
+    closeBundle() {
+      const dir = path.resolve('dist/public/element-call/assets');
+      const files = fs.readdirSync(dir).filter((f) => /^index-.*\.js$/.test(f));
+      const keySize = 'globalThis.__angaaraKeySize||128';
+      let patched = 0;
+      files.forEach((file) => {
+        const target = path.join(dir, file);
+        let code = fs.readFileSync(target, 'utf8');
+        const workerAt = code.indexOf('livekit-client.e2ee.worker');
+        const defaults = code.indexOf('keySize:128}');
+        const keyGen = /generateRandomKey\(\)\{var (\w+)=new Uint8Array\(16\)/;
+        if (defaults < 0 || (workerAt >= 0 && defaults > workerAt) || !keyGen.test(code)) return;
+        code = `${code.slice(0, defaults)}keySize:(${keySize})}${code.slice(defaults + 12)}`;
+        code = code.replace(keyGen, `generateRandomKey(){var $1=new Uint8Array((${keySize})/8)`);
+        code = `globalThis.__angaaraKeySize=new URLSearchParams(location.search).get('angaaraKeySize')==='256'?256:128;${code}`;
+        fs.writeFileSync(target, code);
+        patched += 1;
+      });
+      if (patched !== 1)
+        throw new Error(`Element Call key size patch applied ${patched} times, expected 1`);
+    },
+  };
+}
+
 const copyFiles = {
   targets: [
     {
@@ -109,6 +139,7 @@ export default defineConfig({
       promiseImportName: (i) => `__tla_${i}`,
     }),
     viteStaticCopy(copyFiles),
+    patchElementCallKeySize(),
     vanillaExtractPlugin(),
     wasm(),
     react(),

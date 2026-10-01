@@ -11,6 +11,7 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { StateEvent } from '../../../types/matrix/room';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { CallMemberRenderer } from './CallMemberCard';
+import { CallEncryption } from './CallEncryption';
 import * as css from './styles.css';
 import { CallControls } from './CallControls';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
@@ -116,6 +117,7 @@ function CallPrescreen() {
           )}
           <CallMemberRenderer members={callMembers} />
           <PrescreenControls canJoin={canJoin} />
+          <CallEncryption room={room} />
           <Box className={css.PrescreenMessage} alignItems="Center">
             {!inOtherCall &&
               (hasPermission ? (
@@ -145,7 +147,12 @@ function CallJoined({ joined, containerRef }: CallJoinedProps) {
   return (
     <Box grow="Yes" direction="Column">
       <Box grow="Yes" ref={containerRef} />
-      {callEmbed && joined && <CallControls callEmbed={callEmbed} />}
+      {callEmbed && joined && (
+        <>
+          <CallEncryption room={callEmbed.room} keySize={callEmbed.keySize} />
+          <CallControls callEmbed={callEmbed} />
+        </>
+      )}
     </Box>
   );
 }

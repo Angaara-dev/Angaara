@@ -18,3 +18,9 @@ export const callEmbedAtom = atom<CallEmbed | undefined, [CallEmbed | undefined]
 );
 
 export const callChatAtom = atom<boolean>(false);
+
+// Set when a call this person started had to drop from AES-256 to AES-128.
+export const callKeyNoticeAtom = atom<boolean>(false);
+
+// Who is talking right now in the call this device is in.
+export const callSpeakersAtom = atom<Set<string>>(new Set<string>());

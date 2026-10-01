@@ -179,7 +179,10 @@ export function CreateRoomForm({
     let roomType: RoomType | undefined;
     if (type === CreateRoomType.VoiceRoom) roomType = RoomType.Call;
 
-    const hidden = !publicRoom && encryption && hideName;
+    // Voice is always end-to-end encrypted, even in public channels.
+    const voice = type === CreateRoomType.VoiceRoom;
+    const encrypted = voice || (!publicRoom && encryption);
+    const hidden = !publicRoom && encrypted && hideName;
     create(
       {
         version: selectedRoomVersion,
@@ -189,7 +192,7 @@ export function CreateRoomForm({
         name: hidden ? PUBLIC_ROOM_NAME : roomName,
         topic: hidden ? undefined : roomTopic || undefined,
         aliasLocalPart: publicRoom ? aliasLocalPart : undefined,
-        encryption: publicRoom ? false : encryption,
+        encryption: encrypted,
         knock: roomKnock,
         allowFederation: federation,
         additionalCreators: allowAdditionalCreators ? additionalCreators : undefined,
@@ -282,6 +285,19 @@ export function CreateRoomForm({
             />
           </SequenceCard>
         )}
+        {type === CreateRoomType.VoiceRoom && access === CreateRoomAccess.Public && (
+          <SequenceCard
+            style={{ padding: config.space.S300 }}
+            variant="SurfaceVariant"
+            direction="Column"
+          >
+            <SettingTile
+              title="End-to-End Encryption"
+              description="Always on for voice channels, so only the people in a call can hear it."
+              after={<Icon size="100" src={Icons.Lock} />}
+            />
+          </SequenceCard>
+        )}
         {access !== CreateRoomAccess.Public && (
           <>
             <SequenceCard
@@ -292,17 +308,25 @@ export function CreateRoomForm({
             >
               <SettingTile
                 title="End-to-End Encryption"
-                description="Once this feature is enabled, it can't be disabled after the room is created."
+                description={
+                  type === CreateRoomType.VoiceRoom
+                    ? 'Always on for voice channels, so only the people in a call can hear it.'
+                    : "Once this feature is enabled, it can't be disabled after the room is created."
+                }
                 after={
-                  <Switch
-                    variant="Primary"
-                    value={encryption}
-                    onChange={setEncryption}
-                    disabled={disabled}
-                  />
+                  type === CreateRoomType.VoiceRoom ? (
+                    <Icon size="100" src={Icons.Lock} />
+                  ) : (
+                    <Switch
+                      variant="Primary"
+                      value={encryption}
+                      onChange={setEncryption}
+                      disabled={disabled}
+                    />
+                  )
                 }
               />
-              {encryption && (
+              {(encryption || type === CreateRoomType.VoiceRoom) && (
                 <SettingTile
                   title="Hide Name and Topic"
                   description={`Encrypt the name and topic so the server can't read them. Other Matrix apps show "${PUBLIC_ROOM_NAME}".`}

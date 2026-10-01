@@ -25,6 +25,7 @@ import {
 } from './types';
 import { CallControl } from './CallControl';
 import { CallControlState } from './CallControlState';
+import { KeySize } from './keySize';
 
 export class CallEmbed {
   private mx: MatrixClient;
@@ -38,6 +39,11 @@ export class CallEmbed {
   public joined = false;
 
   public readonly control: CallControl;
+
+  public readonly keySize: KeySize;
+
+  // True when this device started the call, rather than joining one already running.
+  public startedCall = false;
 
   private readonly container: HTMLElement;
 
@@ -83,7 +89,8 @@ export class CallEmbed {
     mx: MatrixClient,
     room: Room,
     intent: ElementCallIntent,
-    themeKind: ElementCallThemeKind
+    themeKind: ElementCallThemeKind,
+    keySize: KeySize = 128
   ): Widget {
     const userId = mx.getSafeUserId();
     const deviceId = mx.getDeviceId() ?? '';
@@ -106,6 +113,7 @@ export class CallEmbed {
       lang: 'en-EN',
       theme: themeKind,
       header: 'none',
+      angaaraKeySize: keySize.toString(),
     });
 
     if (!room.isCallRoom() && CallEmbed.startingCall(intent)) {
@@ -154,7 +162,8 @@ export class CallEmbed {
     room: Room,
     widget: Widget,
     container: HTMLElement,
-    initialControlState?: CallControlState
+    initialControlState?: CallControlState,
+    keySize: KeySize = 128
   ) {
     const iframe = CallEmbed.getIframe(
       widget.getCompleteUrl({ currentUserId: mx.getSafeUserId() })
@@ -169,6 +178,7 @@ export class CallEmbed {
     this.room = room;
     this.iframe = iframe;
     this.container = container;
+    this.keySize = keySize;
 
     const controlState = initialControlState ?? new CallControlState(true, false, true);
     this.control = new CallControl(controlState, call, iframe);

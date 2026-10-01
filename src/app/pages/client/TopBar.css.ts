@@ -34,7 +34,7 @@ export const InboxPanel = style({
   width: `min(${toRem(520)}, calc(100vw - ${toRem(24)}))`,
   height: `min(${toRem(640)}, calc(100vh - ${toRem(64)}))`,
   borderRadius: config.radii.R400,
-  background: color.Surface.Container,
+  background: `var(--angaara-theme-menu, ${color.Surface.Container})`,
   color: color.Surface.OnContainer,
   border: `${config.borderWidth.B300} solid ${color.Surface.ContainerLine}`,
   boxShadow: `0 ${toRem(8)} ${toRem(32)} rgba(0, 0, 0, 0.45)`,
@@ -53,7 +53,8 @@ export const Tabs = style({
 
 export const Tab = style({
   flex: 1,
-  padding: `${config.space.S200} 0`,
+  padding: `${config.space.S300} 0`,
+  textAlign: 'center',
   border: 'none',
   borderBottom: `${toRem(2)} solid transparent`,
   background: 'transparent',

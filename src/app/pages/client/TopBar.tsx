@@ -81,7 +81,8 @@ function InboxPanel({ requestClose }: { requestClose: () => void }) {
   );
 
   return (
-    <div className={css.InboxPanel}>
+    // Pop-outs sit outside the app root, so they opt in to the server's colours here.
+    <div className={css.InboxPanel} data-theme-wash>
       <Box className={css.InboxHeader} alignItems="Center" gap="200">
         <Icon size="200" src={Icons.Inbox} filled />
         <Box grow="Yes">

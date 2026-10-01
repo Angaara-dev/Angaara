@@ -16,7 +16,10 @@ import {
   toRem,
 } from 'folds';
 import { Room } from 'matrix-js-sdk';
+import classNames from 'classnames';
 import { MembersDrawer } from './MembersDrawer';
+import { ContainerColor } from '../../styles/ContainerColor.css';
+import * as css from './RoomInfoPanel.css';
 import { RoomAvatar, RoomIcon } from '../../components/room-avatar';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useRoomMembers } from '../../hooks/useRoomMembers';
@@ -122,6 +125,8 @@ export function RoomInfoPanel({
       }}
     >
       <Box
+        className={classNames(ContainerColor({ variant: 'Background' }), css.Panel)}
+        data-theme-wash
         style={{
           ...(popup
             ? {

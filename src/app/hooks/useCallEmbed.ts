@@ -14,6 +14,7 @@ import { useResizeObserver } from './useResizeObserver';
 import { CallControlState } from '../plugins/call/CallControlState';
 import { useCallMembersChange, useCallSession } from './useCall';
 import { CallPreferences } from '../state/callPreferences';
+import { chooseKeySize, KeySize } from '../plugins/call/keySize';
 
 const CallEmbedContext = createContext<CallEmbed | undefined>(undefined);
 
@@ -41,16 +42,18 @@ export const createCallEmbed = (
   dm: boolean,
   themeKind: ElementCallThemeKind,
   container: HTMLElement,
-  pref?: CallPreferences
+  pref?: CallPreferences,
+  keySize: KeySize = 128
 ): CallEmbed => {
   const rtcSession = mx.matrixRTC.getRoomSession(room);
   const ongoing = rtcSession.memberships.length > 0;
 
   const intent = CallEmbed.getIntent(dm, ongoing, pref?.video);
-  const widget = CallEmbed.getWidget(mx, room, intent, themeKind);
+  const widget = CallEmbed.getWidget(mx, room, intent, themeKind, keySize);
   const controlState = pref && new CallControlState(pref.microphone, pref.video, pref.sound);
 
-  const embed = new CallEmbed(mx, room, widget, container, controlState);
+  const embed = new CallEmbed(mx, room, widget, container, controlState, keySize);
+  embed.startedCall = !ongoing;
 
   return embed;
 };
@@ -67,9 +70,13 @@ export const useCallStart = (dm = false) => {
       if (!container) {
         throw new Error('Failed to start call, No embed container element found!');
       }
-      const callEmbed = createCallEmbed(mx, room, dm, theme.kind, container, pref);
-
-      setCallEmbed(callEmbed);
+      // The key size has to be settled before joining, since everyone in a call must match.
+      const { memberships } = mx.matrixRTC.getRoomSession(room);
+      chooseKeySize(mx, room, dm, memberships)
+        .catch((): KeySize => 128)
+        .then((keySize) => {
+          setCallEmbed(createCallEmbed(mx, room, dm, theme.kind, container, pref, keySize));
+        });
     },
     [mx, dm, theme, setCallEmbed, callEmbedRef]
   );
