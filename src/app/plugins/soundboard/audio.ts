@@ -1,6 +1,6 @@
 import { MatrixClient } from 'matrix-js-sdk';
 import { mxcUrlToHttp } from '../../utils/matrix';
-import { renderBuiltin } from './builtin';
+import { loadBuiltin } from './builtin';
 import { MAX_SOUND_BYTES, MAX_SOUND_SECONDS, Sound } from './types';
 
 const bytesCache = new Map<string, Promise<ArrayBuffer>>();
@@ -29,7 +29,7 @@ export const loadSoundBytes = (
       const src = mxcUrlToHttp(mx, sound.url, useAuthentication);
       job = src ? fetchCapped(src) : Promise.reject(new Error('Bad sound link'));
     } else {
-      job = renderBuiltin(sound.builtin ?? '') ?? Promise.reject(new Error('Unknown sound'));
+      job = loadBuiltin(sound.builtin ?? '') ?? Promise.reject(new Error('Unknown sound'));
     }
     job.catch(() => bytesCache.delete(key));
     bytesCache.set(key, job);

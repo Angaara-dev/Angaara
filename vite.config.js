@@ -104,6 +104,11 @@ const copyFiles = {
       dest: '',
     },
     {
+      // Soundboard starter pack.
+      src: 'public/sounds',
+      dest: '',
+    },
+    {
       src: 'public/res/android',
       dest: 'public/',
     },
