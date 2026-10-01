@@ -270,15 +270,22 @@ export function ServerLevelPill({ room }: { room: Room }) {
     <>
       <button type="button" className={css.LevelPill} onClick={() => setOpen(true)}>
         <span className={css.LevelPillFill} style={{ width: `${Math.max(pct, 12)}%` }} />
-        {!info.next && <Embers sparks={7} height={40} />}
-        <Box grow="Yes" alignItems="Center" gap="200" style={{ position: 'relative', minWidth: 0 }}>
-          <Icon size="100" src={Icons.Star} filled={info.level > 0} />
-          <Text as="span" size="T300" truncate>
-            {info.level > 0 ? `Server Level ${info.level}` : 'Server Level'}
-          </Text>
-        </Box>
+        {!info.next && <Embers sparks={5} height={24} />}
+        <Text
+          as="span"
+          size="T200"
+          truncate
+          style={{ position: 'relative', flexGrow: 1, minWidth: 0, fontWeight: 600 }}
+        >
+          {info.level > 0 ? `Server Level ${info.level}` : 'Server Level'}
+        </Text>
         <Box shrink="No" alignItems="Center" gap="100" style={{ position: 'relative' }}>
-          <Icon size="100" src={Icons.ChevronRight} />
+          <Text as="span" size="T200" priority="300" style={{ fontWeight: 600 }}>
+            {info.next
+              ? `${millify(info.members)}/${millify(info.next.members)} members`
+              : 'Max level'}
+          </Text>
+          <Icon size="50" src={Icons.ChevronRight} />
         </Box>
       </button>
       {open && <ServerLevelDialog room={room} requestClose={() => setOpen(false)} />}

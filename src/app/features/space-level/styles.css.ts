@@ -8,9 +8,9 @@ export const LevelPill = style({
   alignItems: 'center',
   gap: config.space.S200,
   width: '100%',
-  height: toRem(40),
+  height: toRem(30),
   marginBottom: config.space.S200,
-  padding: `0 ${config.space.S300} 0 ${config.space.S400}`,
+  padding: `0 ${config.space.S200} 0 ${config.space.S300}`,
   border: 'none',
   borderRadius: config.radii.Pill,
   backgroundColor: color.SurfaceVariant.Container,
@@ -22,9 +22,7 @@ export const LevelPill = style({
   },
   '@media': {
     '(hover: hover) and (pointer: fine)': {
-      height: toRem(32),
-      gap: config.space.S100,
-      padding: `0 ${config.space.S200} 0 ${config.space.S300}`,
+      height: toRem(26),
     },
   },
 });

@@ -158,3 +158,8 @@ globalStyle(`${SheetGroup} > button svg`, {
   width: '22px',
   height: '22px',
 });
+
+export const QuickReaction = style({
+  fontSize: toRem(18),
+  lineHeight: 1,
+});

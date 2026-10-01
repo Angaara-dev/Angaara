@@ -66,6 +66,7 @@ import {
 import { MessageLayout, MessageSpacing } from '../../../state/settings';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
 import { useRecentEmoji } from '../../../hooks/useRecentEmoji';
+import { addRecentEmoji } from '../../../plugins/recent-emoji';
 import * as css from './styles.css';
 import { EventReaders } from '../../../components/event-readers';
 import { TextViewer } from '../../../components/text-viewer';
@@ -140,6 +141,42 @@ const DEFAULT_QUICK_REACTIONS = [
   { unicode: '😭', shortcode: 'sob' },
 ];
 
+// Your most used reactions, topped up with defaults when you haven't used many yet.
+const useQuickReactions = (count: number) => {
+  const mx = useMatrixClient();
+  const recent = useRecentEmoji(mx, count);
+  const picks = recent.map(({ unicode, shortcode }) => ({ unicode, shortcode }));
+  DEFAULT_QUICK_REACTIONS.forEach((emoji) => {
+    if (picks.length < count && !picks.some((p) => p.unicode === emoji.unicode)) picks.push(emoji);
+  });
+  return picks;
+};
+
+function QuickReactions({ onReaction }: { onReaction: ReactionHandler }) {
+  const mx = useMatrixClient();
+  const picks = useQuickReactions(3);
+  return (
+    <>
+      {picks.map((emoji) => (
+        <IconButton
+          key={emoji.unicode}
+          variant="SurfaceVariant"
+          size="300"
+          radii="300"
+          aria-label={`React with ${emoji.shortcode}`}
+          title={`:${emoji.shortcode}:`}
+          onClick={() => {
+            addRecentEmoji(mx, emoji.unicode);
+            onReaction(emoji.unicode, emoji.shortcode);
+          }}
+        >
+          <span className={css.QuickReaction}>{emoji.unicode}</span>
+        </IconButton>
+      ))}
+    </>
+  );
+}
+
 function MessageSheetReactions({
   onReaction,
   onMore,
@@ -147,12 +184,7 @@ function MessageSheetReactions({
   onReaction: ReactionHandler;
   onMore: () => void;
 }) {
-  const mx = useMatrixClient();
-  const recent = useRecentEmoji(mx, 5);
-  const picks = recent.map(({ unicode, shortcode }) => ({ unicode, shortcode }));
-  DEFAULT_QUICK_REACTIONS.forEach((emoji) => {
-    if (picks.length < 5 && !picks.some((p) => p.unicode === emoji.unicode)) picks.push(emoji);
-  });
+  const picks = useQuickReactions(5);
 
   return (
     <div className={css.SheetReactions}>
@@ -1186,6 +1218,13 @@ export const Message = as<'div', MessageProps>(
           <div className={css.MessageOptionsBase}>
             <Menu className={css.MessageOptionsBar} variant="SurfaceVariant">
               <Box gap="100">
+                {canSendReaction && (
+                  <QuickReactions
+                    onReaction={(key, shortcode) =>
+                      onReactionToggle(mEvent.getId()!, key, shortcode)
+                    }
+                  />
+                )}
                 {canSendReaction && (
                   <PopOut
                     position="Bottom"
