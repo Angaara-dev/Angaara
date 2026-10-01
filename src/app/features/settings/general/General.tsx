@@ -470,6 +470,7 @@ function Appearance() {
   const [systemTheme, setSystemTheme] = useSetting(settingsAtom, 'useSystemTheme');
   const [monochromeMode, setMonochromeMode] = useSetting(settingsAtom, 'monochromeMode');
   const [twitterEmoji, setTwitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
+  const [callTileColors, setCallTileColors] = useSetting(settingsAtom, 'callTileColors');
 
   return (
     <Box direction="Column" gap="100">
@@ -516,6 +517,14 @@ function Appearance() {
         <SettingTile
           title="Twitter Emoji"
           after={<Switch variant="Primary" value={twitterEmoji} onChange={setTwitterEmoji} />}
+        />
+      </SequenceCard>
+
+      <SequenceCard className={SequenceCardStyle} variant="SurfaceVariant" direction="Column">
+        <SettingTile
+          title="Coloured Call Tiles"
+          description="Fill each person's tile in a call with a colour from their avatar. Off keeps them grey."
+          after={<Switch variant="Primary" value={callTileColors} onChange={setCallTileColors} />}
         />
       </SequenceCard>
 

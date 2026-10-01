@@ -56,6 +56,28 @@ function patchOneTilePerUser(code) {
   );
 }
 
+// Two people sit side by side in the grid, instead of one big tile with yourself floating on it.
+function patchSideBySide(code) {
+  const grid = /case`grid`:return \w+\.pipe\((\w+)\(e=>e===null\?(\w+):(\w+)\(e\)\)\)/;
+  const narrow = /case`narrow`:return \w+\.pipe\((\w+)\(e=>e===null\?/;
+  const m = code.match(grid);
+  if (!m || !narrow.test(code)) return undefined;
+  return code
+    .replace(grid, `case\`grid\`:return ${m[2]}`)
+    .replace(narrow, `case\`narrow\`:return ${m[3]}(null).pipe($1(e=>e===null?`);
+}
+
+// Tags each tile with its user, so the app can colour it to match their profile.
+function tagTilesWithUser(code) {
+  const at = code.indexOf('"data-testid":`videoTile`,"data-video-fit":');
+  if (at < 0) return undefined;
+  const ids = [...code.slice(0, at).matchAll(/userId:(\w+),videoEnabled:/g)];
+  const userVar = ids[ids.length - 1]?.[1];
+  if (!userVar) return undefined;
+  const fit = code.slice(at).match(/^"data-testid":`videoTile`,"data-video-fit":\w+/)[0];
+  return `${code.slice(0, at)}${fit},"data-angaara-user":${userVar}${code.slice(at + fit.length)}`;
+}
+
 // Hands the app Element Call's mic/speaker settings so it can switch them mid-call.
 function exposeDeviceSettings(code) {
   const m = code.match(
@@ -87,6 +109,12 @@ function patchElementCallKeySize() {
         if (merged) code = merged;
         else
           console.warn('Element Call tile merge patch did not apply; devices get their own tiles');
+        const sideBySide = patchSideBySide(code);
+        if (sideBySide) code = sideBySide;
+        else console.warn('Element Call side-by-side patch did not apply; 1:1 calls float you');
+        const tagged = tagTilesWithUser(code);
+        if (tagged) code = tagged;
+        else console.warn('Element Call tile user patch did not apply; tiles stay grey');
         const devices = exposeDeviceSettings(code);
         if (devices) code = devices;
         else console.warn('Element Call device patch did not apply; device changes need a rejoin');

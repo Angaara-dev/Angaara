@@ -55,6 +55,8 @@ export interface Settings {
   // How loud other people's soundboard sounds play for you, 0 to 100.
   soundboardVolume: number;
   soundboardMuted: boolean;
+  // Call tiles take a colour from each person's avatar; off keeps them grey.
+  callTileColors: boolean;
 
   hour24Clock: boolean;
   dateFormatString: string;
@@ -96,6 +98,7 @@ const defaultSettings: Settings = {
   earnXp: true,
   soundboardVolume: 70,
   soundboardMuted: false,
+  callTileColors: true,
 
   hour24Clock: false,
   dateFormatString: 'D MMM YYYY',

@@ -65,6 +65,7 @@ import { webRTCSupported } from '../utils/rtc';
 import { CallKeyGuard, CallKeyNotice } from './CallKeyGuard';
 import { useSoundboardReceiver } from '../features/soundboard/useSoundboardReceiver';
 import { useStaleCallCleanup } from '../hooks/useStaleCallCleanup';
+import { useCallTileLook } from '../hooks/useCallTileLook';
 import { CallRejoin } from './CallRejoin';
 
 type IncomingCallInfo = {
@@ -372,6 +373,7 @@ function CallUtils({ embed, containerRef }: CallUtilsProps) {
   }, [speakers, setSpeakers]);
   useEffect(() => () => setSpeakers(new Set()), [setSpeakers]);
   useCallThemeSync(embed);
+  useCallTileLook(embed);
   useSoundboardReceiver(embed);
   useCallHangupEvent(
     embed,

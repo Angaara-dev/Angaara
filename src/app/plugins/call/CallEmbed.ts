@@ -147,7 +147,7 @@ export class CallEmbed {
     iframe.title = 'Call Embed';
     iframe.sandbox =
       'allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads';
-    iframe.allow = 'microphone; camera; display-capture; autoplay; clipboard-write;';
+    iframe.allow = 'microphone; camera; display-capture; autoplay; clipboard-write; fullscreen;';
     iframe.src = url;
 
     iframe.style.width = '100%';
