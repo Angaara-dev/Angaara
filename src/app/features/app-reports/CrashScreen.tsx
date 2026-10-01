@@ -1,6 +1,7 @@
 import React, { CSSProperties, useState } from 'react';
 import { useRouteError } from 'react-router-dom';
 import { crashReport, sendReport } from './reports';
+import { isOutdated } from '../app-update/outdated';
 
 // Plain elements and inline colours, so this still renders when the theme is what broke.
 const page: CSSProperties = {
@@ -48,12 +49,6 @@ const box: CSSProperties = {
   lineHeight: 1.5,
 };
 const muted: CSSProperties = { margin: 0, fontSize: 12, color: '#a1a1aa' };
-
-// A tab left open across a deploy asks for files the new version no longer has.
-const OUTDATED =
-  /dynamically imported module|importing a module script failed|unable to preload css|mime type|error loading dynamically imported/i;
-const isOutdated = (error: unknown): boolean =>
-  OUTDATED.test(error instanceof Error ? error.message : String(error ?? ''));
 
 function Field({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
