@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import {
   Box,
   color,
@@ -17,17 +17,48 @@ import { useRoomName } from '../../hooks/useRoomMeta';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { callEmbedAtom } from '../../state/callEmbed';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
+import { useMatrixClient } from '../../hooks/useMatrixClient';
+import { roomToParentsAtom } from '../../state/room/roomToParents';
+import { getOrphanParents } from '../../utils/room';
 import * as css from './VoicePanel.css';
 
 type ControlProps = {
   label: string;
   icon: IconSrc;
-  active?: boolean;
-  danger?: boolean;
   disabled?: boolean;
   onClick: () => void;
 };
-function Control({ label, icon, active, danger, disabled, onClick }: ControlProps) {
+// 'off' marks something you muted, 'on' something you're sharing.
+type TileProps = ControlProps & { tone?: 'off' | 'on' };
+function Tile({ label, icon, tone, disabled, onClick }: TileProps) {
+  return (
+    <TooltipProvider
+      position="Top"
+      tooltip={
+        <Tooltip>
+          <Text size="T200">{label}</Text>
+        </Tooltip>
+      }
+    >
+      {(ref) => (
+        <button
+          ref={ref}
+          type="button"
+          className={css.Tile}
+          aria-label={label}
+          aria-pressed={!!tone}
+          data-tone={tone}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          <Icon size="200" src={icon} filled={!!tone} />
+        </button>
+      )}
+    </TooltipProvider>
+  );
+}
+
+function HeadButton({ label, icon, disabled, onClick }: ControlProps) {
   return (
     <TooltipProvider
       position="Top"
@@ -40,16 +71,15 @@ function Control({ label, icon, active, danger, disabled, onClick }: ControlProp
       {(ref) => (
         <IconButton
           ref={ref}
-          size="300"
+          size="200"
           radii="300"
-          variant={danger ? 'Critical' : 'SurfaceVariant'}
-          fill={danger ? 'Soft' : 'None'}
+          variant="SurfaceVariant"
+          fill="None"
           aria-label={label}
-          aria-pressed={active}
           disabled={disabled}
           onClick={onClick}
         >
-          <Icon size="100" src={icon} filled={active} />
+          <Icon size="100" src={icon} />
         </IconButton>
       )}
     </TooltipProvider>
@@ -58,11 +88,16 @@ function Control({ label, icon, active, danger, disabled, onClick }: ControlProp
 
 // The call you're in, kept above your profile so it's reachable from any channel.
 export function VoicePanel({ embed }: { embed: CallEmbed }) {
+  const mx = useMatrixClient();
   const joined = useCallJoined(embed);
   const name = useRoomName(embed.room);
+  const roomToParents = useAtomValue(roomToParentsAtom);
   const { navigateRoom } = useRoomNavigate();
   const setCallEmbed = useSetAtom(callEmbedAtom);
-  const { microphone, sound, screenshare } = useCallControlState(embed.control);
+  const { microphone, sound, video, screenshare } = useCallControlState(embed.control);
+
+  const parentId = getOrphanParents(roomToParents, embed.roomId)[0];
+  const serverName = parentId ? mx.getRoom(parentId)?.name : undefined;
 
   const [hangupState, hangup] = useAsyncCallback(useCallback(() => embed.hangup(), [embed]));
   const leaving =
@@ -71,68 +106,62 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
     if (!joined) setCallEmbed(undefined);
     else hangup();
   };
+  const tone = joined ? color.Success.Main : color.Warning.Main;
 
   return (
-    <Box className={css.VoicePanel} direction="Column" gap="100">
-      <Box alignItems="Center" gap="200">
+    <Box className={css.VoicePanel} direction="Column" gap="200">
+      <Box alignItems="Center" gap="100">
+        <span className={css.Badge} style={{ color: tone }}>
+          <Icon size="200" src={Icons.VolumeHighLock} />
+        </span>
         <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
-          <Box alignItems="Center" gap="100">
-            <Icon
-              size="50"
-              src={Icons.VolumeHigh}
-              style={{ color: joined ? color.Success.Main : color.Warning.Main }}
-            />
-            <Text
-              size="L400"
-              style={{ color: joined ? color.Success.Main : color.Warning.Main }}
-              truncate
-            >
-              {joined ? 'Voice Connected' : 'Connecting...'}
-            </Text>
-          </Box>
+          <Text size="T300" style={{ color: tone, fontWeight: 600 }} truncate>
+            {joined ? 'Voice Connected' : 'Connecting...'}
+          </Text>
           <button type="button" className={css.Channel} onClick={() => navigateRoom(embed.roomId)}>
             <Text as="span" size="T200" priority="300" truncate>
-              {name}
+              {serverName ? `${serverName} / ${name}` : name}
               {embed.room.hasEncryptionStateEvent() && ` · 🔒 AES-${embed.keySize}`}
             </Text>
           </button>
         </Box>
-        <Control
-          label="Disconnect"
-          icon={Icons.PhoneDown}
-          danger
-          disabled={leaving}
-          onClick={leave}
-        />
-      </Box>
-      <Box gap="100" justifyContent="SpaceBetween">
-        <Control
-          label={microphone ? 'Mute' : 'Unmute'}
-          icon={microphone ? Icons.Mic : Icons.MicMute}
-          active={!microphone}
-          disabled={!joined}
-          onClick={() => embed.control.toggleMicrophone()}
-        />
-        <Control
-          label={sound ? 'Deafen' : 'Undeafen'}
-          icon={sound ? Icons.VolumeHigh : Icons.VolumeMute}
-          active={!sound}
-          disabled={!joined}
-          onClick={() => embed.control.toggleSound()}
-        />
-        <Control
-          label={screenshare ? 'Stop Sharing' : 'Share Your Screen'}
-          icon={Icons.ScreenShare}
-          active={screenshare}
-          disabled={!joined}
-          onClick={() => embed.control.toggleScreenshare()}
-        />
-        <Control
+        <HeadButton
           label="Open Call"
           icon={Icons.ArrowGoRight}
           onClick={() => navigateRoom(embed.roomId)}
         />
+        <HeadButton label="Disconnect" icon={Icons.PhoneDown} disabled={leaving} onClick={leave} />
       </Box>
+      <div className={css.Tiles}>
+        <Tile
+          label={microphone ? 'Mute' : 'Unmute'}
+          icon={microphone ? Icons.Mic : Icons.MicMute}
+          tone={microphone ? undefined : 'off'}
+          disabled={!joined}
+          onClick={() => embed.control.toggleMicrophone()}
+        />
+        <Tile
+          label={sound ? 'Deafen' : 'Undeafen'}
+          icon={sound ? Icons.VolumeHigh : Icons.VolumeMute}
+          tone={sound ? undefined : 'off'}
+          disabled={!joined}
+          onClick={() => embed.control.toggleSound()}
+        />
+        <Tile
+          label={video ? 'Turn Off Camera' : 'Turn On Camera'}
+          icon={video ? Icons.VideoCamera : Icons.VideoCameraMute}
+          tone={video ? 'on' : undefined}
+          disabled={!joined}
+          onClick={() => embed.control.toggleVideo()}
+        />
+        <Tile
+          label={screenshare ? 'Stop Sharing' : 'Share Your Screen'}
+          icon={Icons.ScreenShare}
+          tone={screenshare ? 'on' : undefined}
+          disabled={!joined}
+          onClick={() => embed.control.toggleScreenshare()}
+        />
+      </div>
     </Box>
   );
 }

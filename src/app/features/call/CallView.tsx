@@ -1,4 +1,4 @@
-import React, { RefObject, useRef } from 'react';
+import React, { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Box, color, Header, Scroll, Text, toRem } from 'folds';
 import { useCallEmbed, useCallJoined, useCallEmbedPlacementSync } from '../../hooks/useCallEmbed';
 import { ContainerColor } from '../../styles/ContainerColor.css';
@@ -143,15 +143,39 @@ type CallJoinedProps = {
 };
 function CallJoined({ joined, containerRef }: CallJoinedProps) {
   const callEmbed = useCallEmbed();
+  const room = useRoom();
+  const [hover, setHover] = useState(false);
+  const hideTimer = useRef<number>();
+
+  // Controls float over the call and show while the pointer is on it.
+  const show = useCallback(() => {
+    window.clearTimeout(hideTimer.current);
+    setHover(true);
+  }, []);
+  const hide = useCallback(() => {
+    window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => setHover(false), 600);
+  }, []);
+  useEffect(() => {
+    const iframe = callEmbed?.iframe;
+    if (!iframe) return undefined;
+    iframe.addEventListener('mouseenter', show);
+    iframe.addEventListener('mouseleave', hide);
+    return () => {
+      iframe.removeEventListener('mouseenter', show);
+      iframe.removeEventListener('mouseleave', hide);
+      window.clearTimeout(hideTimer.current);
+    };
+  }, [callEmbed, show, hide]);
 
   return (
-    <Box grow="Yes" direction="Column">
+    <Box grow="Yes" direction="Column" style={{ position: 'relative' }}>
       <Box grow="Yes" ref={containerRef} />
       {callEmbed && joined && (
-        <>
+        <div className={css.CallOverlay} data-shown={hover} onMouseEnter={show} onMouseLeave={hide}>
           <CallEncryption room={callEmbed.room} keySize={callEmbed.keySize} />
-          <CallControls callEmbed={callEmbed} />
-        </>
+          <CallControls callEmbed={callEmbed} showChat={room.isCallRoom()} />
+        </div>
       )}
     </Box>
   );

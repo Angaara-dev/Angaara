@@ -153,8 +153,26 @@ export class CallEmbed {
     iframe.style.width = '100%';
     iframe.style.height = '100%';
     iframe.style.border = 'none';
+    iframe.style.display = 'block';
+    iframe.style.background = 'transparent';
+    iframe.setAttribute('allowtransparency', 'true');
 
     return iframe;
+  }
+
+  // Lets the app's panel show through the call, so it doesn't look like a box stuck on.
+  static blendIn(iframe: HTMLIFrameElement): void {
+    try {
+      const doc = iframe.contentDocument;
+      if (!doc || doc.getElementById('angaara-blend')) return;
+      const style = doc.createElement('style');
+      style.id = 'angaara-blend';
+      style.textContent =
+        ':root, html, body, #root { background: transparent !important; color-scheme: normal !important; }';
+      doc.head.append(style);
+    } catch {
+      // Not same origin; the call keeps its own background.
+    }
   }
 
   constructor(
@@ -185,6 +203,7 @@ export class CallEmbed {
     this.control.startObserving();
     iframe.onload = () => {
       this.control.startObserving();
+      CallEmbed.blendIn(iframe);
     };
 
     let initialMediaEvent = true;

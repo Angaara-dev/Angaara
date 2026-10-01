@@ -18,6 +18,7 @@ import { CallView } from '../call/CallView';
 import { RoomViewHeader } from './RoomViewHeader';
 import { callChatAtom } from '../../state/callEmbed';
 import { CallChatView } from './CallChatView';
+import { CallSplit } from './CallSplit';
 import { useCallEmbed } from '../../hooks/useCallEmbed';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { openThreadAtom } from '../../state/room/openThread';
@@ -66,7 +67,10 @@ export function Room() {
     )
   );
 
-  const callView = callEmbed?.roomId === room.roomId || room.isCallRoom() || callMembers.length > 0;
+  const anyCall = callEmbed?.roomId === room.roomId || room.isCallRoom() || callMembers.length > 0;
+  // Voice channels are all call; a call in a chat sits on top of the chat instead.
+  const callView = anyCall && room.isCallRoom();
+  const splitCall = anyCall && !room.isCallRoom();
   const threadRootId =
     !callView && openThread && openThread.roomId === room.roomId ? openThread.rootId : undefined;
   const mobileThread = !!threadRootId && screenSize !== ScreenSize.Desktop;
@@ -96,9 +100,15 @@ export function Room() {
         {!callView && !mobileThread && (
           <Box grow="Yes" direction="Column">
             <RoomViewHeader />
-            <Box grow="Yes">
-              <RoomView eventId={eventId} />
-            </Box>
+            {splitCall ? (
+              <CallSplit>
+                <RoomView eventId={eventId} />
+              </CallSplit>
+            ) : (
+              <Box grow="Yes">
+                <RoomView eventId={eventId} />
+              </Box>
+            )}
           </Box>
         )}
 
