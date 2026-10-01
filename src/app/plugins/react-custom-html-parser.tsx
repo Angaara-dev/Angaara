@@ -74,8 +74,10 @@ export const makeMentionCustomProps = (
 });
 
 const mentionColorStyle = (color: string | undefined): CSSProperties | undefined => {
-  if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return undefined;
-  return { color, backgroundColor: `${color}26`, boxShadow: `0 0 0 1px ${color}4d` };
+  // Hex role colours, or the CSS variable used for name colours in DMs.
+  if (!color || !/^(#[0-9a-f]{6}|var\(--[\w-]+\))$/i.test(color)) return undefined;
+  const tint = (pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+  return { color, backgroundColor: tint(15), boxShadow: `0 0 0 1px ${tint(30)}` };
 };
 
 export const renderMatrixMention = (

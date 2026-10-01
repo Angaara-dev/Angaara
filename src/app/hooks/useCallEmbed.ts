@@ -135,14 +135,20 @@ export const useCallEmbedPlacementSync = (containerViewRef: RefObject<HTMLDivEle
     const container = containerViewRef.current;
     if (!embedEl || !container) return;
 
-    embedEl.style.top = `${container.offsetTop}px`;
-    embedEl.style.left = `${container.offsetLeft}px`;
-    embedEl.style.width = `${container.clientWidth}px`;
-    embedEl.style.height = `${container.clientHeight}px`;
+    // Screen coords, since the embed is position: fixed and offsets depend on the layout.
+    const rect = container.getBoundingClientRect();
+    embedEl.style.top = `${rect.top}px`;
+    embedEl.style.left = `${rect.left}px`;
+    embedEl.style.width = `${rect.width}px`;
+    embedEl.style.height = `${rect.height}px`;
   }, [callEmbedRef, containerViewRef]);
 
   useResizeObserver(
     syncCallEmbedPlacement,
     useCallback(() => containerViewRef.current, [containerViewRef])
   );
+  useEffect(() => {
+    window.addEventListener('resize', syncCallEmbedPlacement);
+    return () => window.removeEventListener('resize', syncCallEmbedPlacement);
+  }, [syncCallEmbedPlacement]);
 };

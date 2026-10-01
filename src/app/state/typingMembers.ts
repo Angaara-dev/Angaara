@@ -1,6 +1,12 @@
 import produce from 'immer';
 import { atom, useSetAtom } from 'jotai';
-import { MatrixClient, RoomMemberEvent, RoomMemberEventHandlerMap } from 'matrix-js-sdk';
+import {
+  MatrixClient,
+  RoomEvent,
+  RoomEventHandlerMap,
+  RoomMemberEvent,
+  RoomMemberEventHandlerMap,
+} from 'matrix-js-sdk';
 import { useEffect } from 'react';
 import { useHideActivity } from '../hooks/useActivityStatus';
 
@@ -146,9 +152,18 @@ export const useBindRoomIdToTypingMembersAtom = (
       });
     };
 
+    // A sent message means they stopped typing, even if the typing update arrives later.
+    const handleTimeline: RoomEventHandlerMap[RoomEvent.Timeline] = (mEvent, room, toStart) => {
+      const sender = mEvent.getSender();
+      if (toStart || !room || !sender || mEvent.isState()) return;
+      setTypingMembers({ type: 'DELETE', roomId: room.roomId, userId: sender });
+    };
+
     mx.on(RoomMemberEvent.Typing, handleTypingEvent);
+    mx.on(RoomEvent.Timeline, handleTimeline);
     return () => {
       mx.removeListener(RoomMemberEvent.Typing, handleTypingEvent);
+      mx.removeListener(RoomEvent.Timeline, handleTimeline);
     };
   }, [mx, setTypingMembers, hideActivity]);
 };
