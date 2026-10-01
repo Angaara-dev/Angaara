@@ -24,7 +24,8 @@
     <meta name="theme-color" content="#0E0E10" />
     <!-- Angaara has its own themes; stops Dark Reader from inverting them. -->
     <meta name="darkreader-lock" />
-    <!-- Dark with an ember glow at the bottom while the app loads; the theme clears it. -->
+    <!-- Loading screen: drawn before the app's code arrives, and kept behind its loading
+         screens so the embers never restart. The app hides it once it's ready. -->
     <style>
       html:has(body[data-loading]) {
         background-color: #0e0e10;
@@ -32,8 +33,211 @@
       body[data-loading] {
         margin: 0;
         min-height: 100vh;
+      }
+      #boot-embers {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        pointer-events: none;
         background: radial-gradient(120% 45% at 50% 100%, rgba(255, 107, 61, 0.22), transparent 70%)
           #0e0e10;
+      }
+      body[data-loading] #boot-embers,
+      body[data-splash] #boot-embers {
+        display: block;
+      }
+      #boot-embers > span {
+        position: absolute;
+        bottom: -10px;
+        animation: boot-rise var(--life) linear var(--delay) infinite;
+      }
+      #boot-embers b {
+        display: block;
+        animation: boot-sway ease-in-out infinite alternate, boot-twinkle ease-in-out infinite;
+      }
+      #boot-embers i {
+        display: block;
+        width: var(--s);
+        height: var(--s);
+        border-radius: 50%;
+        color: #ffd98a;
+        background: radial-gradient(circle, #fff6dc 0%, currentColor 50%, transparent 72%);
+        box-shadow: 0 0 calc(var(--s) * 1.8) calc(var(--s) * 0.35) currentColor;
+        animation: boot-cool var(--life) linear var(--delay) infinite;
+      }
+      #boot-embers .far i {
+        filter: blur(2px);
+        opacity: 0.45;
+      }
+      .boot-floor {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 45%;
+        background: radial-gradient(
+          70% 100% at 50% 110%,
+          rgba(255, 110, 50, 0.16),
+          transparent 70%
+        );
+        animation: boot-breathe 5s ease-in-out infinite alternate;
+      }
+      @keyframes boot-rise {
+        0% {
+          transform: translateY(0);
+          opacity: 0;
+        }
+        10% {
+          opacity: 1;
+        }
+        70% {
+          opacity: 0.8;
+        }
+        100% {
+          transform: translateY(calc(var(--h) * -1));
+          opacity: 0;
+        }
+      }
+      @keyframes boot-sway {
+        from {
+          transform: translateX(calc(var(--dx) * -1));
+        }
+        to {
+          transform: translateX(var(--dx));
+        }
+      }
+      /* Sparks cool from gold to orange to red as they rise. */
+      @keyframes boot-cool {
+        0% {
+          color: #ffd98a;
+          transform: scale(1.1);
+        }
+        25% {
+          color: #ffb54d;
+        }
+        55% {
+          color: #ff8a2e;
+          transform: scale(1);
+        }
+        100% {
+          color: #e2410f;
+          transform: scale(0.7);
+        }
+      }
+      @keyframes boot-twinkle {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        20% {
+          opacity: 0.55;
+        }
+        35% {
+          opacity: 0.95;
+        }
+        55% {
+          opacity: 0.7;
+        }
+        70% {
+          opacity: 1;
+        }
+        85% {
+          opacity: 0.6;
+        }
+      }
+      @keyframes boot-breathe {
+        from {
+          opacity: 0.6;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .boot-center {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        font: 15px/22px Inter, 'Segoe UI', system-ui, sans-serif;
+        color: #b8b1ab;
+      }
+      .boot-text {
+        min-height: 44px;
+      }
+      .boot-logo {
+        position: relative;
+        width: 72px;
+        height: 72px;
+      }
+      .boot-logo::before {
+        content: '';
+        position: absolute;
+        inset: -50px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(255, 120, 60, 0.5),
+          rgba(255, 90, 40, 0.12) 45%,
+          transparent 68%
+        );
+        animation: boot-halo 3s ease-in-out infinite;
+      }
+      .boot-logo svg {
+        position: relative;
+        display: block;
+        animation: boot-glow 3s ease-in-out infinite;
+      }
+      .boot-flame {
+        transform-origin: 50% 78%;
+        transform-box: fill-box;
+        animation: boot-flicker 1.8s ease-in-out infinite;
+      }
+      @keyframes boot-glow {
+        0%,
+        100% {
+          filter: drop-shadow(0 0 12px rgba(255, 107, 61, 0.45));
+        }
+        50% {
+          filter: drop-shadow(0 0 22px rgba(255, 122, 69, 0.7));
+        }
+      }
+      @keyframes boot-flicker {
+        0%,
+        100% {
+          transform: scale(1, 1) skewX(0deg);
+        }
+        25% {
+          transform: scale(0.97, 1.04) skewX(-1.5deg);
+        }
+        50% {
+          transform: scale(1.02, 0.97) skewX(1deg);
+        }
+        75% {
+          transform: scale(0.98, 1.03) skewX(-0.5deg);
+        }
+      }
+      @keyframes boot-halo {
+        0%,
+        100% {
+          transform: scale(0.9);
+          opacity: 0.6;
+        }
+        50% {
+          transform: scale(1.08);
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-embers *,
+        .boot-logo *,
+        .boot-logo::before {
+          animation-play-state: paused !important;
+        }
       }
     </style>
 
@@ -101,7 +305,101 @@
     <script>
       window.global ||= window;
     </script>
-    <div id="root"></div>
+    <div id="boot-embers" aria-hidden="true"><div class="boot-floor"></div></div>
+    <script>
+      // [left %, size px, sway px, sway s, height vh, life s, start s, twinkle s, far]
+      [
+        [90.72, 4.59, 11.59, 2.61, 78.5, 6.92, 5.63, 1.24],
+        [11.04, 5.34, 9.64, 1.95, 87.39, 9.47, 0.46, 0.82],
+        [64.78, 5.89, 13.39, 2.05, 55.6, 8.64, 0.66, 0.96],
+        [4.89, 6.43, 11.57, 2.5, 88.7, 8.6, 7.04, 0.63, 1],
+        [45.9, 4.92, 9.34, 3.4, 94.83, 10.2, 7.79, 1.15],
+        [29.75, 3.53, 6.84, 3.03, 71.02, 10.23, 4.25, 1.07],
+        [2.05, 5.51, 8.52, 3.26, 73.8, 10.9, 4.37, 1.16],
+        [76.74, 8.66, 9.24, 1.94, 68.3, 10.82, 8.34, 0.74, 1],
+        [11.7, 6.46, 6.72, 3.08, 62.11, 8.8, 4.92, 0.74, 1],
+        [14.57, 9.25, 13.72, 1.99, 71.83, 7.06, 2.97, 0.98, 1],
+        [31.2, 5.37, 16.62, 2.14, 70.77, 10.27, 7.06, 0.64],
+        [22.47, 10.75, 9.1, 3.04, 68.16, 7.48, 0.81, 1.07, 1],
+        [25.33, 8.39, 13.22, 2.39, 73.13, 10.8, 5.32, 1.02, 1],
+        [19.55, 5.57, 7.85, 3.25, 87.71, 7.25, 2.09, 1.16],
+        [20.87, 5.81, 17.4, 3.21, 79.14, 8.11, 1.14, 1.3],
+        [24.89, 10.58, 14.45, 2.21, 87.95, 8.98, 3.23, 1.16, 1],
+        [8.6, 9.2, 8.74, 2.69, 89.1, 9.07, 3.08, 1.06, 1],
+        [3.59, 3.45, 9.23, 2.51, 57.42, 6.88, 4.06, 0.94],
+        [36.77, 3.22, 16.69, 3.37, 81.28, 9.46, 6.43, 1],
+        [3.72, 5.24, 16.92, 2.92, 93.51, 6.11, 7, 0.6, 1],
+        [32.61, 5.14, 17.99, 1.92, 76.84, 9.69, 9.9, 1.03],
+        [78.15, 5.05, 16.98, 2.36, 82.41, 10.5, 9.58, 0.81],
+        [84.89, 5.33, 12.87, 2.8, 70.29, 8.91, 6.7, 1.19],
+        [97.36, 8.73, 16.56, 2.97, 70.54, 9.68, 6.39, 0.97, 1],
+        [10.04, 5.48, 15, 1.85, 79.05, 8.4, 2.53, 0.67],
+        [60.99, 4.39, 17.05, 2.21, 55.45, 7.51, 7.46, 0.92],
+        [88.95, 6.01, 13.92, 2.51, 90.67, 7.63, 7.32, 0.82, 1],
+        [79.37, 7.52, 16.97, 3.21, 70.38, 8.92, 3.48, 0.54, 1],
+        [82.36, 7.9, 16.18, 2.94, 93, 7.38, 1.86, 1, 1],
+        [22.55, 3.68, 10.97, 2.8, 74.76, 7.58, 9.23, 0.56],
+        [9.17, 4.25, 6.38, 3.2, 56.66, 9.54, 6.28, 0.9],
+        [3.83, 5.33, 7.63, 2.53, 55.99, 10.15, 2.61, 0.73],
+        [62.4, 5.31, 11.36, 2.81, 81.2, 10.04, 10.54, 0.68, 1],
+        [47.61, 3.44, 8.14, 1.82, 73.89, 9.57, 1.97, 1.08],
+        [68.94, 7.04, 12.25, 2.78, 85.25, 7.97, 8.71, 1, 1],
+        [91.53, 3.08, 14.67, 2.01, 73.14, 9.13, 10.01, 1.11],
+        [86.41, 4.62, 15.56, 3.31, 73.55, 9.26, 2.25, 1.27],
+        [63.6, 5.42, 14.61, 2.14, 91, 10.9, 10.75, 0.82],
+        [32.76, 5.33, 16.92, 3.17, 68.94, 6.41, 4.85, 0.69],
+        [48.79, 5.26, 6.34, 3.09, 57.56, 10, 1.9, 1.03],
+      ].forEach(([left, s, dx, sw, h, life, start, twinkle, far]) => {
+        const span = document.createElement('span');
+        if (far) span.className = 'far';
+        span.style.cssText = `left:${left}%;--s:${s}px;--dx:${dx}px;--h:${h}vh;--life:${life}s;--delay:-${start}s`;
+        span.innerHTML = `<b style="animation-duration:${sw}s, ${twinkle}s"><i></i></b>`;
+        document.getElementById('boot-embers').append(span);
+      });
+    </script>
+    <div id="root">
+      <div class="boot-center">
+        <div class="boot-logo">
+          <svg
+            width="72"
+            height="72"
+            viewBox="0 0 18 18"
+            fill="none"
+            role="img"
+            aria-label="Angaara"
+          >
+            <defs>
+              <linearGradient
+                id="boot-g"
+                x1="2"
+                y1="1"
+                x2="16"
+                y2="17"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#FF9A5C" />
+                <stop offset="1" stop-color="#F0441E" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M18 9L17.98 11.82L17.91 12.98L17.8 13.85L17.65 14.57L17.45 15.18L17.21 15.71L16.91 16.17L16.57 16.57L16.17 16.91L15.71 17.21L15.18 17.45L14.57 17.65L13.85 17.8L12.98 17.91L11.82 17.98L9 18L6.18 17.98L5.02 17.91L4.15 17.8L3.43 17.65L2.82 17.45L2.29 17.21L1.83 16.91L1.43 16.57L1.09 16.17L0.79 15.71L0.55 15.18L0.35 14.57L0.2 13.85L0.09 12.98L0.02 11.82L0 9L0.02 6.18L0.09 5.02L0.2 4.15L0.35 3.43L0.55 2.82L0.79 2.29L1.09 1.83L1.43 1.43L1.83 1.09L2.29 0.79L2.82 0.55L3.43 0.35L4.15 0.2L5.02 0.09L6.18 0.02L9 0L11.82 0.02L12.98 0.09L13.85 0.2L14.57 0.35L15.18 0.55L15.71 0.79L16.17 1.09L16.57 1.43L16.91 1.83L17.21 2.29L17.45 2.82L17.65 3.43L17.8 4.15L17.91 5.02L17.98 6.18Z"
+              fill="url(#boot-g)"
+            />
+            <g class="boot-flame">
+              <path
+                d="M9 3.2C9.9 5 12.6 6.4 12.6 9.9C12.6 12.1 11 13.9 9 13.9C7 13.9 5.4 12.1 5.4 9.9C5.4 8.3 6.3 7.3 7 6.6C7 7.9 7.6 8.7 8.4 9C8.2 7 8.6 4.9 9 3.2Z"
+                fill="#FFFFFF"
+              />
+              <path
+                d="M9 10C9.6 10.8 10.4 11.3 10.4 12.2C10.4 13 9.8 13.6 9 13.6C8.2 13.6 7.6 13 7.6 12.2C7.6 11.4 8.4 10.8 9 10Z"
+                fill="#FF7A45"
+              />
+            </g>
+          </svg>
+        </div>
+        <div class="boot-text">Heating up....</div>
+      </div>
+    </div>
     <div id="portalContainer"></div>
     <script type="module" src="./src/index.tsx"></script>
   </body>

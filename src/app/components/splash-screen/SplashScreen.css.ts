@@ -1,4 +1,4 @@
-import { style } from '@vanilla-extract/css';
+import { globalStyle, keyframes, style } from '@vanilla-extract/css';
 import { color, toRem } from 'folds';
 
 const tileColor = `color-mix(in srgb, ${color.Primary.Main} 16%, transparent)`;
@@ -69,9 +69,67 @@ export const SplashScreen = style({
       backgroundColor: glowColor,
       ...emberMask,
     },
+    // Loading screens show the embers from index.html behind them instead.
+    '&:has([data-splash-loading])': { backgroundColor: 'transparent' },
+    '&:has([data-splash-loading])::before, &:has([data-splash-loading])::after': {
+      display: 'none',
+    },
   },
 });
 
+const fadeIn = keyframes({
+  from: { opacity: 0, transform: 'translateY(6px)' },
+  to: { opacity: 1, transform: 'none' },
+});
+
+const halo = keyframes({
+  '0%, 100%': { transform: 'scale(0.9)', opacity: 0.6 },
+  '50%': { transform: 'scale(1.08)', opacity: 1 },
+});
+
+// The background is always dark here, whatever the theme.
 export const SplashStatus = style({
-  opacity: 0.85,
+  maxWidth: `min(${toRem(520)}, calc(100vw - ${toRem(32)}))`,
+  // Room for two lines, so the logo stays put when a tip wraps.
+  minHeight: toRem(44),
+  color: '#b8b1ab',
+  animation: `${fadeIn} 400ms ease-out`,
+  '@media': {
+    '(prefers-reduced-motion: reduce)': { animation: 'none' },
+  },
+});
+
+globalStyle(`${SplashStatus} b`, { color: '#ede7e1', fontWeight: 600 });
+
+export const Tip = style({
+  display: 'inline-block',
+  marginRight: toRem(8),
+  padding: `0 ${toRem(8)}`,
+  borderRadius: toRem(999),
+  background: 'rgba(255, 107, 61, 0.16)',
+  color: '#ff9a6b',
+  fontSize: toRem(11),
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  verticalAlign: 'middle',
+});
+
+export const Halo = style({
+  position: 'relative',
+  selectors: {
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      inset: toRem(-50),
+      borderRadius: '50%',
+      background:
+        'radial-gradient(circle, rgba(255, 120, 60, 0.5), rgba(255, 90, 40, 0.12) 45%, transparent 68%)',
+      animation: `${halo} 3s ease-in-out infinite`,
+    },
+  },
+  '@media': {
+    '(prefers-reduced-motion: reduce)': {
+      selectors: { '&::before': { animation: 'none' } },
+    },
+  },
 });
