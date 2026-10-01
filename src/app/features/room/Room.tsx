@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Box, Icon, Icons, Line, Text } from 'folds';
 import { useParams } from 'react-router-dom';
 import { isKeyHotkey } from 'is-hotkey';
-import { useAtomValue } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { RoomView } from './RoomView';
 import { MembersDrawer } from './MembersDrawer';
 import { ScreenSize, useScreenSizeContext } from '../../hooks/useScreenSize';
@@ -67,9 +67,15 @@ export function Room() {
   );
 
   // Voice channels are all call; a chat shows its call only when it's opened from the list.
-  const callViewRoom = useAtomValue(callViewRoomAtom);
+  const [callViewRoom, setCallViewRoom] = useAtom(callViewRoomAtom);
   const hasCall = callEmbed?.roomId === room.roomId || callMembers.length > 0;
-  const callView = room.isCallRoom() || (callViewRoom === room.roomId && hasCall);
+  const callView = room.isCallRoom() || callViewRoom === room.roomId;
+  // Back to the chat once the call it was showing is over.
+  const hadCall = useRef(hasCall);
+  useEffect(() => {
+    if (hadCall.current && !hasCall && callViewRoom === room.roomId) setCallViewRoom(undefined);
+    hadCall.current = hasCall;
+  }, [hasCall, callViewRoom, room.roomId, setCallViewRoom]);
   const threadRootId =
     !callView && openThread && openThread.roomId === room.roomId ? openThread.rootId : undefined;
   const mobileThread = !!threadRootId && screenSize !== ScreenSize.Desktop;

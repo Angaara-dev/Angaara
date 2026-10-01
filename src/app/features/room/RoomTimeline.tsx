@@ -236,6 +236,8 @@ export const getEventIdAbsoluteIndex = (
   return baseIndex + eventIndex;
 };
 
+type CallRun = { start: number; key: string; count: number; senders: string[] };
+
 type RoomTimelineProps = {
   room: Room;
   eventId?: string;
@@ -586,6 +588,14 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     ]
   );
   const parseMemberEvent = useMemberEventParser();
+
+  const [openCallRuns, setOpenCallRuns] = useState<Set<string>>(() => new Set());
+  const toggleCallRun = (key: string) =>
+    setOpenCallRuns((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
 
   const [timeline, setTimeline] = useState<Timeline>(() =>
     eventId ? getEmptyTimeline() : getInitialTimeline(room)
@@ -1752,6 +1762,41 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
 
   let prevEvent: MatrixEvent | undefined;
   let isPrevRendered = false;
+  // Runs of more than two call updates fold into one row you can open.
+  const eventAt = (item: number) => {
+    const [tl, base] = getTimelineAndBaseIndex(timeline.linkedTimelines, item);
+    return tl ? getTimelineEvent(tl, getTimelineRelativeIndex(item, base)) : undefined;
+  };
+  const isCallMember = (ev: MatrixEvent) => ev.getType() === StateEvent.GroupCallMemberPrefix;
+  const callLogShown = (ev: MatrixEvent) =>
+    isCallMember(ev) && !(ev.getContent().application && 'application' in ev.getPrevContent());
+  const breaksCallRun = (ev: MatrixEvent) => !ev.isState() || ev.getType().startsWith('m.room.');
+  const callRuns = new Map<number, CallRun>();
+  {
+    let run: number[] = [];
+    const flush = () => {
+      if (run.length > 2) {
+        const events = run.map(eventAt);
+        const info: CallRun = {
+          start: run[0],
+          key: events[0]?.getId() ?? String(run[0]),
+          count: run.length,
+          senders: Array.from(new Set(events.map((ev) => ev?.getSender() ?? ''))),
+        };
+        run.forEach((i) => callRuns.set(i, info));
+      }
+      run = [];
+    };
+    getItems().forEach((item) => {
+      const ev = eventAt(item);
+      if (!ev) return;
+      if (callLogShown(ev)) run.push(item);
+      // Only things that show up break a run; hidden custom state doesn't.
+      else if (!reactionOrEditEvent(ev) && !isCallMember(ev) && breaksCallRun(ev)) flush();
+    });
+    flush();
+  }
+
   let newDivider = false;
   let dayDivider = false;
   const eventRenderer = (item: number) => {
@@ -1774,6 +1819,9 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     if (mEvent.isRedacted() && !showHiddenEvents && !ownRemoval) {
       return null;
     }
+    const callRun = callRuns.get(item);
+    const callRunOpen = !!callRun && openCallRuns.has(callRun.key);
+    if (callRun && item !== callRun.start && !callRunOpen) return null;
 
     if (!newDivider && readUptoEventIdRef.current) {
       newDivider = prevEvent?.getId() === readUptoEventIdRef.current;
@@ -1791,7 +1839,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       prevEvent.getType() === mEvent.getType() &&
       minuteDifference(prevEvent.getTs(), mEvent.getTs()) < 2;
 
-    const eventJSX =
+    let eventJSX =
       reactionOrEditEvent(mEvent) || isThreadReply(mEvent)
         ? null
         : renderMatrixEvent(
@@ -1803,6 +1851,32 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             timelineSet,
             collapsed
           );
+    if (callRun && item === callRun.start) {
+      const names = callRun.senders
+        .slice(0, 3)
+        .map((id) => getMemberDisplayName(room, id) || getMxIdLocalPart(id))
+        .join(', ');
+      eventJSX = (
+        <React.Fragment key={mEventId}>
+          <MessageBase space={messageSpacing}>
+            <button
+              type="button"
+              className={css.CallLogSummary}
+              aria-expanded={callRunOpen}
+              onClick={() => toggleCallRun(callRun.key)}
+            >
+              <Icon size="100" src={Icons.Phone} />
+              <Text as="span" size="T300" priority="300" truncate>
+                <b>{callRun.count} call updates</b>
+                {names && ` · ${names}${callRun.senders.length > 3 ? ' and others' : ''}`}
+              </Text>
+              <Icon size="100" src={callRunOpen ? Icons.ChevronTop : Icons.ChevronBottom} />
+            </button>
+          </MessageBase>
+          {callRunOpen && eventJSX}
+        </React.Fragment>
+      );
+    }
     prevEvent = mEvent;
     isPrevRendered = !!eventJSX;
 

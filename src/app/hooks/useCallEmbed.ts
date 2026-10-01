@@ -71,13 +71,13 @@ export const useCallStart = (dm = false) => {
       if (!container) {
         throw new Error('Failed to start call, No embed container element found!');
       }
-      if (!room.isCallRoom()) setCallViewRoom(room.roomId);
       // The key size has to be settled before joining, since everyone in a call must match.
       const { memberships } = mx.matrixRTC.getRoomSession(room);
       chooseKeySize(mx, room, dm, memberships)
         .catch((): KeySize => 128)
         .then((keySize) => {
           setCallEmbed(createCallEmbed(mx, room, dm, theme.kind, container, pref, keySize));
+          if (!room.isCallRoom()) setCallViewRoom(room.roomId);
         });
     },
     [mx, dm, theme, setCallEmbed, setCallViewRoom, callEmbedRef]

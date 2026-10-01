@@ -1,4 +1,4 @@
-import React, { MouseEventHandler, forwardRef, useState } from 'react';
+import React, { MouseEventHandler, forwardRef, useEffect, useState } from 'react';
 import { Room } from 'matrix-js-sdk';
 import {
   Avatar,
@@ -363,6 +363,12 @@ export function RoomNavItem({
   const [callViewRoom, setCallViewRoom] = useAtom(callViewRoomAtom);
   const chatCall =
     !room.isCallRoom() && (callMembers.length > 0 || callEmbed?.roomId === room.roomId);
+  // A call that ended while the chat wasn't open shouldn't leave it stuck on the call screen.
+  useEffect(() => {
+    if (!chatCall && !room.isCallRoom() && callViewRoom === room.roomId) {
+      setCallViewRoom(undefined);
+    }
+  }, [chatCall, room, callViewRoom, setCallViewRoom]);
 
   return (
     <>
