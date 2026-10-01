@@ -8,7 +8,7 @@ type PairStats = { type: string; nominated?: boolean; currentRoundTripTime?: num
 
 const SAMPLES = 60;
 const EVERY_MS = 2000;
-const SLOW_MS = 250;
+const SLOW_MS = 200;
 
 // Round trip to the voice server, read from the call's own WebRTC stats every two seconds.
 const usePing = (embed: CallEmbed): number[] => {
