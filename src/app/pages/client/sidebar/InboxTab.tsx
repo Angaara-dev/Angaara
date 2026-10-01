@@ -20,15 +20,14 @@ import { UnreadBadge } from '../../../components/unread-badge';
 import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
 import { useNavToActivePathAtom } from '../../../state/hooks/navToActivePath';
 
-export function InboxTab() {
+// Opens the inbox where it was left, or invites first when there are some.
+export const useOpenInbox = () => {
   const screenSize = useScreenSizeContext();
   const navigate = useNavigate();
   const navToActivePath = useAtomValue(useNavToActivePathAtom());
-  const inboxSelected = useInboxSelected();
-  const allInvites = useAtomValue(allInvitesAtom);
-  const inviteCount = allInvites.length;
+  const inviteCount = useAtomValue(allInvitesAtom).length;
 
-  const handleInboxClick = () => {
+  return () => {
     if (screenSize === ScreenSize.Mobile) {
       navigate(getInboxPath());
       return;
@@ -42,6 +41,12 @@ export function InboxTab() {
     const path = inviteCount > 0 ? getInboxInvitesPath() : getInboxNotificationsPath();
     navigate(path);
   };
+};
+
+export function InboxTab() {
+  const inboxSelected = useInboxSelected();
+  const inviteCount = useAtomValue(allInvitesAtom).length;
+  const handleInboxClick = useOpenInbox();
 
   return (
     <SidebarItem active={inboxSelected}>

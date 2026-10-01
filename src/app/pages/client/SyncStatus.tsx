@@ -1,87 +1,52 @@
 import { MatrixClient, SyncState } from 'matrix-js-sdk';
-import React, { useCallback, useState } from 'react';
-import { Box, config, Line, Text } from 'folds';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Text } from 'folds';
 import { useSyncState } from '../../hooks/useSyncState';
-import { ContainerColor } from '../../styles/ContainerColor.css';
+import * as css from './SyncStatus.css';
 
-type StateData = {
-  current: SyncState | null;
-  previous: SyncState | null | undefined;
-};
+// Short drops that recover on their own aren't worth a pop-up.
+const LOST_AFTER_MS = 2000;
+const CONNECTED_FOR_MS = 3000;
+
+type Shown = 'lost' | 'back' | undefined;
 
 type SyncStatusProps = {
   mx: MatrixClient;
 };
 export function SyncStatus({ mx }: SyncStatusProps) {
-  const [stateData, setStateData] = useState<StateData>({
-    current: null,
-    previous: undefined,
-  });
+  const [lost, setLost] = useState(false);
+  const [shown, setShown] = useState<Shown>();
 
   useSyncState(
     mx,
-    useCallback((current, previous) => {
-      setStateData((s) => {
-        if (s.current === current && s.previous === previous) {
-          return s;
-        }
-        return { current, previous };
-      });
+    useCallback((current) => {
+      if (current === SyncState.Reconnecting || current === SyncState.Error) setLost(true);
+      if (current === SyncState.Syncing || current === SyncState.Prepared) setLost(false);
     }, [])
   );
 
-  if (
-    (stateData.current === SyncState.Prepared ||
-      stateData.current === SyncState.Syncing ||
-      stateData.current === SyncState.Catchup) &&
-    stateData.previous !== SyncState.Syncing
-  ) {
-    return (
-      <Box direction="Column" shrink="No">
-        <Box
-          className={ContainerColor({ variant: 'Success' })}
-          style={{ padding: `${config.space.S100} 0` }}
-          alignItems="Center"
-          justifyContent="Center"
-        >
-          <Text size="L400">Connecting...</Text>
-        </Box>
-        <Line variant="Success" size="300" />
-      </Box>
-    );
-  }
+  useEffect(() => {
+    if (lost) {
+      const timer = window.setTimeout(() => setShown('lost'), LOST_AFTER_MS);
+      return () => window.clearTimeout(timer);
+    }
+    // Only say we're back if we said we were gone.
+    setShown((s) => (s === 'lost' ? 'back' : s));
+    return undefined;
+  }, [lost]);
 
-  if (stateData.current === SyncState.Reconnecting) {
-    return (
-      <Box direction="Column" shrink="No">
-        <Box
-          className={ContainerColor({ variant: 'Warning' })}
-          style={{ padding: `${config.space.S100} 0` }}
-          alignItems="Center"
-          justifyContent="Center"
-        >
-          <Text size="L400">Connection Lost! Reconnecting...</Text>
-        </Box>
-        <Line variant="Warning" size="300" />
-      </Box>
-    );
-  }
+  useEffect(() => {
+    if (shown !== 'back') return undefined;
+    const timer = window.setTimeout(() => setShown(undefined), CONNECTED_FOR_MS);
+    return () => window.clearTimeout(timer);
+  }, [shown]);
 
-  if (stateData.current === SyncState.Error) {
-    return (
-      <Box direction="Column" shrink="No">
-        <Box
-          className={ContainerColor({ variant: 'Critical' })}
-          style={{ padding: `${config.space.S100} 0` }}
-          alignItems="Center"
-          justifyContent="Center"
-        >
-          <Text size="L400">Connection Lost!</Text>
-        </Box>
-        <Line variant="Critical" size="300" />
-      </Box>
-    );
-  }
-
-  return null;
+  if (!shown) return null;
+  return (
+    <div key={shown} role="status" className={`${css.Toast} ${css.ToastColor[shown]}`}>
+      <Text size="L400" style={{ fontWeight: 600 }}>
+        {shown === 'lost' ? "You're disconnected" : "You're connected"}
+      </Text>
+    </div>
+  );
 }

@@ -57,6 +57,7 @@ import { BackRouteHandler } from '../../components/BackRouteHandler';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { useRoomPinnedEvents } from '../../hooks/useRoomPinnedEvents';
 import { RoomPinMenu } from './room-pin-menu';
+import { RoomNavItemMenu } from '../room-nav';
 import { useOpenRoomSettings } from '../../state/hooks/roomSettings';
 import { RoomNotificationModeSwitcher } from '../../components/RoomNotificationSwitcher';
 import {
@@ -407,6 +408,8 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   const [menuAnchor, setMenuAnchor] = useState<RectCords>();
   const [pinMenuAnchor, setPinMenuAnchor] = useState<RectCords>();
+  const [contextAnchor, setContextAnchor] = useState<RectCords>();
+  const notificationPreferences = useRoomsNotificationPreferencesContext();
   const [infoOpen, setInfoOpen] = useState(false);
   const phone = usePhone();
   const direct = useIsDirectRoom();
@@ -435,6 +438,12 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
 
   const handleOpenMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
     setMenuAnchor(evt.currentTarget.getBoundingClientRect());
+  };
+
+  // Right-clicking the name opens the same menu as the channel in the sidebar.
+  const handleContextMenu: MouseEventHandler<HTMLElement> = (evt) => {
+    evt.preventDefault();
+    setContextAnchor({ x: evt.clientX, y: evt.clientY, width: 0, height: 0 });
   };
 
   const handleOpenPinMenu: MouseEventHandler<HTMLButtonElement> = (evt) => {
@@ -468,7 +477,12 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
             )}
           </BackRouteHandler>
         )}
-        <Box grow="Yes" alignItems="Center" gap="300">
+        <Box
+          grow="Yes"
+          alignItems="Center"
+          gap="300"
+          onContextMenu={phone ? undefined : handleContextMenu}
+        >
           {screenSize !== ScreenSize.Mobile && !avatarUrl && (
             <RoomIcon size="400" joinRule={room.getJoinRule()} roomType={room.getType()} />
           )}
@@ -580,6 +594,31 @@ export function RoomViewHeader({ callView }: { callView?: boolean }) {
               )}
             </Box>
           )}
+          <PopOut
+            anchor={contextAnchor}
+            offset={0}
+            position="Bottom"
+            align="Start"
+            content={
+              <FocusTrap
+                focusTrapOptions={{
+                  initialFocus: false,
+                  returnFocusOnDeactivate: false,
+                  onDeactivate: () => setContextAnchor(undefined),
+                  clickOutsideDeactivates: true,
+                  isKeyForward: (evt: KeyboardEvent) => evt.key === 'ArrowDown',
+                  isKeyBackward: (evt: KeyboardEvent) => evt.key === 'ArrowUp',
+                  escapeDeactivates: stopPropagation,
+                }}
+              >
+                <RoomNavItemMenu
+                  room={room}
+                  requestClose={() => setContextAnchor(undefined)}
+                  notificationMode={getRoomNotificationMode(notificationPreferences, room.roomId)}
+                />
+              </FocusTrap>
+            }
+          />
         </Box>
 
         <Box shrink="No" alignItems="Center">

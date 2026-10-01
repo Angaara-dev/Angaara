@@ -61,7 +61,8 @@ export function SidebarNav() {
               <SearchTab />
               <ScansTab />
               <UnverifiedTab />
-              <InboxTab />
+              {/* On bigger screens the inbox lives in the top bar. */}
+              {phone && <InboxTab />}
             </SidebarStack>
           </>
         }

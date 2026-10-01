@@ -38,19 +38,33 @@ const describe = (error: unknown): { message: string; stack?: string } => {
   return { message: String(error) };
 };
 
-// Sent without who you are: the app may be too broken to prove it, and it's not needed.
-export const sendReport = async (error: unknown, note: string): Promise<void> => {
+export type CrashReport = {
+  message: string;
+  stack?: string;
+  note?: string;
+  path: string;
+  build: string;
+};
+
+// Exactly what a crash report sends, so the crash screen can show it before anything goes.
+// The worker also stores the browser's user agent, which the crash screen shows too.
+export const crashReport = (error: unknown, note: string): CrashReport => {
   const { message, stack } = describe(error);
+  return {
+    message: message.slice(0, 500),
+    stack: stack?.slice(0, 4000),
+    note: note.trim() || undefined,
+    path: cleanPath(window.location.pathname + window.location.hash),
+    build: buildId(),
+  };
+};
+
+// Sent without who you are: the app may be too broken to prove it, and it's not needed.
+export const sendReport = async (report: CrashReport): Promise<void> => {
   const res = await fetch(reportsApi(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message,
-      stack,
-      note: note.trim() || undefined,
-      path: cleanPath(window.location.pathname + window.location.hash),
-      build: buildId(),
-    }),
+    body: JSON.stringify(report),
   });
   if (res.status === 429) throw new Error('Too many reports from here right now. Try later.');
   if (!res.ok) throw new Error("Couldn't send the report.");

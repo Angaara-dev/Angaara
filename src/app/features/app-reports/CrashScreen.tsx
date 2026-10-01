@@ -1,6 +1,6 @@
 import React, { CSSProperties, useState } from 'react';
 import { useRouteError } from 'react-router-dom';
-import { sendReport } from './reports';
+import { crashReport, sendReport } from './reports';
 
 // Plain elements and inline colours, so this still renders when the theme is what broke.
 const page: CSSProperties = {
@@ -24,6 +24,8 @@ const card: CSSProperties = {
   borderRadius: 16,
   background: '#18181b',
   border: '1px solid #2a2a2e',
+  maxHeight: '100%',
+  overflowY: 'auto',
 };
 const button = (primary: boolean): CSSProperties => ({
   padding: '10px 14px',
@@ -36,7 +38,16 @@ const button = (primary: boolean): CSSProperties => ({
   color: primary ? '#1a0d07' : '#f2f2f2',
 });
 
-type Status = 'idle' | 'writing' | 'sending' | 'sent';
+const box: CSSProperties = {
+  margin: 0,
+  padding: 10,
+  borderRadius: 10,
+  border: '1px solid #2a2a2e',
+  background: '#0e0e10',
+  fontSize: 12,
+  lineHeight: 1.5,
+};
+const muted: CSSProperties = { margin: 0, fontSize: 12, color: '#a1a1aa' };
 
 // A tab left open across a deploy asks for files the new version no longer has.
 const OUTDATED =
@@ -44,21 +55,33 @@ const OUTDATED =
 const isOutdated = (error: unknown): boolean =>
   OUTDATED.test(error instanceof Error ? error.message : String(error ?? ''));
 
+function Field({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div style={{ overflowWrap: 'anywhere' }}>
+      <span style={{ color: '#a1a1aa' }}>{label}: </span>
+      {value}
+    </div>
+  );
+}
+
 export function CrashScreen({ error }: { error: unknown }) {
-  const [status, setStatus] = useState<Status>('idle');
   const [note, setNote] = useState('');
+  const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState<string>();
   const outdated = isOutdated(error);
+  const report = crashReport(error, note);
 
-  const send = async () => {
-    setStatus('sending');
+  // The report goes out from here, while the error is still known; a reload would lose it.
+  const sendAndReload = async () => {
+    setSending(true);
     setFailed(undefined);
     try {
-      await sendReport(error, note);
-      setStatus('sent');
+      await sendReport(report);
+      window.location.reload();
     } catch (e) {
       setFailed(e instanceof Error ? e.message : "Couldn't send the report.");
-      setStatus('writing');
+      setSending(false);
     }
   };
 
@@ -74,17 +97,17 @@ export function CrashScreen({ error }: { error: unknown }) {
         <p style={{ margin: 0, color: '#a1a1aa', lineHeight: 1.5 }}>
           {outdated
             ? 'This tab is still on the old version. Reload to get the new one.'
-            : 'Something broke on our side. Reloading usually fixes it.'}
+            : 'Something broke on our side. Reloading usually fixes it. You can send us a crash report first so we can fix it for good.'}
         </p>
-        {status === 'writing' || status === 'sending' ? (
+        {!outdated && (
           <>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={1000}
-              rows={3}
+              rows={2}
               placeholder="What were you doing? (optional)"
-              disabled={status === 'sending'}
+              disabled={sending}
               style={{
                 padding: 10,
                 borderRadius: 10,
@@ -95,34 +118,53 @@ export function CrashScreen({ error }: { error: unknown }) {
                 resize: 'vertical',
               }}
             />
-            <p style={{ margin: 0, fontSize: 12, color: '#a1a1aa' }}>
-              Sends the error and this note to the Angaara developers. It doesn&apos;t include your
-              messages, account or the rooms you were in.
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ ...muted, fontWeight: 600, color: '#f2f2f2' }}>
+                What the crash report sends
+              </p>
+              <div style={box}>
+                <Field label="Error" value={report.message} />
+                <Field label="Page" value={report.path} />
+                <Field label="Build" value={report.build} />
+                <Field label="Browser" value={navigator.userAgent} />
+                <Field label="Your note" value={report.note} />
+              </div>
+              {report.stack && (
+                <pre
+                  style={{
+                    ...box,
+                    maxHeight: 120,
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'anywhere',
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                  }}
+                >
+                  {report.stack}
+                </pre>
+              )}
+              <p style={muted}>
+                Nothing else. No messages, account or room names, and user and room IDs are removed
+                from the page address.
+              </p>
+            </div>
           </>
-        ) : null}
+        )}
         {failed && <p style={{ margin: 0, color: '#f87171', fontSize: 14 }}>{failed}</p>}
-        {status === 'sent' && (
-          <p style={{ margin: 0, color: '#4ade80' }}>Thanks, the developers got your report.</p>
+        {!outdated && (
+          <button type="button" style={button(true)} onClick={sendAndReload} disabled={sending}>
+            {sending ? 'Sending…' : 'Send Report and Reload'}
+          </button>
         )}
-        <button type="button" style={button(true)} onClick={() => window.location.reload()}>
-          Reload the page
+        <button
+          type="button"
+          style={button(outdated)}
+          onClick={() => window.location.reload()}
+          disabled={sending}
+        >
+          {outdated ? 'Reload the page' : 'Reload Without Sending'}
         </button>
-        {status === 'idle' && !outdated && (
-          <button type="button" style={button(false)} onClick={() => setStatus('writing')}>
-            Report
-          </button>
-        )}
-        {(status === 'writing' || status === 'sending') && (
-          <button
-            type="button"
-            style={button(false)}
-            onClick={send}
-            disabled={status === 'sending'}
-          >
-            {status === 'sending' ? 'Sending…' : 'Send Report'}
-          </button>
-        )}
       </div>
     </div>
   );

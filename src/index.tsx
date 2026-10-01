@@ -55,22 +55,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// A deploy replaces old chunks, so a tab still on the old build reloads to get the new one.
-// Once per 10s at most, so a chunk that's really missing can't cause a reload loop.
-// Never while the crash screen is up: people may be reading it or writing a report.
-window.addEventListener('vite:preloadError', (evt) => {
-  if (document.querySelector('[data-crash-screen]')) return;
-  const KEY = 'angaara.chunkReload';
-  try {
-    if (Date.now() - Number(sessionStorage.getItem(KEY) ?? 0) < 10000) return;
-    sessionStorage.setItem(KEY, String(Date.now()));
-  } catch {
-    return;
-  }
-  evt.preventDefault();
-  window.location.reload();
-});
-
 installPrivateModeGuard();
 installPageShiftGuard();
 installBackClosesPanels();

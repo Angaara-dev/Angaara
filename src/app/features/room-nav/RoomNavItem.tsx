@@ -69,7 +69,7 @@ type RoomNavItemMenuProps = {
   requestClose: () => void;
   notificationMode?: RoomNotificationMode;
 };
-const RoomNavItemMenu = forwardRef<HTMLDivElement, RoomNavItemMenuProps>(
+export const RoomNavItemMenu = forwardRef<HTMLDivElement, RoomNavItemMenuProps>(
   ({ room, requestClose, notificationMode }, ref) => {
     const mx = useMatrixClient();
     const hideActivity = useHideActivity();
