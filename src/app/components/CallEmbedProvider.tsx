@@ -42,7 +42,7 @@ import {
   callViewRoomAtom,
 } from '../state/callEmbed';
 import { useCallSpeakers } from '../hooks/useCallSpeakers';
-import { CallEmbed } from '../plugins/call';
+import { CallEmbed, useCallControlState } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
 import { ScreenSize, useScreenSizeContext } from '../hooks/useScreenSize';
 import { useMatrixClient } from '../hooks/useMatrixClient';
@@ -66,6 +66,8 @@ import { CallKeyGuard, CallKeyNotice } from './CallKeyGuard';
 import { useSoundboardReceiver } from '../features/soundboard/useSoundboardReceiver';
 import { useStaleCallCleanup } from '../hooks/useStaleCallCleanup';
 import { useCallTileLook } from '../hooks/useCallTileLook';
+import { useHasCamera } from '../hooks/useCamera';
+import { NoCameraNotice } from '../features/call-status/NoCameraNotice';
 import { CallRejoin } from './CallRejoin';
 
 type IncomingCallInfo = {
@@ -374,6 +376,12 @@ function CallUtils({ embed, containerRef }: CallUtilsProps) {
   useEffect(() => () => setSpeakers(new Set()), [setSpeakers]);
   useCallThemeSync(embed);
   useCallTileLook(embed);
+  // A camera that isn't there (or got unplugged) can't stay on.
+  const hasCamera = useHasCamera();
+  const { video } = useCallControlState(embed.control);
+  useEffect(() => {
+    if (hasCamera === false && video) embed.control.setVideoOff();
+  }, [hasCamera, video, embed]);
   useSoundboardReceiver(embed);
   useCallHangupEvent(
     embed,
@@ -410,6 +418,7 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
     <CallEmbedContextProvider value={callEmbed}>
       {callEmbed && <CallUtils embed={callEmbed} containerRef={callEmbedRef} />}
       <CallKeyNotice />
+      <NoCameraNotice />
       <CallEmbedRefContextProvider value={callEmbedRef}>
         <IncomingCallListener callEmbed={callEmbed} joined={joined} />
         <CallRejoin callEmbed={callEmbed} joined={joined} />

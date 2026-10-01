@@ -124,7 +124,7 @@ export class CallControl extends EventEmitter implements CallControlState {
     });
     this.onBodyMutation();
   }
-  
+
   private onBodyMutation() {
     if (!this.document) return;
 
@@ -165,7 +165,7 @@ export class CallControl extends EventEmitter implements CallControlState {
 
   private async setMediaState(state: ElementMediaStatePayload) {
     const data = await this.call.transport.send(ElementWidgetActions.DeviceMute, state);
-    return new Promise<typeof data>(resolve => {
+    return new Promise<typeof data>((resolve) => {
       if (this.mediaStatePromiseResolver) {
         this.mediaStatePromiseResolver();
       }
@@ -228,6 +228,24 @@ export class CallControl extends EventEmitter implements CallControlState {
       video_enabled: this.video,
     };
     return this.setMediaState(payload);
+  }
+
+  // Without a camera the call never confirms the change, so the state is set here directly.
+  public setVideoOff() {
+    this.state = new CallControlState(
+      this.microphone,
+      false,
+      this.sound,
+      this.screenshare,
+      this.spotlight
+    );
+    this.emitStateUpdate();
+    this.call.transport
+      .send(ElementWidgetActions.DeviceMute, {
+        audio_enabled: this.microphone,
+        video_enabled: false,
+      })
+      .catch(() => undefined);
   }
 
   public toggleVideo() {

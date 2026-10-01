@@ -32,6 +32,7 @@ import { SoundboardPopout } from '../soundboard/SoundboardPopout';
 import { ConnectionPanel } from './ConnectionPanel';
 import { SoundboardIcon } from '../soundboard/SoundboardIcon';
 import { AudioDevicesPopout } from './AudioDevices';
+import { useCameraToggle } from '../../hooks/useCamera';
 import * as css from './VoicePanel.css';
 
 type ControlProps = {
@@ -113,6 +114,10 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
     navigateRoom(embed.roomId);
   };
   const { microphone, sound, video, screenshare } = useCallControlState(embed.control);
+  const toggleVideo = useCameraToggle(
+    useCallback(() => embed.control.toggleVideo(), [embed]),
+    !video
+  );
 
   const parentId = getOrphanParents(roomToParents, embed.roomId)[0];
   const serverName = parentId ? mx.getRoom(parentId)?.name : undefined;
@@ -277,7 +282,7 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
           icon={video ? Icons.VideoCamera : Icons.VideoCameraMute}
           tone={video ? 'on' : undefined}
           disabled={!joined}
-          onClick={() => embed.control.toggleVideo()}
+          onClick={toggleVideo}
         />
         <Tile
           label={screenshare ? 'Stop Sharing' : 'Share Your Screen'}

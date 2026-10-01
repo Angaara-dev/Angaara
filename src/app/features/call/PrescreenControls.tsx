@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Box, Button, Icon, Icons, Spinner, Text } from 'folds';
 import { SequenceCard } from '../../components/sequence-card';
 import * as css from './styles.css';
@@ -6,6 +6,7 @@ import { ChatButton, ControlDivider, MicrophoneButton, SoundButton, VideoButton 
 import { useIsDirectRoom, useRoom } from '../../hooks/useRoom';
 import { useCallEmbed, useCallJoined, useCallStart } from '../../hooks/useCallEmbed';
 import { useCallPreferences } from '../../state/hooks/callPreferences';
+import { useCameraToggle } from '../../hooks/useCamera';
 
 type PrescreenControlsProps = {
   canJoin?: boolean;
@@ -23,12 +24,15 @@ export function PrescreenControls({ canJoin }: PrescreenControlsProps) {
 
   const disabled = inOtherCall || !canJoin;
 
-  const { microphone, video, sound, toggleMicrophone, toggleVideo, toggleSound } =
-    useCallPreferences();
-
+  const { microphone, sound, toggleMicrophone, toggleSound } = useCallPreferences();
+  // Off for every new call; only turned on here, by choice.
+  const [video, setVideo] = useState(false);
 
   const handleMicrophoneToggle = useCallback(async () => toggleMicrophone(), [toggleMicrophone]);
-  const handleVideoToggle = useCallback(async () => toggleVideo(), [toggleVideo]);
+  const handleVideoToggle = useCameraToggle(
+    useCallback(() => setVideo((v) => !v), []),
+    !video
+  );
 
   return (
     <SequenceCard
@@ -53,7 +57,7 @@ export function PrescreenControls({ canJoin }: PrescreenControlsProps) {
         <Button
           variant={disabled ? 'Secondary' : 'Success'}
           fill={disabled ? 'Soft' : 'Solid'}
-          onClick={() => startCall(room, { microphone, video, sound })}
+          onClick={() => startCall(room, { microphone, video, sound }, true)}
           disabled={disabled || joining}
           before={
             joining ? (

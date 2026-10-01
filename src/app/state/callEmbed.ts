@@ -27,3 +27,6 @@ export const callKeyNoticeAtom = atom<boolean>(false);
 
 // Who is talking right now in the call this device is in.
 export const callSpeakersAtom = atom<Set<string>>(new Set<string>());
+
+// Shown when someone tries to turn on a camera they don't have.
+export const noCameraNoticeAtom = atom<boolean>(false);

@@ -66,7 +66,9 @@ export const useCallStart = (dm = false) => {
   const callEmbedRef = useCallEmbedRef();
 
   const startCall = useCallback(
-    (room: Room, pref?: CallPreferences) => {
+    // The camera starts off unless it was switched on just before joining.
+    (room: Room, pref?: CallPreferences, cameraChosen = false) => {
+      const start = pref && { ...pref, video: cameraChosen && pref.video };
       const container = callEmbedRef.current;
       if (!container) {
         throw new Error('Failed to start call, No embed container element found!');
@@ -76,7 +78,7 @@ export const useCallStart = (dm = false) => {
       chooseKeySize(mx, room, dm, memberships)
         .catch((): KeySize => 128)
         .then((keySize) => {
-          setCallEmbed(createCallEmbed(mx, room, dm, theme.kind, container, pref, keySize));
+          setCallEmbed(createCallEmbed(mx, room, dm, theme.kind, container, start, keySize));
           if (!room.isCallRoom()) setCallViewRoom(room.roomId);
         });
     },

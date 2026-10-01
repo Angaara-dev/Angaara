@@ -32,6 +32,7 @@ import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { SoundboardPopout } from '../soundboard/SoundboardPopout';
 import { SoundboardIcon } from '../soundboard/SoundboardIcon';
 import { AudioDevicesPopout } from '../call-status/AudioDevices';
+import { useCameraToggle } from '../../hooks/useCamera';
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
@@ -78,7 +79,10 @@ export function CallControls({ callEmbed }: CallControlsProps) {
     () => callEmbed.control.toggleMicrophone(),
     [callEmbed]
   );
-  const handleVideoToggle = useCallback(() => callEmbed.control.toggleVideo(), [callEmbed]);
+  const handleVideoToggle = useCameraToggle(
+    useCallback(() => callEmbed.control.toggleVideo(), [callEmbed]),
+    !video
+  );
 
   const [hangupState, hangup] = useAsyncCallback(
     useCallback(() => callEmbed.hangup(), [callEmbed])
