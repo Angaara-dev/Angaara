@@ -66,6 +66,8 @@ import { CallKeyGuard, CallKeyNotice } from './CallKeyGuard';
 import { useSoundboardReceiver } from '../features/soundboard/useSoundboardReceiver';
 import { useStaleCallCleanup } from '../hooks/useStaleCallCleanup';
 import { useCallTileLook } from '../hooks/useCallTileLook';
+import { applyShareQuality } from '../plugins/call/shareQuality';
+import { settingsAtom } from '../state/settings';
 import { useHasCamera } from '../hooks/useCamera';
 import { NoCameraNotice } from '../features/call-status/NoCameraNotice';
 import { CallRejoin } from './CallRejoin';
@@ -376,6 +378,11 @@ function CallUtils({ embed, containerRef }: CallUtilsProps) {
   useEffect(() => () => setSpeakers(new Set()), [setSpeakers]);
   useCallThemeSync(embed);
   useCallTileLook(embed);
+  const joined = useCallJoined(embed);
+  const shareQuality = useAtomValue(settingsAtom).screenShareQuality;
+  useEffect(() => {
+    if (joined) applyShareQuality(embed, shareQuality);
+  }, [embed, joined, shareQuality]);
   // A camera that isn't there (or got unplugged) can't stay on.
   const hasCamera = useHasCamera();
   const { video } = useCallControlState(embed.control);

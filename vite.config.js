@@ -67,6 +67,39 @@ function patchSideBySide(code) {
     .replace(narrow, `case\`narrow\`:return ${m[3]}(null).pipe($1(e=>e===null?`);
 }
 
+// A screen share becomes one more tile in the grid instead of a panel stuck in a corner, and
+// starting one no longer pulls everyone out of the grid; clicking the stream focuses it.
+function patchStreamInGrid(code) {
+  const auto = /\((\w),(\w)\)=>\1\|\|\2===`flat`\?`spotlight`:`grid`/;
+  const fixed =
+    /children:(\w)\.spotlight&&\(0,(\w)\.jsx\)\((\w),\{className:(\w+)\.slot,id:`spotlight`,model:\1\.spotlight,onDrag:\w,"data-block-alignment":\w\.block,"data-inline-alignment":\w\.inline\}\)/;
+  const grid =
+    /\{gap:(\w),tileWidth:(\w),tileHeight:(\w)\}=\(0,(\w)\.useMemo\)\(\(\)=>(\w+)\((\w),(\w),(\w)\.grid\.length\),\[\6,\7,\8\.grid\.length\]\)([\s\S]{0,260}?)children:\8\.grid\.map\(e=>\(0,(\w)\.jsx\)\((\w),\{className:(\w+)\.slot,id:e\.id,model:e\},e\.id\)\)/;
+  const tile =
+    /(\w)=(\w)\.at\((\w)\),\w=\3>0([\s\S]{0,1500}?)\{\[(\w+)\.maximised\]:\w\}\),style:\w,/;
+  if (![auto, fixed, grid, tile].every((re) => re.test(code))) return undefined;
+  return code
+    .replace(auto, '($1,$2)=>$2===`flat`?`spotlight`:`grid`')
+    .replace(fixed, 'children:null')
+    .replace(
+      grid,
+      (_, gap, w, h, react, size, iw, ih, m, mid, jsx, Slot, cls) =>
+        `{gap:${gap},tileWidth:${w},tileHeight:${h}}=(0,${react}.useMemo)(()=>${size}(${iw},${ih},${m}.grid.length+(${m}.spotlight?1:0)),[${iw},${ih},${m}.grid.length,${m}.spotlight])${mid}` +
+        `children:[${m}.spotlight&&(0,${jsx}.jsx)(${Slot},{className:${cls}.slot,id:\`spotlight\`,model:${m}.spotlight},\`spotlight\`),...${m}.grid.map(e=>(0,${jsx}.jsx)(${Slot},{className:${cls}.slot,id:e.id,model:e},e.id))]`
+    )
+    .replace(tile, (whole, s) => `${whole}"data-angaara-spotlight":${s}?.type??"",`);
+}
+
+// Screen shares use the quality picked in the app's settings (resolution, frame rate, bitrate).
+function patchShareQuality(code) {
+  const call = /(\w)\.value\?\.setScreenShareEnabled\((\w),(\w)\)/;
+  if (!call.test(code)) return undefined;
+  return code.replace(
+    call,
+    '$1.value?.setScreenShareEnabled($2,{...$3,...globalThis.__angaaraShare?.capture},globalThis.__angaaraShare?.publish)'
+  );
+}
+
 // Tags each tile with its user, so the app can colour it to match their profile.
 function tagTilesWithUser(code) {
   const at = code.indexOf('"data-testid":`videoTile`,"data-video-fit":');
@@ -112,6 +145,12 @@ function patchElementCallKeySize() {
         const sideBySide = patchSideBySide(code);
         if (sideBySide) code = sideBySide;
         else console.warn('Element Call side-by-side patch did not apply; 1:1 calls float you');
+        const streams = patchStreamInGrid(code);
+        if (streams) code = streams;
+        else console.warn('Element Call stream tile patch did not apply; shares open in a panel');
+        const quality = patchShareQuality(code);
+        if (quality) code = quality;
+        else console.warn('Element Call share quality patch did not apply; shares use 1080p');
         const tagged = tagTilesWithUser(code);
         if (tagged) code = tagged;
         else console.warn('Element Call tile user patch did not apply; tiles stay grey');

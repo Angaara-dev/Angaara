@@ -35,6 +35,7 @@ import { SequenceCard } from '../../../components/sequence-card';
 import { useSetting } from '../../../state/hooks/settings';
 import { DateFormat, MessageLayout, MessageSpacing, settingsAtom } from '../../../state/settings';
 import { SettingTile } from '../../../components/setting-tile';
+import { SHARE_QUALITIES } from '../../../plugins/call/shareQuality';
 import { KeySymbol } from '../../../utils/key-symbol';
 import { isMacOS } from '../../../utils/user-agent';
 import {
@@ -471,6 +472,7 @@ function Appearance() {
   const [monochromeMode, setMonochromeMode] = useSetting(settingsAtom, 'monochromeMode');
   const [twitterEmoji, setTwitterEmoji] = useSetting(settingsAtom, 'twitterEmoji');
   const [callTileColors, setCallTileColors] = useSetting(settingsAtom, 'callTileColors');
+  const [shareQuality, setShareQuality] = useSetting(settingsAtom, 'screenShareQuality');
 
   return (
     <Box direction="Column" gap="100">
@@ -526,6 +528,27 @@ function Appearance() {
           description="Fill each person's tile in a call with a colour from their avatar. Off keeps them grey."
           after={<Switch variant="Primary" value={callTileColors} onChange={setCallTileColors} />}
         />
+        <SettingTile
+          title="Screen Share Quality"
+          description="How sharp your shared screen looks to others. Higher needs a faster connection, and it never goes above your screen's own size."
+        >
+          <Box gap="200" wrap="Wrap">
+            {SHARE_QUALITIES.map((q) => (
+              <Button
+                key={q}
+                type="button"
+                size="300"
+                radii="Pill"
+                variant={shareQuality === q ? 'Primary' : 'Secondary'}
+                fill={shareQuality === q ? 'Solid' : 'Soft'}
+                aria-pressed={shareQuality === q}
+                onClick={() => setShareQuality(q)}
+              >
+                <Text size="B300">{`${q}p`}</Text>
+              </Button>
+            ))}
+          </Box>
+        </SettingTile>
       </SequenceCard>
 
       {phone && (

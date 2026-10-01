@@ -57,6 +57,8 @@ export interface Settings {
   soundboardMuted: boolean;
   // Call tiles take a colour from each person's avatar; off keeps them grey.
   callTileColors: boolean;
+  // Resolution your screen shares go out at (720, 1080 or 1440).
+  screenShareQuality: 720 | 1080 | 1440;
 
   hour24Clock: boolean;
   dateFormatString: string;
@@ -99,6 +101,7 @@ const defaultSettings: Settings = {
   soundboardVolume: 70,
   soundboardMuted: false,
   callTileColors: true,
+  screenShareQuality: 1080,
 
   hour24Clock: false,
   dateFormatString: 'D MMM YYYY',
