@@ -1,12 +1,18 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import FocusTrap from 'focus-trap-react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import {
   Box,
   color,
+  config,
   Icon,
   IconButton,
   Icons,
   IconSrc,
+  Menu,
+  MenuItem,
+  PopOut,
+  RectCords,
   Text,
   Tooltip,
   TooltipProvider,
@@ -20,13 +26,15 @@ import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { roomToParentsAtom } from '../../state/room/roomToParents';
 import { getOrphanParents } from '../../utils/room';
+import { useResizeObserver } from '../../hooks/useResizeObserver';
+import { stopPropagation } from '../../utils/keyboard';
 import * as css from './VoicePanel.css';
 
 type ControlProps = {
   label: string;
   icon: IconSrc;
   disabled?: boolean;
-  onClick: () => void;
+  onClick: (evt: React.MouseEvent<HTMLButtonElement>) => void;
 };
 // 'off' marks something you muted, 'on' something you're sharing.
 type TileProps = ControlProps & { tone?: 'off' | 'on' };
@@ -71,7 +79,7 @@ function HeadButton({ label, icon, disabled, onClick }: ControlProps) {
       {(ref) => (
         <IconButton
           ref={ref}
-          size="200"
+          size="300"
           radii="300"
           variant="SurfaceVariant"
           fill="None"
@@ -114,10 +122,23 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
   };
   const tone = joined ? color.Success.Main : color.Warning.Main;
 
+  // A narrow sidebar folds the two header buttons into one menu.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  useResizeObserver(
+    useCallback(() => setNarrow((panelRef.current?.clientWidth ?? 999) < 232), []),
+    useCallback(() => panelRef.current, [])
+  );
+  const [menuCords, setMenuCords] = useState<RectCords>();
+  const runMenu = (action: () => void) => () => {
+    setMenuCords(undefined);
+    action();
+  };
+
   return (
-    <Box className={css.VoicePanel} direction="Column" gap="200">
-      <Box alignItems="Center" gap="100">
-        <span className={css.Badge} style={{ color: tone }}>
+    <Box ref={panelRef} className={css.VoicePanel} direction="Column" gap="200">
+      <Box alignItems="Start" gap="100">
+        <span className={css.Badge} style={{ color: tone, alignSelf: 'center' }}>
           <Icon size="200" src={Icons.VolumeHighLock} />
         </span>
         <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
@@ -131,8 +152,61 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
             </Text>
           </button>
         </Box>
-        <HeadButton label="Open Call" icon={Icons.ArrowGoRight} onClick={openCall} />
-        <HeadButton label="Disconnect" icon={Icons.PhoneDown} disabled={leaving} onClick={leave} />
+        {narrow ? (
+          <PopOut
+            anchor={menuCords}
+            position="Top"
+            align="End"
+            content={
+              <FocusTrap
+                focusTrapOptions={{
+                  initialFocus: false,
+                  onDeactivate: () => setMenuCords(undefined),
+                  clickOutsideDeactivates: true,
+                  escapeDeactivates: stopPropagation,
+                }}
+              >
+                <Menu style={{ padding: config.space.S100 }}>
+                  <MenuItem
+                    size="300"
+                    radii="300"
+                    before={<Icon size="100" src={Icons.ArrowGoRight} />}
+                    onClick={runMenu(openCall)}
+                  >
+                    <Text size="T300">Open Call</Text>
+                  </MenuItem>
+                  <MenuItem
+                    size="300"
+                    radii="300"
+                    variant="Critical"
+                    fill="None"
+                    disabled={leaving}
+                    before={<Icon size="100" src={Icons.PhoneDown} />}
+                    onClick={runMenu(leave)}
+                  >
+                    <Text size="T300">Disconnect</Text>
+                  </MenuItem>
+                </Menu>
+              </FocusTrap>
+            }
+          >
+            <HeadButton
+              label="Call Options"
+              icon={Icons.VerticalDots}
+              onClick={(evt) => setMenuCords(evt.currentTarget.getBoundingClientRect())}
+            />
+          </PopOut>
+        ) : (
+          <>
+            <HeadButton label="Open Call" icon={Icons.ArrowGoRight} onClick={openCall} />
+            <HeadButton
+              label="Disconnect"
+              icon={Icons.PhoneDown}
+              disabled={leaving}
+              onClick={leave}
+            />
+          </>
+        )}
       </Box>
       <div className={css.Tiles}>
         <Tile

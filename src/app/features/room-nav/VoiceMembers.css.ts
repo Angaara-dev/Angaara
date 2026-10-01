@@ -2,7 +2,7 @@ import { style } from '@vanilla-extract/css';
 import { color, config, toRem } from 'folds';
 
 export const VoiceMembers = style({
-  paddingLeft: toRem(28),
+  paddingLeft: toRem(8),
   paddingBottom: config.space.S100,
 });
 

@@ -63,6 +63,7 @@ import { webRTCSupported } from '../../utils/rtc';
 import { usePhone } from '../../hooks/useScreenSize';
 import { RenameRoomPrompt } from './RenameRoomPrompt';
 import { VoiceMembers } from './VoiceMembers';
+import * as css from './styles.css';
 import { useHideActivity } from '../../hooks/useActivityStatus';
 
 type RoomNavItemMenuProps = {
@@ -498,37 +499,39 @@ export function RoomNavItem({
           </NavItemOptions>
         )}
       </NavItem>
-      {chatCall && (
-        <Box direction="Column" style={{ paddingLeft: toRem(20) }}>
-          <NavItem
-            variant="Background"
-            radii="400"
-            aria-selected={selected && callViewRoom === room.roomId}
-          >
-            <NavLink to={linkPath} onClick={() => setCallViewRoom(room.roomId)}>
-              <NavItemContent>
-                <Box as="span" grow="Yes" alignItems="Center" gap="200">
-                  <Icon size="100" src={Icons.VolumeHigh} />
-                  <Box as="span" grow="Yes">
-                    <Text as="span" size="Inherit" truncate>
-                      {callEmbed?.roomId === room.roomId ? 'In Call' : 'Call'}
-                    </Text>
-                  </Box>
-                  {callMembers.length > 0 && (
-                    <Badge variant="Critical" fill="Solid" size="400">
-                      <Text as="span" size="L400" truncate>
-                        {callMembers.length} Live
+      {(chatCall || voiceMembers) && (
+        <div className={css.Children}>
+          {chatCall && (
+            <NavItem
+              variant="Background"
+              radii="400"
+              aria-selected={selected && callViewRoom === room.roomId}
+            >
+              <NavLink to={linkPath} onClick={() => setCallViewRoom(room.roomId)}>
+                <NavItemContent>
+                  <Box as="span" grow="Yes" alignItems="Center" gap="200">
+                    <Icon size="100" src={Icons.VolumeHigh} />
+                    <Box as="span" grow="Yes">
+                      <Text as="span" size="Inherit" truncate>
+                        {callEmbed?.roomId === room.roomId ? 'In Call' : 'Call'}
                       </Text>
-                    </Badge>
-                  )}
-                </Box>
-              </NavItemContent>
-            </NavLink>
-          </NavItem>
-        </Box>
-      )}
-      {(voiceMembers || (chatCall && callMembers.length > 0)) && (
-        <VoiceMembers room={room} members={callMembers} />
+                    </Box>
+                    {callMembers.length > 0 && (
+                      <Badge variant="Critical" fill="Solid" size="400">
+                        <Text as="span" size="L400" truncate>
+                          {callMembers.length} Live
+                        </Text>
+                      </Badge>
+                    )}
+                  </Box>
+                </NavItemContent>
+              </NavLink>
+            </NavItem>
+          )}
+          {(voiceMembers || (chatCall && callMembers.length > 0)) && (
+            <VoiceMembers room={room} members={callMembers} />
+          )}
+        </div>
       )}
     </>
   );
