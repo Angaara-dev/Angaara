@@ -25,6 +25,7 @@ const merge = (all: AutoModRules[]): AutoModRules | undefined => {
     links: list('links'),
     invites: all.find((r) => r.invites.on)?.invites ?? all[0].invites,
     bot: all.some((r) => r.bot),
+    commands: all.some((r) => r.commands),
   };
 };
 

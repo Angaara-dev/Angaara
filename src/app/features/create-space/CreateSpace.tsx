@@ -14,6 +14,7 @@ import {
   Text,
   TextArea,
 } from 'folds';
+import { useAtomValue } from 'jotai';
 import { SettingTile } from '../../components/setting-tile';
 import { SequenceCard } from '../../components/sequence-card';
 import {
@@ -50,6 +51,9 @@ import {
 } from '../../components/image-cropper';
 import { TOGGLEABLE_COMMANDS } from '../../hooks/useDisabledCommands';
 import { EmojiInsertButton } from '../../components/EmojiInsertButton';
+import { addBotToNewRoom } from '../automod/bot';
+import { useClientConfig } from '../../hooks/useClientConfig';
+import { roomToParentsAtom } from '../../state/room/roomToParents';
 
 const getCreateSpaceAccessToIcon = (access: CreateRoomAccess) => {
   if (access === CreateRoomAccess.Private) return Icons.SpaceLock;
@@ -64,6 +68,8 @@ type CreateSpaceFormProps = {
 };
 export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceFormProps) {
   const mx = useMatrixClient();
+  const botUrl = useClientConfig().angaaraBot;
+  const roomToParents = useAtomValue(roomToParentsAtom);
   const alive = useAlive();
 
   const capabilities = useCapabilities();
@@ -123,6 +129,11 @@ export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceF
     useCallback(
       async (data) => {
         const roomId = await createRoom(mx, data);
+        if (data.parent) {
+          addBotToNewRoom(mx, botUrl, roomId, data.parent, roomToParents, true).catch(
+            () => undefined
+          );
+        }
         // Best effort: the space exists even if the banner upload fails; it can be set in settings.
         if (bannerFile) {
           try {
@@ -143,7 +154,7 @@ export function CreateSpaceForm({ defaultAccess, space, onCreate }: CreateSpaceF
         }
         return roomId;
       },
-      [mx, bannerFile, disabledCommands]
+      [mx, bannerFile, disabledCommands, botUrl, roomToParents]
     )
   );
   const loading = createState.status === AsyncStatus.Loading;

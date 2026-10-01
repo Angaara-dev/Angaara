@@ -82,7 +82,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function BotSetting({ enabled, canEdit }: { enabled: boolean; canEdit: boolean }) {
+type BotSettingProps = { enabled: boolean; commands: boolean; canEdit: boolean };
+function BotSetting({ enabled, commands, canEdit }: BotSettingProps) {
   const mx = useMatrixClient();
   const room = useRoom();
   const botUrl = useClientConfig().angaaraBot;
@@ -105,7 +106,7 @@ function BotSetting({ enabled, canEdit }: { enabled: boolean; canEdit: boolean }
           .getStateEvents(StateEvent.AngaaraAutoMod, '')
           ?.getContent();
         if (on) {
-          const result = await enableBot(mx, botUrl, room, roomToParents);
+          const result = await enableBot(mx, botUrl, room, roomToParents, commands);
           await mx.sendStateEvent(
             room.roomId,
             StateEvent.AngaaraAutoMod as never,
@@ -123,14 +124,32 @@ function BotSetting({ enabled, canEdit }: { enabled: boolean; canEdit: boolean }
           {
             ...readAutoMod(content),
             bot: false,
+            commands: false,
           } as never
         );
         return 0;
       },
+      [mx, botUrl, room, roomToParents, commands]
+    )
+  );
+  const [commandState, setCommands] = useAsyncCallback(
+    useCallback(
+      async (on: boolean) => {
+        if (!botUrl) return;
+        await enableBot(mx, botUrl, room, roomToParents, on, !on);
+        const content = room.currentState
+          .getStateEvents(StateEvent.AngaaraAutoMod, '')
+          ?.getContent();
+        await mx.sendStateEvent(
+          room.roomId,
+          StateEvent.AngaaraAutoMod as never,
+          { ...readAutoMod(content), commands: on } as never
+        );
+      },
       [mx, botUrl, room, roomToParents]
     )
   );
-  const busy = state.status === AsyncStatus.Loading;
+  const busy = state.status === AsyncStatus.Loading || commandState.status === AsyncStatus.Loading;
 
   let status = '';
   if (!botUrl) status = "This copy of Angaara hasn't set up the Angaara Bot.";
@@ -162,6 +181,29 @@ function BotSetting({ enabled, canEdit }: { enabled: boolean; canEdit: boolean }
       {status && (
         <Text size="T200" priority="300">
           {status}
+        </Text>
+      )}
+      {enabled && botUrl && (
+        <SettingTile
+          title="Moderator Commands"
+          description="Anyone who can ban here can type commands in any channel and the bot carries them out across the whole server: .ban [user ID] [reason], .unban [user ID], .kick [user ID] [reason] and .invite [user ID]. The bot gets ban, kick and invite power for this. Commands only work in unencrypted channels, since the bot can't read encrypted ones."
+          after={
+            commandState.status === AsyncStatus.Loading ? (
+              <Spinner variant="Secondary" />
+            ) : (
+              <Switch
+                variant="Primary"
+                value={commands}
+                onChange={(on: boolean) => setCommands(on)}
+                disabled={!canEdit || busy}
+              />
+            )
+          }
+        />
+      )}
+      {commandState.status === AsyncStatus.Error && (
+        <Text size="T200" style={{ color: color.Critical.Main }}>
+          {(commandState.error as { message?: string }).message}
         </Text>
       )}
       {enabled && botUrl && canEdit && (
@@ -359,7 +401,7 @@ export function AutoMod({ requestClose }: { requestClose: () => void }) {
 
               <Box direction="Column" gap="100">
                 <Text size="L400">Angaara Bot</Text>
-                <BotSetting enabled={saved.bot} canEdit={canEdit} />
+                <BotSetting enabled={saved.bot} commands={saved.commands} canEdit={canEdit} />
               </Box>
 
               {canEdit && (

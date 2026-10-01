@@ -1,6 +1,7 @@
 import { MatrixClient, Room } from 'matrix-js-sdk';
 import { RoomToParents, StateEvent } from '../../../types/matrix/room';
-import { getStateEvents } from '../../utils/room';
+import { getAllParents, getStateEvent, getStateEvents } from '../../utils/room';
+import { readAutoMod } from './automod';
 import { isPrivateMode, PRIVATE_MODE_MESSAGE } from '../../utils/privateMode';
 
 const trim = (url: string) => url.replace(/\/+$/, '');
@@ -58,11 +59,78 @@ const post = async (url: string, body: unknown): Promise<Record<string, unknown>
   return data;
 };
 
+type PowerLevels = {
+  users?: Record<string, number>;
+  users_default?: number;
+  redact?: number;
+  ban?: number;
+  kick?: number;
+  invite?: number;
+};
+
+// Removing messages needs redact power; commands also need ban, kick and invite power, in
+// categories too, so bans cover the whole server.
+const botLevel = (pl: PowerLevels, space: boolean, commands: boolean): number => {
+  const level = (v: number | undefined, fallback: number) => (typeof v === 'number' ? v : fallback);
+  const redact = space ? 0 : Math.max(level(pl.redact, 50), 50);
+  if (!commands) return redact;
+  return Math.max(redact, level(pl.ban, 50), level(pl.kick, 50), level(pl.invite, 0), 50);
+};
+
+// Raises the bot to what it needs; lowering is only for turning commands off.
+const setBotPower = async (
+  mx: MatrixClient,
+  roomId: string,
+  botId: string,
+  space: boolean,
+  commands: boolean,
+  lower = false
+) => {
+  const pl = ((await mx.getStateEvent(roomId, 'm.room.power_levels', '').catch(() => undefined)) ??
+    {}) as PowerLevels;
+  const need = botLevel(pl, space, commands);
+  const has = pl.users?.[botId] ?? pl.users_default ?? 0;
+  if (has < need || (lower && has > need)) {
+    await mx.setPowerLevel(roomId, botId, need).catch(() => undefined);
+  }
+};
+
+// Bot settings for a server, read from the space and every space above it.
+export const serverBotSettings = (
+  mx: MatrixClient,
+  roomToParents: RoomToParents,
+  spaceId: string
+): { bot: boolean; commands: boolean } => {
+  const all = [spaceId, ...getAllParents(roomToParents, spaceId)].flatMap((id) => {
+    const space = mx.getRoom(id);
+    const event = space && getStateEvent(space, StateEvent.AngaaraAutoMod);
+    return event ? [readAutoMod(event.getContent())] : [];
+  });
+  return { bot: all.some((r) => r.bot), commands: all.some((r) => r.commands) };
+};
+
+const askToJoin = async (
+  mx: MatrixClient,
+  botUrl: string,
+  rooms: { id: string; parents: string[] }[]
+): Promise<BotResult> => {
+  const data = await post(`${trim(botUrl)}/api/join`, {
+    openid: await mx.getOpenIdToken(),
+    rooms,
+  });
+  return {
+    joined: Array.isArray(data.joined) ? (data.joined as string[]) : [],
+    failed: Array.isArray(data.failed) ? (data.failed as string[]) : [],
+  };
+};
+
 export const enableBot = async (
   mx: MatrixClient,
   botUrl: string,
   space: Room,
-  roomToParents: RoomToParents
+  roomToParents: RoomToParents,
+  commands: boolean,
+  lower = false
 ): Promise<BotResult> => {
   if (isPrivateMode()) throw new Error(PRIVATE_MODE_MESSAGE);
   const botId = await getBotUserId(mx, botUrl);
@@ -74,29 +142,48 @@ export const enableBot = async (
   for (const room of rooms) {
     // eslint-disable-next-line no-await-in-loop
     if (!botIn(room, botId)) await mx.invite(room.roomId, botId).catch(() => undefined);
-    if (!room.isSpaceRoom()) {
-      const pl = room.currentState.getStateEvents('m.room.power_levels', '')?.getContent() ?? {};
-      const need = Math.max(typeof pl.redact === 'number' ? pl.redact : 50, 50);
-      const has = pl.users?.[botId] ?? pl.users_default ?? 0;
-      if (has < need && room.currentState.maySendStateEvent('m.room.power_levels', me)) {
-        // eslint-disable-next-line no-await-in-loop
-        await mx.setPowerLevel(room.roomId, botId, need).catch(() => undefined);
-      }
+    if (room.currentState.maySendStateEvent('m.room.power_levels', me)) {
+      // eslint-disable-next-line no-await-in-loop
+      await setBotPower(mx, room.roomId, botId, room.isSpaceRoom(), commands, lower);
     }
   }
 
   const ids = new Set(rooms.map((r) => r.roomId));
-  const data = await post(`${trim(botUrl)}/api/join`, {
-    openid: await mx.getOpenIdToken(),
-    rooms: rooms.map((r) => ({
+  return askToJoin(
+    mx,
+    botUrl,
+    rooms.map((r) => ({
       id: r.roomId,
       parents: Array.from(roomToParents.get(r.roomId) ?? []).filter((p) => ids.has(p)),
-    })),
-  });
-  return {
-    joined: Array.isArray(data.joined) ? (data.joined as string[]) : [],
-    failed: Array.isArray(data.failed) ? (data.failed as string[]) : [],
-  };
+    }))
+  );
+};
+
+// Channels and categories made after the bot was turned on get it straight away.
+export const addBotToNewRoom = async (
+  mx: MatrixClient,
+  botUrl: string | undefined,
+  roomId: string,
+  parent: Room,
+  roomToParents: RoomToParents,
+  space: boolean
+): Promise<void> => {
+  if (!botUrl || isPrivateMode()) return;
+  const settings = serverBotSettings(mx, roomToParents, parent.roomId);
+  if (!settings.bot) return;
+  const botId = await getBotUserId(mx, botUrl);
+  if (!botId) return;
+  await mx.invite(roomId, botId);
+  await setBotPower(mx, roomId, botId, space, settings.commands);
+  const rooms = [{ id: roomId, parents: [parent.roomId] }];
+  const { failed } = await askToJoin(mx, botUrl, rooms);
+  // The invite can take a moment to reach the bot's homeserver.
+  if (failed.length > 0) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 3000);
+    });
+    await askToJoin(mx, botUrl, rooms);
+  }
 };
 
 export const disableBot = async (mx: MatrixClient, botUrl: string, space: Room): Promise<void> => {

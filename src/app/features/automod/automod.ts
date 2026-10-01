@@ -5,6 +5,7 @@ export type AutoModRules = {
   links: AutoModListRule;
   invites: AutoModRule;
   bot: boolean;
+  commands: boolean;
 };
 export type AutoModViolation = { rule: 'words' | 'links' | 'invites'; message: string };
 
@@ -58,6 +59,7 @@ export const readAutoMod = (content: unknown): AutoModRules => {
       message: str(inv.message, MAX_MESSAGE) || DEFAULT_MESSAGES.invites,
     },
     bot: c.bot === true,
+    commands: c.commands === true,
   };
 };
 

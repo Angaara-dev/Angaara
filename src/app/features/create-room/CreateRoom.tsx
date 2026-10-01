@@ -14,6 +14,7 @@ import {
   Text,
   TextArea,
 } from 'folds';
+import { useAtomValue } from 'jotai';
 import { SettingTile } from '../../components/setting-tile';
 import { SequenceCard } from '../../components/sequence-card';
 import {
@@ -48,6 +49,9 @@ import {
   writeHiddenProfile,
 } from '../../../client/hiddenProfile';
 import { EmojiInsertButton } from '../../components/EmojiInsertButton';
+import { addBotToNewRoom } from '../automod/bot';
+import { useClientConfig } from '../../hooks/useClientConfig';
+import { roomToParentsAtom } from '../../state/room/roomToParents';
 
 const getCreateRoomAccessToIcon = (access: CreateRoomAccess, type?: CreateRoomType) => {
   const isVoiceRoom = type === CreateRoomType.VoiceRoom;
@@ -77,6 +81,8 @@ export function CreateRoomForm({
   onCreate,
 }: CreateRoomFormProps) {
   const mx = useMatrixClient();
+  const botUrl = useClientConfig().angaaraBot;
+  const roomToParents = useAtomValue(roomToParentsAtom);
   const alive = useAlive();
 
   const capabilities = useCapabilities();
@@ -121,6 +127,11 @@ export function CreateRoomForm({
     useCallback(
       async (data, hidden) => {
         const roomId = await createRoom(mx, data);
+        if (data.parent) {
+          addBotToNewRoom(mx, botUrl, roomId, data.parent, roomToParents, false).catch(
+            () => undefined
+          );
+        }
         if (hidden) {
           // The server only ever got the placeholder; the real name is sealed once keys are ready.
           try {
@@ -134,7 +145,7 @@ export function CreateRoomForm({
         }
         return roomId;
       },
-      [mx]
+      [mx, botUrl, roomToParents]
     )
   );
   const loading = createState.status === AsyncStatus.Loading;
