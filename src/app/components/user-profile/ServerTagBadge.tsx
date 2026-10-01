@@ -5,6 +5,7 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 import { getRoomAvatarUrl } from '../../utils/room';
 import { ServerTagCard } from './ServerTagCard';
+import { TagIconView } from './serverTagIcons';
 
 type ServerTagBadgeProps = {
   userId: string;
@@ -18,7 +19,7 @@ export function ServerTagBadge({ userId, enabled = true, size = 'small' }: Serve
   const serverTag = useServerTag(userId, enabled);
   const [anchor, setAnchor] = useState<RectCords>();
   if (!serverTag) return null;
-  const { tag, space, spaceId } = serverTag;
+  const { tag, space, spaceId, icon: tagIcon, color: tagColor } = serverTag;
   // The tag sits inside clickable names, which shouldn't open too.
   const open = (evt: MouseEvent<HTMLElement>) => {
     evt.stopPropagation();
@@ -26,7 +27,8 @@ export function ServerTagBadge({ userId, enabled = true, size = 'small' }: Serve
     setAnchor(evt.currentTarget.getBoundingClientRect());
   };
   const iconUrl = space ? getRoomAvatarUrl(mx, space, 32, useAuthentication) : undefined;
-  const icon = toRem(size === 'small' ? 12 : 14);
+  // Pixel icons stay crisp at whole multiples of 16px.
+  const icon = tagIcon ? toRem(16) : toRem(size === 'small' ? 12 : 14);
 
   return (
     <>
@@ -52,7 +54,7 @@ export function ServerTagBadge({ userId, enabled = true, size = 'small' }: Serve
             style={{
               width: 'fit-content',
               padding: `0 ${config.space.S100}`,
-              height: toRem(size === 'small' ? 18 : 20),
+              height: toRem(size === 'small' ? 20 : 22),
               borderRadius: config.radii.R300,
               background: color.SurfaceVariant.Container,
               border: `1px solid ${color.SurfaceVariant.ContainerLine}`,
@@ -61,13 +63,7 @@ export function ServerTagBadge({ userId, enabled = true, size = 'small' }: Serve
               font: 'inherit',
             }}
           >
-            {iconUrl && (
-              <img
-                src={iconUrl}
-                alt=""
-                style={{ width: icon, height: icon, borderRadius: toRem(3), objectFit: 'cover' }}
-              />
-            )}
+            <TagIconView icon={tagIcon} color={tagColor} fallbackUrl={iconUrl} size={icon} />
             <Text as="span" size={size === 'small' ? 'L400' : 'T200'} style={{ fontWeight: 700 }}>
               {tag}
             </Text>

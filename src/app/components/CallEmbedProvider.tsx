@@ -65,6 +65,7 @@ import { webRTCSupported } from '../utils/rtc';
 import { CallKeyGuard, CallKeyNotice } from './CallKeyGuard';
 import { useSoundboardReceiver } from '../features/soundboard/useSoundboardReceiver';
 import { useStaleCallCleanup } from '../hooks/useStaleCallCleanup';
+import { CallRejoin } from './CallRejoin';
 
 type IncomingCallInfo = {
   room: Room;
@@ -409,6 +410,7 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
       <CallKeyNotice />
       <CallEmbedRefContextProvider value={callEmbedRef}>
         <IncomingCallListener callEmbed={callEmbed} joined={joined} />
+        <CallRejoin callEmbed={callEmbed} joined={joined} />
         {children}
       </CallEmbedRefContextProvider>
       <div

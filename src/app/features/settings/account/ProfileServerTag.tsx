@@ -7,7 +7,14 @@ import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 import { useSpaces } from '../../../state/hooks/roomList';
 import { allRoomsAtom } from '../../../state/room-list/roomList';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
-import { getSpaceTag, parseServerTag, SERVER_TAG_PROFILE_KEY } from '../../../hooks/useServerTag';
+import {
+  encodeServerTag,
+  getSpaceTag,
+  getSpaceTagLook,
+  parseServerTag,
+  SERVER_TAG_PROFILE_KEY,
+} from '../../../hooks/useServerTag';
+import { TagIconView } from '../../../components/user-profile/serverTagIcons';
 import {
   extendedProfileQueryKey,
   readProfileString,
@@ -78,7 +85,7 @@ export function ProfileServerTag({ userId }: { userId: string }) {
           </Chip>
           {spaces.map(({ space, tag }) => {
             const selected = current?.spaceId === space.roomId;
-            const icon = getRoomAvatarUrl(mx, space, 32, useAuthentication);
+            const look = getSpaceTagLook(space);
             return (
               <Chip
                 key={space.roomId}
@@ -87,15 +94,14 @@ export function ProfileServerTag({ userId }: { userId: string }) {
                 aria-pressed={selected}
                 disabled={saving}
                 title={space.name}
-                onClick={() => pick(`${tag}|${space.roomId}`)}
+                onClick={() => pick(encodeServerTag(tag, space.roomId, look))}
                 before={
-                  icon && (
-                    <img
-                      src={icon}
-                      alt=""
-                      style={{ width: toRem(16), height: toRem(16), borderRadius: toRem(4) }}
-                    />
-                  )
+                  <TagIconView
+                    icon={look.icon}
+                    color={look.color}
+                    fallbackUrl={getRoomAvatarUrl(mx, space, 32, useAuthentication)}
+                    size={toRem(16)}
+                  />
                 }
               >
                 <Text size="T200">
