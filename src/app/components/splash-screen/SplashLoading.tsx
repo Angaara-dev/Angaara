@@ -37,21 +37,46 @@ const TIPS: ReactNode[] = [
   </>,
 ];
 
+const FACTS: ReactNode[] = [
+  <>
+    Encrypted chats are locked on your device. The server only ever sees <b>scrambled text</b>.
+  </>,
+  <>
+    Message keys move forward as you chat, so a leaked key <b>can&apos;t unlock older messages</b>.
+  </>,
+  <>
+    Your encryption runs on <b>Rust</b> code, compiled to run right in your browser.
+  </>,
+  <>
+    Verifying a device means matching <b>7 emojis</b> on both screens. Spot a difference? Don&apos;t
+    trust it.
+  </>,
+  <>
+    Lose your <b>security key</b> and nobody can recover your encrypted history. Not even us.
+  </>,
+  <>
+    <b>Check File</b> scans happen on your device. Only the file&apos;s fingerprint ever leaves it.
+  </>,
+  <>
+    Angaara is <b>open source</b>, so anyone can read the code that guards your chats.
+  </>,
+];
+
 const LINE_MS = 5500;
 
-type Line = { key: number; tip: boolean; text: ReactNode };
+type Line = { key: number; label?: 'TIP' | 'FACT'; text: ReactNode };
 
-const pick = <T,>(pool: T[], not?: T) => {
-  const options = pool.filter((item) => item !== not);
-  return options[Math.floor(Math.random() * options.length)];
-};
+const pick = <T,>(pool: T[]) => pool[Math.floor(Math.random() * pool.length)];
 
-// Quips and tips take turns, starting with the same line the page shows before the app loads.
+// Quips take turns with tips and facts, starting with the line the page shows before the app loads.
 const nextLine = (prev: Line, signedIn: boolean): Line => {
   const key = prev.key + 1;
-  if (!prev.tip) return { key, tip: true, text: pick(TIPS, prev.text) };
+  if (!prev.label) {
+    const fact = Math.random() < 0.5;
+    return { key, label: fact ? 'FACT' : 'TIP', text: pick(fact ? FACTS : TIPS) };
+  }
   const quips = signedIn ? [...QUIPS, ...SIGNED_IN_QUIPS] : QUIPS;
-  return { key, tip: false, text: pick(quips) };
+  return { key, text: pick(quips) };
 };
 
 // The embers behind this live in index.html, so they keep going while the app takes over.
@@ -69,7 +94,7 @@ const useBootEmbers = () => {
 
 export function SplashLoading({ label, signedIn = false }: { label?: string; signedIn?: boolean }) {
   useBootEmbers();
-  const [line, setLine] = useState<Line>({ key: 0, tip: false, text: FIRST_QUIP });
+  const [line, setLine] = useState<Line>({ key: 0, text: FIRST_QUIP });
   useEffect(() => {
     if (label) return undefined;
     const timer = window.setInterval(() => setLine((l) => nextLine(l, signedIn)), LINE_MS);
@@ -95,7 +120,7 @@ export function SplashLoading({ label, signedIn = false }: { label?: string; sig
         align="Center"
         aria-live="polite"
       >
-        {!label && line.tip && <span className={css.Tip}>TIP</span>}
+        {!label && line.label && <span className={css.Tip}>{line.label}</span>}
         {label ?? line.text}
       </Text>
     </Box>
