@@ -9,7 +9,7 @@ import {
 } from '../plugins/call';
 import { useMatrixClient } from './useMatrixClient';
 import { ThemeKind, useTheme } from './useTheme';
-import { callEmbedAtom } from '../state/callEmbed';
+import { callEmbedAtom, callViewRoomAtom } from '../state/callEmbed';
 import { useResizeObserver } from './useResizeObserver';
 import { CallControlState } from '../plugins/call/CallControlState';
 import { useCallMembersChange, useCallSession } from './useCall';
@@ -62,6 +62,7 @@ export const useCallStart = (dm = false) => {
   const mx = useMatrixClient();
   const theme = useTheme();
   const setCallEmbed = useSetAtom(callEmbedAtom);
+  const setCallViewRoom = useSetAtom(callViewRoomAtom);
   const callEmbedRef = useCallEmbedRef();
 
   const startCall = useCallback(
@@ -70,6 +71,7 @@ export const useCallStart = (dm = false) => {
       if (!container) {
         throw new Error('Failed to start call, No embed container element found!');
       }
+      if (!room.isCallRoom()) setCallViewRoom(room.roomId);
       // The key size has to be settled before joining, since everyone in a call must match.
       const { memberships } = mx.matrixRTC.getRoomSession(room);
       chooseKeySize(mx, room, dm, memberships)
@@ -78,7 +80,7 @@ export const useCallStart = (dm = false) => {
           setCallEmbed(createCallEmbed(mx, room, dm, theme.kind, container, pref, keySize));
         });
     },
-    [mx, dm, theme, setCallEmbed, callEmbedRef]
+    [mx, dm, theme, setCallEmbed, setCallViewRoom, callEmbedRef]
   );
 
   return startCall;

@@ -14,6 +14,7 @@ import { CallMemberRenderer } from './CallMemberCard';
 import { CallEncryption } from './CallEncryption';
 import * as css from './styles.css';
 import { CallControls } from './CallControls';
+import { TypingIndicator } from '../../components/typing-indicator';
 import { useLivekitSupport } from '../../hooks/useLivekitSupport';
 import { webRTCSupported } from '../../utils/rtc';
 
@@ -143,7 +144,6 @@ type CallJoinedProps = {
 };
 function CallJoined({ joined, containerRef }: CallJoinedProps) {
   const callEmbed = useCallEmbed();
-  const room = useRoom();
   const [hover, setHover] = useState(false);
   const hideTimer = useRef<number>();
 
@@ -168,13 +168,39 @@ function CallJoined({ joined, containerRef }: CallJoinedProps) {
     };
   }, [callEmbed, show, hide]);
 
+  // Dots until the call has drawn something, so a freshly joined call isn't an empty box.
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    setDrawn(false);
+    const iframe = callEmbed?.iframe;
+    if (!joined || !iframe) return undefined;
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      let found = false;
+      try {
+        found = !!iframe.contentDocument?.querySelector('[class*="_tile_"], video');
+      } catch {
+        found = true;
+      }
+      if (found || Date.now() - started > 15000) {
+        setDrawn(true);
+        window.clearInterval(timer);
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [callEmbed, joined]);
+
   return (
     <Box grow="Yes" direction="Column" style={{ position: 'relative' }}>
-      <Box grow="Yes" ref={containerRef} />
+      <Box grow="Yes" ref={containerRef} alignItems="Center" justifyContent="Center">
+        {joined && !drawn && (
+          <TypingIndicator aria-label="Loading call" style={{ transform: 'scale(2)' }} />
+        )}
+      </Box>
       {callEmbed && joined && (
         <div className={css.CallOverlay} data-shown={hover} onMouseEnter={show} onMouseLeave={hide}>
           <CallEncryption room={callEmbed.room} keySize={callEmbed.keySize} />
-          <CallControls callEmbed={callEmbed} showChat={room.isCallRoom()} />
+          <CallControls callEmbed={callEmbed} />
         </div>
       )}
     </Box>

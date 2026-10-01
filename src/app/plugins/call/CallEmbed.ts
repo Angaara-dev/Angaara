@@ -164,11 +164,14 @@ export class CallEmbed {
   static blendIn(iframe: HTMLIFrameElement): void {
     try {
       const doc = iframe.contentDocument;
-      if (!doc || doc.getElementById('angaara-blend')) return;
-      const style = doc.createElement('style');
+      if (!doc?.head) return;
+      const style = doc.getElementById('angaara-blend') ?? doc.createElement('style');
       style.id = 'angaara-blend';
-      style.textContent =
-        ':root, html, body, #root { background: transparent !important; color-scheme: normal !important; }';
+      // Matching the page's colour scheme stops the browser painting a solid backdrop.
+      const scheme = getComputedStyle(document.documentElement).colorScheme || 'normal';
+      // Tiles get a soft card so name tags sit on something instead of floating.
+      style.textContent = `:root, html, body, #root { background: transparent !important; color-scheme: ${scheme} !important; }
+        [class*="_tile_"] { background: rgba(127, 127, 127, 0.14); border-radius: 16px; }`;
       doc.head.append(style);
     } catch {
       // Not same origin; the call keeps its own background.
@@ -230,6 +233,8 @@ export class CallEmbed {
   }
 
   public setTheme(theme: ElementCallThemeKind) {
+    // Re-match the colour scheme once the page has switched.
+    setTimeout(() => CallEmbed.blendIn(this.iframe), 0);
     return this.call.transport.send(WidgetApiToWidgetAction.ThemeChange, {
       name: theme,
     });

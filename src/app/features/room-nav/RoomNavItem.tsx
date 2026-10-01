@@ -53,7 +53,7 @@ import { InviteUserPrompt } from '../../components/invite-user-prompt';
 import { useRoomName } from '../../hooks/useRoomMeta';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { useCallEmbed, useCallStart } from '../../hooks/useCallEmbed';
-import { callChatAtom } from '../../state/callEmbed';
+import { callChatAtom, callViewRoomAtom } from '../../state/callEmbed';
 import { useCallPreferencesAtom } from '../../state/hooks/callPreferences';
 import { useAutoDiscoveryInfo } from '../../hooks/useAutoDiscoveryInfo';
 import { livekitSupport } from '../../hooks/useLivekitSupport';
@@ -358,6 +358,10 @@ export function RoomNavItem({
   };
 
   const voiceMembers = room.isCallRoom() && callMembers.length > 0;
+  // A call in a chat or DM gets its own row, so the chat itself stays a click away.
+  const [callViewRoom, setCallViewRoom] = useAtom(callViewRoomAtom);
+  const chatCall =
+    !room.isCallRoom() && (callMembers.length > 0 || callEmbed?.roomId === room.roomId);
 
   return (
     <>
@@ -371,7 +375,10 @@ export function RoomNavItem({
         {...hoverProps}
         {...focusWithinProps}
       >
-        <NavLink to={linkPath} onClick={room.isCallRoom() ? handleStartCall : undefined}>
+        <NavLink
+          to={linkPath}
+          onClick={room.isCallRoom() ? handleStartCall : () => setCallViewRoom(undefined)}
+        >
           <NavItemContent>
             <Box as="span" grow="Yes" alignItems="Center" gap={phone ? '300' : '200'}>
               <Avatar size="200" radii="400">
@@ -432,7 +439,7 @@ export function RoomNavItem({
                   aria-label={notificationMode}
                 />
               )}
-              {callMembers.length > 0 && (
+              {room.isCallRoom() && callMembers.length > 0 && (
                 <Badge variant="Critical" fill="Solid" size="400">
                   <Text as="span" size="L400" truncate>
                     {callMembers.length} Live
@@ -491,7 +498,38 @@ export function RoomNavItem({
           </NavItemOptions>
         )}
       </NavItem>
-      {voiceMembers && <VoiceMembers room={room} members={callMembers} />}
+      {chatCall && (
+        <Box direction="Column" style={{ paddingLeft: toRem(20) }}>
+          <NavItem
+            variant="Background"
+            radii="400"
+            aria-selected={selected && callViewRoom === room.roomId}
+          >
+            <NavLink to={linkPath} onClick={() => setCallViewRoom(room.roomId)}>
+              <NavItemContent>
+                <Box as="span" grow="Yes" alignItems="Center" gap="200">
+                  <Icon size="100" src={Icons.VolumeHigh} />
+                  <Box as="span" grow="Yes">
+                    <Text as="span" size="Inherit" truncate>
+                      {callEmbed?.roomId === room.roomId ? 'In Call' : 'Call'}
+                    </Text>
+                  </Box>
+                  {callMembers.length > 0 && (
+                    <Badge variant="Critical" fill="Solid" size="400">
+                      <Text as="span" size="L400" truncate>
+                        {callMembers.length} Live
+                      </Text>
+                    </Badge>
+                  )}
+                </Box>
+              </NavItemContent>
+            </NavLink>
+          </NavItem>
+        </Box>
+      )}
+      {(voiceMembers || (chatCall && callMembers.length > 0)) && (
+        <VoiceMembers room={room} members={callMembers} />
+      )}
     </>
   );
 }

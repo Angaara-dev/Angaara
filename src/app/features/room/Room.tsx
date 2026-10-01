@@ -16,9 +16,8 @@ import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useRoomMembers } from '../../hooks/useRoomMembers';
 import { CallView } from '../call/CallView';
 import { RoomViewHeader } from './RoomViewHeader';
-import { callChatAtom } from '../../state/callEmbed';
+import { callChatAtom, callViewRoomAtom } from '../../state/callEmbed';
 import { CallChatView } from './CallChatView';
-import { CallSplit } from './CallSplit';
 import { useCallEmbed } from '../../hooks/useCallEmbed';
 import { useCallMembers, useCallSession } from '../../hooks/useCall';
 import { openThreadAtom } from '../../state/room/openThread';
@@ -67,10 +66,10 @@ export function Room() {
     )
   );
 
-  const anyCall = callEmbed?.roomId === room.roomId || room.isCallRoom() || callMembers.length > 0;
-  // Voice channels are all call; a call in a chat sits on top of the chat instead.
-  const callView = anyCall && room.isCallRoom();
-  const splitCall = anyCall && !room.isCallRoom();
+  // Voice channels are all call; a chat shows its call only when it's opened from the list.
+  const callViewRoom = useAtomValue(callViewRoomAtom);
+  const hasCall = callEmbed?.roomId === room.roomId || callMembers.length > 0;
+  const callView = room.isCallRoom() || (callViewRoom === room.roomId && hasCall);
   const threadRootId =
     !callView && openThread && openThread.roomId === room.roomId ? openThread.rootId : undefined;
   const mobileThread = !!threadRootId && screenSize !== ScreenSize.Desktop;
@@ -100,15 +99,9 @@ export function Room() {
         {!callView && !mobileThread && (
           <Box grow="Yes" direction="Column">
             <RoomViewHeader />
-            {splitCall ? (
-              <CallSplit>
-                <RoomView eventId={eventId} />
-              </CallSplit>
-            ) : (
-              <Box grow="Yes">
-                <RoomView eventId={eventId} />
-              </Box>
-            )}
+            <Box grow="Yes">
+              <RoomView eventId={eventId} />
+            </Box>
           </Box>
         )}
 

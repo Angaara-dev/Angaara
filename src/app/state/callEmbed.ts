@@ -19,6 +19,9 @@ export const callEmbedAtom = atom<CallEmbed | undefined, [CallEmbed | undefined]
 
 export const callChatAtom = atom<boolean>(false);
 
+// The chat or DM whose call fills the panel; otherwise that room shows its chat.
+export const callViewRoomAtom = atom<string | undefined>(undefined);
+
 // Set when a call this person started had to drop from AES-256 to AES-128.
 export const callKeyNoticeAtom = atom<boolean>(false);
 

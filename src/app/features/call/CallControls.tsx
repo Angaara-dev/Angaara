@@ -32,10 +32,8 @@ import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 
 type CallControlsProps = {
   callEmbed: CallEmbed;
-  // Off when the chat is already showing under the call.
-  showChat?: boolean;
 };
-export function CallControls({ callEmbed, showChat = true }: CallControlsProps) {
+export function CallControls({ callEmbed }: CallControlsProps) {
   const controlRef = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(document.body.clientWidth < 500);
 
@@ -117,7 +115,7 @@ export function CallControls({ callEmbed, showChat = true }: CallControlsProps) 
         {!compact && <ControlDivider />}
         <Box alignItems="Center" gap="Inherit" grow="Yes" direction={compact ? 'Column' : 'Row'}>
           <Box shrink="No" alignItems="Inherit" justifyContent="Inherit" gap="200">
-            {showChat && <ChatButton />}
+            <ChatButton />
             <PopOut
               anchor={cords}
               position="Top"

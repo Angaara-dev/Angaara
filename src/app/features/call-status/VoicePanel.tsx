@@ -15,7 +15,7 @@ import { CallEmbed, useCallControlState } from '../../plugins/call';
 import { useCallJoined } from '../../hooks/useCallEmbed';
 import { useRoomName } from '../../hooks/useRoomMeta';
 import { useRoomNavigate } from '../../hooks/useRoomNavigate';
-import { callEmbedAtom } from '../../state/callEmbed';
+import { callEmbedAtom, callViewRoomAtom } from '../../state/callEmbed';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { roomToParentsAtom } from '../../state/room/roomToParents';
@@ -78,6 +78,7 @@ function HeadButton({ label, icon, disabled, onClick }: ControlProps) {
           aria-label={label}
           disabled={disabled}
           onClick={onClick}
+          style={{ flexShrink: 0 }}
         >
           <Icon size="100" src={icon} />
         </IconButton>
@@ -94,6 +95,11 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
   const roomToParents = useAtomValue(roomToParentsAtom);
   const { navigateRoom } = useRoomNavigate();
   const setCallEmbed = useSetAtom(callEmbedAtom);
+  const setCallViewRoom = useSetAtom(callViewRoomAtom);
+  const openCall = () => {
+    if (!embed.room.isCallRoom()) setCallViewRoom(embed.roomId);
+    navigateRoom(embed.roomId);
+  };
   const { microphone, sound, video, screenshare } = useCallControlState(embed.control);
 
   const parentId = getOrphanParents(roomToParents, embed.roomId)[0];
@@ -118,18 +124,14 @@ export function VoicePanel({ embed }: { embed: CallEmbed }) {
           <Text size="T300" style={{ color: tone, fontWeight: 600 }} truncate>
             {joined ? 'Voice Connected' : 'Connecting...'}
           </Text>
-          <button type="button" className={css.Channel} onClick={() => navigateRoom(embed.roomId)}>
+          <button type="button" className={css.Channel} onClick={openCall}>
             <Text as="span" size="T200" priority="300" truncate>
               {serverName ? `${serverName} / ${name}` : name}
               {embed.room.hasEncryptionStateEvent() && ` · 🔒 AES-${embed.keySize}`}
             </Text>
           </button>
         </Box>
-        <HeadButton
-          label="Open Call"
-          icon={Icons.ArrowGoRight}
-          onClick={() => navigateRoom(embed.roomId)}
-        />
+        <HeadButton label="Open Call" icon={Icons.ArrowGoRight} onClick={openCall} />
         <HeadButton label="Disconnect" icon={Icons.PhoneDown} disabled={leaving} onClick={leave} />
       </Box>
       <div className={css.Tiles}>

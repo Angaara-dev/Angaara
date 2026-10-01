@@ -35,7 +35,12 @@ import {
   useCallMemberSoundSync,
   useCallStart,
 } from '../hooks/useCallEmbed';
-import { callChatAtom, callEmbedAtom, callSpeakersAtom } from '../state/callEmbed';
+import {
+  callChatAtom,
+  callEmbedAtom,
+  callSpeakersAtom,
+  callViewRoomAtom,
+} from '../state/callEmbed';
 import { useCallSpeakers } from '../hooks/useCallSpeakers';
 import { CallEmbed } from '../plugins/call';
 import { useSelectedRoom } from '../hooks/router/useSelectedRoom';
@@ -388,7 +393,11 @@ export function CallEmbedProvider({ children }: CallEmbedProviderProps) {
 
   const chatOnlyView = chat && screenSize !== ScreenSize.Desktop;
 
-  const callVisible = callEmbed && selectedRoom === callEmbed.roomId && joined && !chatOnlyView;
+  // A chat's call only shows while it's opened; otherwise that chat is on screen.
+  const callViewRoom = useAtomValue(callViewRoomAtom);
+  const callOpen = callEmbed?.room.isCallRoom() || callViewRoom === callEmbed?.roomId;
+  const callVisible =
+    callEmbed && selectedRoom === callEmbed.roomId && joined && callOpen && !chatOnlyView;
 
   return (
     <CallEmbedContextProvider value={callEmbed}>
