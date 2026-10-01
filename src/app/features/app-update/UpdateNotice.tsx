@@ -6,9 +6,9 @@ import { buildId } from '../app-reports/reports';
 const JUST_UPDATED = 'angaara.justUpdated';
 const CHECK_EVERY = 10 * 60 * 1000;
 
-// Remembers the build we reload from; the notice only shows if the next load is a different one.
-// A failed chunk load while offline also reloads, and must not claim an update.
-export const markUpdating = () => {
+// Set only by this notice's Reload button, so crash and automatic reloads never show it.
+// It shows after the reload only if the build really changed.
+const markUpdating = () => {
   try {
     sessionStorage.setItem(JUST_UPDATED, buildId());
   } catch {
@@ -95,7 +95,9 @@ export function UpdateNotice() {
       }}
     >
       <Box direction="Column" grow="Yes" style={{ minWidth: 0 }}>
-        <Text size="H6">✨ Angaara has been updated</Text>
+        <Text size="H6">
+          {outdated ? '✨ A new version of Angaara is out' : '✨ Angaara has been updated'}
+        </Text>
         <Text size="T200" priority="300">
           {outdated ? 'Reload to get the newest version.' : "You're on the newest version."}
         </Text>

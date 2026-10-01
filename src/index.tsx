@@ -20,7 +20,6 @@ import { getFallbackSession } from './app/state/sessions';
 import { installBackClosesPanels } from './app/utils/backClosesPanels';
 import { installPageShiftGuard } from './app/utils/pageShiftGuard';
 import { installPrivateModeGuard } from './app/utils/privateMode';
-import { markUpdating } from './app/features/app-update/UpdateNotice';
 
 document.body.classList.add(configClass, varsClass);
 
@@ -69,7 +68,6 @@ window.addEventListener('vite:preloadError', (evt) => {
     return;
   }
   evt.preventDefault();
-  markUpdating();
   window.location.reload();
 });
 
