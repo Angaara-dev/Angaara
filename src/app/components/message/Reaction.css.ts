@@ -33,13 +33,14 @@ export const Reaction = style([
       'button&': {
         cursor: 'pointer',
       },
+      // Your own reaction: a wash of the accent, which themes leave grey as Primary.Container.
       '&[aria-pressed=true]': {
         vars: {
-          [Container]: color.Primary.Container,
-          [ContainerHover]: color.Primary.ContainerHover,
-          [ContainerActive]: color.Primary.ContainerActive,
-          [ContainerLine]: color.Primary.ContainerLine,
-          [OnContainer]: color.Primary.OnContainer,
+          [Container]: `color-mix(in srgb, ${color.Primary.Main} 18%, ${color.SurfaceVariant.Container})`,
+          [ContainerHover]: `color-mix(in srgb, ${color.Primary.Main} 26%, ${color.SurfaceVariant.Container})`,
+          [ContainerActive]: `color-mix(in srgb, ${color.Primary.Main} 32%, ${color.SurfaceVariant.Container})`,
+          [ContainerLine]: `color-mix(in srgb, ${color.Primary.Main} 60%, transparent)`,
+          [OnContainer]: color.SurfaceVariant.OnContainer,
         },
         backgroundColor: Container,
       },
